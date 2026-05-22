@@ -1,0 +1,454 @@
+{
+  "version": 2,
+  "active_category": "bancos",
+  "categories": [
+    {
+      "key": "bancos",
+      "label": "Bancos",
+      "sheet_name": "Bancos",
+      "fields": [
+        {
+          "key": "pre_fixo",
+          "label": "PRE FIXO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- BCO",
+            "2- BCO MOTORISTA",
+            "3- BCO CARONA",
+            "4- BCO CARONA ORIGINAL",
+            "5- BCO MOTORISTA ORIGINAL",
+            "6- BCO ORIGINAL",
+            "7- BCO E/S/J"
+          ]
+        },
+        {
+          "key": "fornecedor",
+          "label": "FORNECEDOR",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- MC",
+            "2- CS",
+            "3- MD",
+            "4- STF",
+            "5- INC",
+            "6- JL",
+            "7- ORI"
+          ]
+        },
+        {
+          "key": "linha",
+          "label": "LINHA",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- LB",
+            "2- LE",
+            "3- LS",
+            "4- LL",
+            "5- ORI"
+          ]
+        },
+        {
+          "key": "tipo_da_espuma",
+          "label": "TIPO DA ESPUMA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- ESPUM. LB JI",
+            "2- ESPUM. LB COMUM",
+            "3- ESPUM. LE RODOVIARIO",
+            "4- ESPUM. LE INCORPOL",
+            "5- ESPUM. LL IMPORTADA",
+            "6- ESPUM. LE E/S/J"
+          ]
+        },
+        {
+          "key": "veiculo",
+          "label": "VEÍCULO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "2- E/S/J",
+            "3- MASTER",
+            "4- TRANSIT",
+            "5- B/J/D",
+            "6- IVECO",
+            "7- KANGOO"
+          ]
+        },
+        {
+          "key": "encosto",
+          "label": "ENCOSTO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- FIXO",
+            "2- RECLINAVEL",
+            "3- INTERICO"
+          ]
+        },
+        {
+          "key": "largura_encosto",
+          "label": "LARGURA ENCOSTO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- LARGURA ENCOSTO 430MM",
+            "2- LARGURA ENCOSTO 450MM",
+            "3- LARGURA ENCOSTO 480MM",
+            "4- LARGURA ENCOSTO 500MM",
+            "5- LARGURA ENCOSTO 550MM",
+            "6- LARGURA ENCOSTO 400MM"
+          ]
+        },
+        {
+          "key": "profundidade_assento",
+          "label": "PROFUNDIDADE ASSENTO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- PROFUNDIDADE 370 MM",
+            "2- PROFUNDIDADE 330 MM"
+          ]
+        },
+        {
+          "key": "lotacao",
+          "label": "LOTAÇÃO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- 1 L",
+            "2- 2 L",
+            "3- 3 L",
+            "4- 4 L",
+            "5- 5 L"
+          ]
+        },
+        {
+          "key": "especificidade",
+          "label": "ESPECIFICIDADE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- NORMAL",
+            "2- (2REC / 1 REB)"
+          ]
+        },
+        {
+          "key": "braco",
+          "label": "BRAÇO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- S/ AP BRACO",
+            "2- C/ AP BRACO"
+          ]
+        },
+        {
+          "key": "tipo_apoio_braco",
+          "label": "TIPO APOIO BRAÇO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- APOIO BRACO SIMPLES PU PRETO MCA"
+          ]
+        },
+        {
+          "key": "lado_braco",
+          "label": "LADO BRAÇO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- LD",
+            "2- LE",
+            "3- LD/LE"
+          ]
+        },
+        {
+          "key": "braco_corredor",
+          "label": "BRAÇO CORREDOR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- C/ BRACO CORREDOR",
+            "2- S/ BRACO CORREDOR"
+          ]
+        },
+        {
+          "key": "braco_central",
+          "label": "BRAÇO CENTRAL",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- C/ BRACO CENTRAL",
+            "2- S/ BRACO CENTRAL"
+          ]
+        },
+        {
+          "key": "braco_parede",
+          "label": "BRAÇO PAREDE",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- C/ BRACO PAREDE",
+            "2- S/ BRACO PAREDE"
+          ]
+        },
+        {
+          "key": "acabamento_lateral",
+          "label": "ACABAMENTO LATERAL",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- ACABAMENTO LATERAL LD PLASTICO INJETADO PRETO MCA",
+            "2- SEM ACABAMENTO LATERAL"
+          ]
+        },
+        {
+          "key": "altura_pe",
+          "label": "ALTURA PÉ",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- 330 MM",
+            "2- 370 MM"
+          ]
+        },
+        {
+          "key": "tipo_cinto",
+          "label": "TIPO CINTO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- 2P",
+            "2- 3P"
+          ]
+        },
+        {
+          "key": "lado_cinto",
+          "label": "LADO CINTO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- FECHAMENTO CINTO LD",
+            "2- FECHAMENTO CINTO LE"
+          ]
+        },
+        {
+          "key": "tipo_costura",
+          "label": "TIPO COSTURA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- COSTURA LB"
+          ]
+        },
+        {
+          "key": "cor_da_linha",
+          "label": "COR DA LINHA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- COR LINHA LB"
+          ]
+        },
+        {
+          "key": "tipo_revestimento",
+          "label": "TIPO REVESTIMENTO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- TECIDO",
+            "2- COURVIN"
+          ]
+        },
+        {
+          "key": "cor_do_revestimento",
+          "label": "COR DO REVESTIMENTO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- CAPA LB PADRAO JI"
+          ]
+        },
+        {
+          "key": "usb",
+          "label": "USB",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- S/ USB"
+          ]
+        },
+        {
+          "key": "resfriador",
+          "label": "RESFRIADOR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- S/ RESFRIADOR"
+          ]
+        },
+        {
+          "key": "aquecedor",
+          "label": "AQUECEDOR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- S/ AQUECEDOR"
+          ]
+        },
+        {
+          "key": "apoio_pe",
+          "label": "APOIO PÉ",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- S/ APOIO PE"
+          ]
+        },
+        {
+          "key": "massageador",
+          "label": "MASSAGEADOR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- S/ MASSAGEADOR"
+          ]
+        },
+        {
+          "key": "mesa_snack",
+          "label": "MESA SNACK",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- S/ M. SNACK"
+          ]
+        },
+        {
+          "key": "isofix",
+          "label": "ISOFIX",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- 1 ISOFIX",
+            "2- 2 ISOFIX",
+            "3- 3 ISOFIX",
+            "4- S/ ISOFIX"
+          ]
+        },
+        {
+          "key": "posicao_isofix",
+          "label": "POSIÇÃO ISOFIX",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": []
+        },
+        {
+          "key": "apoio_panturrilha",
+          "label": "APOIO PANTURRILHA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- S/ APOIO PANTURRILHA"
+          ]
+        },
+        {
+          "key": "pega_mao",
+          "label": "PEGA MÃO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- PEGA MAO BCO SIMPLES PU PRETO MCA",
+            "2- S/ PEGA MAO"
+          ]
+        },
+        {
+          "key": "modelo_pe",
+          "label": "MODELO PÉ",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- PE BCO MCA 370 MM",
+            "2- PE BCO MCA 330 MM"
+          ]
+        },
+        {
+          "key": "qtd_pe",
+          "label": "QTD PÉ",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- UM PE",
+            "2- DOIS PES",
+            "3- TRES PES",
+            "4- QUATRO PES",
+            "5- CINCO PES"
+          ]
+        },
+        {
+          "key": "distancia_pe",
+          "label": "DISTÂNCIA PÉ",
+          "scope": "secundaria",
+          "selection_mode": "multipla",
+          "options": [
+            "1- PRIMEIRO PE - 155 MM",
+            "2- SEGUNDO PE - 355 MM",
+            "3- TERCEIRO PE - 625 MM",
+            "4- QUARTO PE - 365 MM",
+            "5- QUINTO PE - 195 MM",
+            "6- PRIMEIRO PE - 185 MM",
+            "7- SEGUNDO PE - 625 MM",
+            "8- TERCEIRO PE - 340 MM",
+            "9- QUARTO PE - 110 MM"
+          ]
+        },
+        {
+          "key": "tipo_do_reclinador",
+          "label": "TIPO DO RECLINADOR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- AMORTECEDOR A GAS"
+          ]
+        },
+        {
+          "key": "grau_reclinacao",
+          "label": "GRAU RECLINAÇÃO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- INCLINACAO 32O"
+          ]
+        },
+        {
+          "key": "teste",
+          "label": "TESTE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- TESTE"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "fixadores",
+      "label": "FIxadores",
+      "sheet_name": "FIxadores",
+      "fields": [
+        {
+          "key": "teste",
+          "label": "TESTE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "options": [
+            "1- A"
+          ]
+        }
+      ]
+    }
+  ]
+}

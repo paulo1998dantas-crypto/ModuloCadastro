@@ -1,0 +1,23 @@
+MODULO DE CADASTRO - ENVIO PARA OUTRO COMPUTADOR
+
+Como gerar o aplicativo:
+1. No computador onde o projeto esta funcionando, abra a pasta modulo_cadastro.
+2. Dê dois cliques em gerar_aplicativo_desktop.bat.
+3. Aguarde finalizar.
+4. Envie o arquivo dist\ModuloCadastro_portatil.zip para o outro computador.
+   Alternativa: envie a pasta dist\ModuloCadastro_envio inteira.
+
+Como abrir no computador do chefe:
+1. Extraia o ZIP recebido.
+2. Abra a pasta ModuloCadastro_envio.
+3. Dê dois cliques em ModuloCadastro.exe.
+4. A aplicação abrirá como uma janela de aplicativo.
+
+Observações importantes:
+- Envie a pasta ModuloCadastro_envio inteira, não apenas o arquivo .exe.
+- O arquivo cadastro_dados.json guarda as categorias, campos e opções do sistema.
+- O arquivo config.json será criado no computador do usuário e guarda a planilha conectada.
+- A pasta backups guarda cópias de segurança geradas antes de alterações na planilha.
+- A pasta outputs guarda logs e arquivos auxiliares.
+- No primeiro uso, entre na aba Planilha e selecione/crie a planilha que será usada.
+- Se a planilha estiver aberta no Excel, o Windows pode bloquear a gravação. Feche o Excel antes de salvar cadastros.

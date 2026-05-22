@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Módulo de Cadastro</title>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800">
+    <header class="bg-slate-950 text-white shadow-sm">
+        <div class="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-4">
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wide text-yellow-400">Módulo de Cadastro</p>
+                    <h1 class="text-2xl font-black tracking-tight">Cadastro de {{ selected_category.label }}</h1>
+                </div>
+                <div class="max-w-3xl truncate text-xs text-slate-300">{{ workbook_path }}</div>
+            </div>
+            <nav class="flex flex-wrap gap-2">
+                <a href="/cadastro/bancos?categoria={{ selected_category.key }}" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'cadastro' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Cadastro</a>
+                <a href="/opcoes?categoria={{ selected_category.key }}" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'opcoes' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Opções</a>
+                <a href="/planilha" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'planilha' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Planilha</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="mx-auto max-w-7xl p-6">
+        {% if sucesso %}
+        <div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
+            {{ sucesso }}
+        </div>
+        {% endif %}
+
+        {% if erro %}
+        <div class="mb-5 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-700">
+            {{ erro }}
+        </div>
+        {% endif %}
+
+        <form method="post" action="/cadastro/bancos" class="space-y-6">
+            <section class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                    <label class="w-full max-w-xs space-y-1">
+                        <span class="block text-xs font-bold uppercase text-slate-500">Categoria</span>
+                        <select name="categoria" onchange="window.location='/cadastro/bancos?categoria=' + encodeURIComponent(this.value)" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                            {% for category in categories %}
+                            <option value="{{ category.key }}" {% if category.key == selected_category.key %}selected{% endif %}>{{ category.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <button type="submit" class="rounded-lg bg-blue-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-blue-700">
+                        Salvar cadastro
+                    </button>
+                </div>
+            </section>
+
+            <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                    <h2 class="mb-4 text-sm font-black uppercase tracking-wide text-blue-700">Descrição primária</h2>
+                    {% if fields|selectattr('scope', 'equalto', 'primaria')|list|length == 0 %}
+                    <p class="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">Nenhum campo primário cadastrado para esta categoria.</p>
+                    {% endif %}
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        {% for field in fields if field.scope == 'primaria' %}
+                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}">
+                            <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
+                            {% if field.selection_mode == 'multipla' %}
+                            <select name="{{ field.key }}" multiple size="6" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                                {% for option in field.options %}
+                                <option value="{{ option }}" {% if option in field.selected_values %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
+                            <span class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Seleção múltipla: use `Ctrl` para marcar mais de uma opção.</span>
+                            {% else %}
+                            <select name="{{ field.key }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">Selecione...</option>
+                                {% if field.options|length == 0 %}
+                                <option value="" disabled>Sem opções cadastradas</option>
+                                {% endif %}
+                                {% for option in field.options %}
+                                <option value="{{ option }}" {% if field.selected_value == option %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                    <h2 class="mb-4 text-sm font-black uppercase tracking-wide text-emerald-700">Descrição secundária</h2>
+                    {% if fields|selectattr('scope', 'equalto', 'secundaria')|list|length == 0 %}
+                    <p class="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">Nenhum campo secundário cadastrado para esta categoria.</p>
+                    {% endif %}
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        {% for field in fields if field.scope == 'secundaria' %}
+                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}">
+                            <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
+                            {% if field.key == 'distancia_pe' %}
+                            <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-slate-600">
+                                ORIENTADO A ESQ:
+                            </div>
+                            {% endif %}
+                            {% if field.selection_mode == 'multipla' %}
+                            <select name="{{ field.key }}" multiple size="6" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+                                {% for option in field.options %}
+                                <option value="{{ option }}" {% if option in field.selected_values %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
+                            <span class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Seleção múltipla: use `Ctrl` para marcar mais de uma opção.</span>
+                            {% else %}
+                            <select name="{{ field.key }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+                                <option value="">Selecione...</option>
+                                {% if field.options|length == 0 %}
+                                <option value="" disabled>Sem opções cadastradas</option>
+                                {% endif %}
+                                {% for option in field.options %}
+                                <option value="{{ option }}" {% if field.selected_value == option %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+        </form>
+    </main>
+    <script>
+        const fieldBlocks = Array.from(document.querySelectorAll("[data-field-block]"));
+
+        const normalizeText = (value) => {
+            return (value || "")
+                .trim()
+                .replace(/\([^)]*\)/g, "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toUpperCase()
+                .replace(/[^A-Z0-9]+/g, " ")
+                .trim();
+        };
+
+        const normalizeOptionValue = (value) => {
+            return normalizeText((value || "").replace(/^\s*\d+\s*[-–—]\s*/, "")).replace(/\s+/g, "");
+        };
+
+        const findBlock = (label, scope) => {
+            const labels = Array.isArray(label) ? label : [label];
+            return fieldBlocks.find((block) => {
+                return labels.some((candidate) => normalizeText(block.dataset.fieldLabel) === normalizeText(candidate)) && block.dataset.fieldScope === scope;
+            });
+        };
+
+        const getSelectedTokens = (block) => {
+            const select = block.querySelector("select");
+            if (!select) {
+                return [];
+            }
+            if (select.multiple) {
+                return Array.from(select.selectedOptions).map((option) => normalizeOptionValue(option.value));
+            }
+            return select.value ? [normalizeOptionValue(select.value)] : [];
+        };
+
+        const getSelectedPrefixes = (block) => {
+            const select = block.querySelector("select");
+            if (!select) {
+                return [];
+            }
+            const selectedOptions = select.multiple ? Array.from(select.selectedOptions) : (select.value ? [select.selectedOptions[0]] : []);
+            return selectedOptions
+                .map((option) => (option && option.value ? option.value : ""))
+                .map((value) => {
+                    const match = value.match(/^\s*(\d+)/);
+                    return match ? match[1] : "";
+                })
+                .filter(Boolean);
+        };
+
+        const clearAndToggleBlock = (block, visible) => {
+            block.classList.toggle("hidden", !visible);
+            const controls = block.querySelectorAll("input, select, textarea");
+            controls.forEach((control) => {
+                if (!visible) {
+                    if (control.tagName === "SELECT" && control.multiple) {
+                        Array.from(control.options).forEach((option) => {
+                            option.selected = false;
+                        });
+                    } else if (control.tagName === "SELECT") {
+                        control.value = "";
+                    } else if (control.type === "checkbox" || control.type === "radio") {
+                        control.checked = false;
+                    } else {
+                        control.value = "";
+                    }
+                }
+                control.disabled = !visible;
+            });
+        };
+
+        const rules = [
+            {
+                sourceLabel: "PRE FIXO",
+                sourceScope: "primaria",
+                mode: "showWhen",
+                matchBy: "prefix",
+                values: ["4", "5", "6"],
+                targets: [{ label: "VEICULO", scope: "secundaria", requiredWhenVisible: true }],
+            },
+            {
+                sourceLabel: "ENCOSTO",
+                sourceScope: "primaria",
+                mode: "hideWhen",
+                values: ["FIXO", "INTERICO"],
+                targets: [
+                    { label: "TIPO DO RECLINADOR", scope: "secundaria" },
+                    { label: "GRAU RECLINACAO", scope: "secundaria" },
+                ],
+            },
+            {
+                sourceLabel: "LINHA",
+                sourceScope: "primaria",
+                mode: "hideWhen",
+                values: ["LB"],
+                targets: [
+                    { label: "USB", scope: "secundaria" },
+                    { label: "RESFRIADOR", scope: "secundaria" },
+                    { label: "AQUECEDOR", scope: "secundaria" },
+                    { label: ["MASSAGEADOR", "MASSAFEADIR"], scope: "secundaria" },
+                    { label: "MESA SNACK", scope: "secundaria" },
+                    { label: "ISOFIX", scope: "secundaria" },
+                    { label: ["POSICAO ISOFIX", "POSIÇÃO ISOFIX"], scope: "secundaria" },
+                    { label: ["APOIO PANTURRILHA", "APOIO PANTURILHA"], scope: "secundaria" },
+                ],
+            },
+            {
+                sourceLabel: "BRACO",
+                sourceScope: "primaria",
+                mode: "hideWhen",
+                values: ["SAP", "NA"],
+                targets: [
+                    { label: ["TIPO APOIO BRACO", "TIPO APOIO DE BRACO"], scope: "secundaria" },
+                    { label: "LADO BRACO", scope: "primaria" },
+                    { label: "BRACO CORREDOR", scope: "secundaria" },
+                    { label: "BRACO CENTRAL", scope: "secundaria" },
+                    { label: "COR DO BRACO", scope: "secundaria" },
+                    { label: "BRACO PAREDE", scope: "secundaria" },
+                ],
+            },
+            {
+                sourceLabel: "PEGA MAO",
+                sourceScope: "secundaria",
+                mode: "hideWhen",
+                values: ["SPEGAMAO", "NA"],
+                targets: [{ label: "COR PEGA MAO", scope: "secundaria" }],
+            },
+            {
+                sourceLabel: "ACABAMENTO LATERAL",
+                sourceScope: "secundaria",
+                mode: "hideWhen",
+                values: ["SEMACABAMENTOLATERAL", "NA"],
+                targets: [{ label: "COR ACABAMENTO", scope: "secundaria" }],
+            },
+            {
+                sourceLabel: "ISOFIX",
+                sourceScope: "secundaria",
+                mode: "hideWhen",
+                values: ["SISOFIX", "4"],
+                targets: [{ label: "POSICAO ISOFIX", scope: "secundaria" }],
+            },
+            {
+                sourceLabel: "TIPO CINTO",
+                sourceScope: "primaria",
+                mode: "showWhen",
+                values: ["3P"],
+                targets: [{ label: "LADO CINTO", scope: "secundaria" }],
+            },
+        ];
+
+        const updateConditionalFields = () => {
+            const visibility = new Map(fieldBlocks.map((block) => [block, true]));
+            const required = new Map(fieldBlocks.map((block) => [block, false]));
+
+            rules.forEach((rule) => {
+                const sourceBlock = findBlock(rule.sourceLabel, rule.sourceScope);
+                if (!sourceBlock) {
+                    return;
+                }
+
+                const selectedTokens = rule.matchBy === "prefix" ? getSelectedPrefixes(sourceBlock) : getSelectedTokens(sourceBlock);
+                const matches = selectedTokens.some((token) => {
+                    return rule.values.some((value) => token === value || token.startsWith(value));
+                });
+                const shouldShow = rule.mode === "showWhen" ? matches : !matches;
+
+                rule.targets.forEach((target) => {
+                    const targetBlock = findBlock(target.label, target.scope);
+                    if (!targetBlock) {
+                        return;
+                    }
+                    visibility.set(targetBlock, visibility.get(targetBlock) && shouldShow);
+                    if (target.requiredWhenVisible && shouldShow) {
+                        required.set(targetBlock, true);
+                    }
+                });
+            });
+
+            fieldBlocks.forEach((block) => {
+                const shouldShow = visibility.get(block) !== false;
+                clearAndToggleBlock(block, shouldShow);
+                const controls = block.querySelectorAll("input, select, textarea");
+                controls.forEach((control) => {
+                    control.required = shouldShow && required.get(block) === true;
+                });
+            });
+        };
+
+        fieldBlocks.forEach((block) => {
+            const select = block.querySelector("select");
+            if (select) {
+                select.addEventListener("change", updateConditionalFields);
+            }
+        });
+
+        updateConditionalFields();
+    </script>
+</body>
+</html>
