@@ -1,4 +1,4 @@
-import json
+﻿import json
 import os
 import re
 import shutil
@@ -7,6 +7,7 @@ import tempfile
 import unicodedata
 import zipfile
 import xml.etree.ElementTree as ET
+import uuid
 from copy import copy, deepcopy
 from datetime import datetime
 from pathlib import Path
@@ -27,7 +28,7 @@ SELECTION_MODE_UNITARIA = "unitaria"
 SELECTION_MODE_MULTIPLA = "multipla"
 EXCEL_SUFFIXES = {".xlsx", ".xlsm"}
 IGNORED_SCAN_DIRS = {"__pycache__", "outputs", ".idea", ".venv", "backups", "browser_profile", "_internal"}
-VALUE_RE = re.compile(r"^\s*(\d+)\s*[-–—]\s*(.+?)\s*$")
+VALUE_RE = re.compile(r"^\s*(\d+)\s*[-â€“â€”]\s*(.+?)\s*$")
 INVALID_SHEET_CHARS_RE = re.compile(r'[:\\/?*\[\]]')
 DISTANCIA_PE_KEY = "distancia_pe"
 DISTANCIA_PE_PREFIX = "ORIENTADO A ESQ:"
@@ -39,6 +40,198 @@ DESCRIPTION_SUFFIX_HEADER = "SUFIXO"
 _CATALOG_CACHE: dict[str, Any] | None = None
 _CATALOG_CACHE_MTIME: float | None = None
 _REGISTRATION_CACHE: dict[tuple[str, str, int], dict[str, Any]] = {}
+
+DEFAULT_CONDITIONAL_RULES = [
+    {
+        "key": "cond_pre_fixo_veiculo",
+        "source_field_key": "pre_fixo",
+        "source_values": ["4- BCO CARONA ORIGINAL", "5- BCO MOTORISTA ORIGINAL", "6- BCO ORIGINAL"],
+        "target_field_key": "veiculo",
+        "target_field_label": "VEÃCULO",
+        "target_field_scope": "secundaria",
+        "action": "show",
+    },
+    {
+        "key": "cond_encosto_reclinador",
+        "source_field_key": "encosto",
+        "source_values": ["1- FIXO", "3- INTERICO"],
+        "target_field_key": "tipo_do_reclinador",
+        "target_field_label": "TIPO DO RECLINADOR",
+        "target_field_scope": "secundaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_encosto_grau_reclinacao",
+        "source_field_key": "encosto",
+        "source_values": ["1- FIXO", "3- INTERICO"],
+        "target_field_key": "grau_reclinacao",
+        "target_field_label": "GRAU RECLINAÃ‡ÃƒO",
+        "target_field_scope": "secundaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_linha_usb",
+        "source_field_key": "linha",
+        "source_values": ["1- LB"],
+        "target_field_key": "usb",
+        "target_field_label": "USB",
+        "target_field_scope": "secundaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_linha_resfriador",
+        "source_field_key": "linha",
+        "source_values": ["1- LB"],
+        "target_field_key": "resfriador",
+        "target_field_label": "RESFRIADOR",
+        "target_field_scope": "secundaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_linha_aquecedor",
+        "source_field_key": "linha",
+        "source_values": ["1- LB"],
+        "target_field_key": "aquecedor",
+        "target_field_label": "AQUECEDOR",
+        "target_field_scope": "secundaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_linha_massageador",
+        "source_field_key": "linha",
+        "source_values": ["1- LB"],
+        "target_field_key": "massageador",
+        "target_field_label": "MASSAGEADOR",
+        "target_field_scope": "secundaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_linha_mesa_snack",
+        "source_field_key": "linha",
+        "source_values": ["1- LB"],
+        "target_field_key": "mesa_snack",
+        "target_field_label": "MESA SNACK",
+        "target_field_scope": "secundaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_linha_isofix",
+        "source_field_key": "linha",
+        "source_values": ["1- LB"],
+        "target_field_key": "isofix",
+        "target_field_label": "ISOFIX",
+        "target_field_scope": "secundaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_linha_posicao_isofix",
+        "source_field_key": "linha",
+        "source_values": ["1- LB"],
+        "target_field_key": "posicao_isofix",
+        "target_field_label": "POSIÃ‡ÃƒO ISOFIX",
+        "target_field_scope": "secundaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_linha_apoio_panturrilha",
+        "source_field_key": "linha",
+        "source_values": ["1- LB"],
+        "target_field_key": "apoio_panturrilha",
+        "target_field_label": "APOIO PANTURRILHA",
+        "target_field_scope": "secundaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_braco_tipo_apoio",
+        "source_field_key": "braco",
+        "source_values": ["S/ APOIO DE BRAÃ‡O", "NA", "N/A"],
+        "target_field_key": "tipo_apoio_braco",
+        "target_field_label": "TIPO APOIO BRAÃ‡O",
+        "target_field_scope": "secundaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_braco_lado_braco",
+        "source_field_key": "braco",
+        "source_values": ["S/ APOIO DE BRAÃ‡O", "NA", "N/A"],
+        "target_field_key": "lado_braco",
+        "target_field_label": "LADO BRAÃ‡O",
+        "target_field_scope": "primaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_braco_corredor",
+        "source_field_key": "braco",
+        "source_values": ["S/ APOIO DE BRAÃ‡O", "NA", "N/A"],
+        "target_field_key": "braco_corredor",
+        "target_field_label": "BRAÃ‡O CORREDOR",
+        "target_field_scope": "secundaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_braco_central",
+        "source_field_key": "braco",
+        "source_values": ["S/ APOIO DE BRAÃ‡O", "NA", "N/A"],
+        "target_field_key": "braco_central",
+        "target_field_label": "BRAÃ‡O CENTRAL",
+        "target_field_scope": "secundaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_braco_cor_do_braco",
+        "source_field_key": "braco",
+        "source_values": ["S/ APOIO DE BRAÃ‡O", "NA", "N/A"],
+        "target_field_key": "cor_do_braco",
+        "target_field_label": "COR DO BRAÃ‡O",
+        "target_field_scope": "secundaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_braco_parede",
+        "source_field_key": "braco",
+        "source_values": ["S/ APOIO DE BRAÃ‡O", "NA", "N/A"],
+        "target_field_key": "braco_parede",
+        "target_field_label": "BRAÃ‡O PAREDE",
+        "target_field_scope": "secundaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_pega_mao_cor",
+        "source_field_key": "pega_mao",
+        "source_values": ["S/ PEGA MÃƒO", "NA", "N/A"],
+        "target_field_key": "cor_pega_mao",
+        "target_field_label": "COR PEGA MÃƒO",
+        "target_field_scope": "secundaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_acabamento_cor",
+        "source_field_key": "acabamento_lateral",
+        "source_values": ["SEM ACABAMENTO LATERAL", "NA"],
+        "target_field_key": "cor_acabamento",
+        "target_field_label": "COR ACABAMENTO",
+        "target_field_scope": "secundaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_isofix_posicao",
+        "source_field_key": "isofix",
+        "source_values": ["S/ ISOFIX", "4"],
+        "target_field_key": "posicao_isofix",
+        "target_field_label": "POSIÃ‡ÃƒO ISOFIX",
+        "target_field_scope": "secundaria",
+        "action": "hide",
+    },
+    {
+        "key": "cond_tipo_cinto_lado",
+        "source_field_key": "tipo_cinto",
+        "source_values": ["3P"],
+        "target_field_key": "lado_cinto",
+        "target_field_label": "LADO CINTO",
+        "target_field_scope": "secundaria",
+        "action": "show",
+    },
+]
 
 
 def _project_dir() -> Path:
@@ -89,6 +282,10 @@ def option_identity(value: Any) -> str:
     return normalize_label(option_label(value))
 
 
+def rule_option_token(value: Any) -> str:
+    return normalize_label(option_label(value)).replace(" ", "")
+
+
 def strip_accents(value: Any) -> str:
     text = clean_text(value)
     normalized = unicodedata.normalize("NFKD", text)
@@ -100,14 +297,14 @@ def normalize_option_text(value: Any) -> str:
     if not text:
         return ""
 
-    ordinal_masculine = "º"
-    ordinal_feminine = "ª"
+    ordinal_masculine = "Âº"
+    ordinal_feminine = "Âª"
 
     def _preserve_ordinals(input_text: str) -> str:
-        return input_text.replace(ordinal_masculine, "￰").replace(ordinal_feminine, "￱")
+        return input_text.replace(ordinal_masculine, "ï¿°").replace(ordinal_feminine, "ï¿±")
 
     def _restore_ordinals(input_text: str) -> str:
-        return input_text.replace("￰", ordinal_masculine).replace("￱", ordinal_feminine)
+        return input_text.replace("ï¿°", ordinal_masculine).replace("ï¿±", ordinal_feminine)
 
     match = VALUE_RE.match(text)
     if match:
@@ -162,6 +359,31 @@ def field_selection_mode(value: Any) -> str:
 def header_for_field(label: str, scope: str) -> str:
     suffix = "PRIMARIO" if field_scope(scope) == "primaria" else "SECUNDARIO"
     return f"{clean_text(label)} - {suffix}"
+
+
+def _field_description_order(field: dict[str, Any], fallback_index: int) -> int:
+    try:
+        order = int(field.get("description_order"))
+    except (TypeError, ValueError):
+        order = 0
+    return order if order > 0 else fallback_index
+
+
+def _ordered_fields_for_description(fields: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    decorated: list[tuple[int, int, int, dict[str, Any]]] = []
+    for index, field in enumerate(fields, start=1):
+        scope_rank = 0 if field.get("scope") == "primaria" else 1
+        decorated.append((scope_rank, _field_description_order(field, index), index, field))
+    decorated.sort(key=lambda item: (item[0], item[1], item[2]))
+    return [item[3] for item in decorated]
+
+
+def _normalize_field_orders(category: dict[str, Any]) -> None:
+    for scope in ("primaria", "secundaria"):
+        scoped_fields = [field for field in category.get("fields") or [] if field.get("scope") == scope]
+        scoped_fields.sort(key=lambda field: _field_description_order(field, 10**9))
+        for index, field in enumerate(scoped_fields, start=1):
+            field["description_order"] = index
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -322,6 +544,12 @@ def _sanitize_fields(fields: list[dict[str, Any]] | None, include_defaults: bool
 
         scope = field_scope(field.get("scope"))
         selection_mode = field_selection_mode(field.get("selection_mode"))
+        try:
+            description_order = int(field.get("description_order"))
+            if description_order < 1:
+                description_order = None
+        except (TypeError, ValueError):
+            description_order = None
 
         options: list[str] = []
         seen_options: set[str] = set()
@@ -341,12 +569,57 @@ def _sanitize_fields(fields: list[dict[str, Any]] | None, include_defaults: bool
                 "label": label,
                 "scope": scope,
                 "selection_mode": selection_mode,
+                "description_order": description_order,
                 "options": options,
             }
         )
 
     if include_defaults and not cleaned:
         cleaned.extend(_default_category()["fields"])
+    return cleaned
+
+
+def _sanitize_conditional_rules(
+    rules: list[dict[str, Any]] | None,
+    fields: list[dict[str, Any]],
+    category_key: str,
+) -> list[dict[str, Any]]:
+    field_map = {field["key"]: field for field in fields}
+    cleaned: list[dict[str, Any]] = []
+    for rule in rules or []:
+        source_key = clean_text(rule.get("source_field_key"))
+        target_key = clean_text(rule.get("target_field_key"))
+        if source_key not in field_map and target_key not in field_map:
+            continue
+        source_field = field_map.get(source_key)
+        target_field = field_map.get(target_key)
+        source_values = []
+        for value in rule.get("source_values") or []:
+            normalized = clean_text(value)
+            if normalized:
+                source_values.append(rule_option_token(normalized))
+        if not source_values:
+            continue
+        action = clean_text(rule.get("action")).lower()
+        if action not in {"hide", "show"}:
+            action = "hide"
+        cleaned.append(
+            {
+                "key": clean_text(rule.get("key")) or uuid.uuid4().hex[:12],
+                "source_field_key": source_key,
+                "source_field_label": source_field["label"] if source_field else clean_text(rule.get("source_field_label")) or source_key,
+                "source_field_scope": source_field["scope"] if source_field else clean_text(rule.get("source_field_scope")) or "primaria",
+                "source_values": source_values,
+                "target_field_key": target_key,
+                "target_field_label": target_field["label"] if target_field else clean_text(rule.get("target_field_label")) or target_key,
+                "target_field_scope": target_field["scope"] if target_field else clean_text(rule.get("target_field_scope")) or "secundaria",
+                "action": action,
+            }
+        )
+
+    if not cleaned and category_key == DEFAULT_CATEGORY_KEY:
+        for rule in DEFAULT_CONDITIONAL_RULES:
+            cleaned.append(deepcopy(rule))
     return cleaned
 
 
@@ -383,13 +656,15 @@ def _sanitize_catalog(catalog: dict[str, Any]) -> dict[str, Any]:
         raw_key = clean_text(raw_category.get("key")) or category_key(label)
         key = raw_key if raw_key not in used_keys else _unique_category_key(label, used_keys)
         used_keys.add(key)
+        fields = _sanitize_fields(raw_category.get("fields") or [], include_defaults=False)
 
         categories.append(
             {
                 "key": key,
                 "label": label,
                 "sheet_name": _safe_sheet_title(raw_category.get("sheet_name") or label),
-                "fields": _sanitize_fields(raw_category.get("fields") or [], include_defaults=False),
+                "fields": fields,
+                "conditional_rules": _sanitize_conditional_rules(raw_category.get("conditional_rules") or [], fields, key),
             }
         )
 
@@ -475,7 +750,7 @@ def add_category(label: str) -> dict[str, str]:
     if not label_clean:
         raise ValueError("Informe o nome da categoria.")
     if normalize_label(label_clean) in {normalize_label(item["label"]) for item in catalog["categories"]}:
-        raise ValueError("Essa categoria já existe.")
+        raise ValueError("Essa categoria jÃ¡ existe.")
     used = {item["key"] for item in catalog["categories"]}
     category = {
         "key": _unique_category_key(label_clean, used),
@@ -502,7 +777,7 @@ def update_category(category_key_value: str, label: str) -> dict[str, str]:
         raise ValueError("Informe o nome da categoria.")
     for existing in catalog["categories"]:
         if existing["key"] != category["key"] and normalize_label(existing["label"]) == normalize_label(label_clean):
-            raise ValueError("Já existe outra categoria com esse nome.")
+            raise ValueError("JÃ¡ existe outra categoria com esse nome.")
     category["label"] = label_clean
     category["sheet_name"] = _safe_sheet_title(label_clean)
     save_catalog(catalog)
@@ -596,7 +871,7 @@ def normalize_workbook_name(name_value: str) -> str:
 def set_active_workbook(path_value: str) -> Path:
     raw = clean_text(path_value)
     if not raw:
-        raise ValueError("Selecione uma planilha ou informe um caminho válido.")
+        raise ValueError("Selecione uma planilha ou informe um caminho vÃ¡lido.")
     path = Path(raw)
     if not path.is_absolute():
         path = PROJECT_DIR / path
@@ -604,7 +879,7 @@ def set_active_workbook(path_value: str) -> Path:
     if path.suffix.lower() not in EXCEL_SUFFIXES:
         raise ValueError("Use uma planilha .xlsx ou .xlsm.")
     if not path.parent.exists():
-        raise FileNotFoundError(f"Pasta não encontrada: {path.parent}")
+        raise FileNotFoundError(f"Pasta nÃ£o encontrada: {path.parent}")
     config = _read_config()
     config["active_workbook"] = str(path)
     _write_config(config)
@@ -614,13 +889,13 @@ def set_active_workbook(path_value: str) -> Path:
 def set_active_workbook_from_folder(folder_value: str, workbook_name: str) -> Path:
     raw_folder = clean_text(folder_value)
     if not raw_folder:
-        raise ValueError("Selecione uma pasta ou informe um caminho de pasta válido.")
+        raise ValueError("Selecione uma pasta ou informe um caminho de pasta vÃ¡lido.")
     folder = Path(raw_folder)
     if not folder.is_absolute():
         folder = PROJECT_DIR / folder
     folder = folder.resolve()
     if not folder.exists() or not folder.is_dir():
-        raise FileNotFoundError(f"Pasta não encontrada: {folder}")
+        raise FileNotFoundError(f"Pasta nÃ£o encontrada: {folder}")
     path = folder / normalize_workbook_name(workbook_name)
     ensure_workbook_exists(path)
     config = _read_config()
@@ -648,7 +923,7 @@ def _sheet_for_category(workbook, category: dict[str, Any]):
 
 
 def _headers_from_fields(fields: list[dict[str, Any]]) -> list[str]:
-    headers = ["DESCRIÇÃO PRIMÁRIA", "DESCRIÇÃO SECUNDÁRIA"]
+    headers = ["DESCRIÃ‡ÃƒO PRIMÃRIA", "DESCRIÃ‡ÃƒO SECUNDÃRIA"]
     for field in fields:
         header = header_for_field(field["label"], field["scope"])
         headers.append(header)
@@ -793,7 +1068,7 @@ def _expand_table_to_row(ws, row: int) -> None:
 
 
 def _code_header_for_field(field: dict[str, Any]) -> str:
-    return f"{header_for_field(field['label'], field['scope'])} CÓDIGO"
+    return f"{header_for_field(field['label'], field['scope'])} CÃ“DIGO"
 
 
 def _worksheet_uses_code_columns(ws) -> bool:
@@ -953,6 +1228,7 @@ def _field_response(field: dict[str, Any], index: int) -> dict[str, Any]:
         "header": header_for_field(field["label"], field["scope"]),
         "scope": field["scope"],
         "selection_mode": field.get("selection_mode", SELECTION_MODE_UNITARIA),
+        "description_order": _field_description_order(field, index),
         "column": column,
         "letter": get_column_letter(column),
         "options": options,
@@ -963,6 +1239,85 @@ def _field_response(field: dict[str, Any], index: int) -> dict[str, Any]:
 def get_banco_fields(category_key_value: str) -> list[dict[str, Any]]:
     category = _find_category(load_catalog(), category_key_value)
     return [_field_response(field, index) for index, field in enumerate(category.get("fields") or [])]
+
+
+def get_banco_fields_for_display(category_key_value: str) -> list[dict[str, Any]]:
+    category = _find_category(load_catalog(), category_key_value)
+    ordered_fields = _ordered_fields_for_description(category.get("fields") or [])
+    return [_field_response(field, index) for index, field in enumerate(ordered_fields, start=1)]
+
+
+def get_conditional_rules(category_key_value: str) -> list[dict[str, Any]]:
+    catalog = load_catalog()
+    category = _find_category(catalog, category_key_value)
+    fields = category.get("fields") or []
+    rules = category.get("conditional_rules") or []
+    field_map = {field["key"]: _field_response(field, index) for index, field in enumerate(fields)}
+    token_map = {
+        field["key"]: {rule_option_token(option): option for option in (field.get("options") or [])}
+        for field in fields
+    }
+    resolved: list[dict[str, Any]] = []
+    for rule in rules:
+        source_field = field_map.get(rule["source_field_key"])
+        target_field = field_map.get(rule["target_field_key"])
+        source_value_labels = [
+            token_map.get(rule["source_field_key"], {}).get(value, value) for value in (rule.get("source_values") or [])
+        ]
+        resolved.append(
+            {
+                "key": rule["key"],
+                "source_field_key": rule["source_field_key"],
+                "source_field_label": rule["source_field_label"],
+                "source_field_scope": rule["source_field_scope"],
+                "source_values": list(rule.get("source_values") or []),
+                "source_value_labels": source_value_labels,
+                "target_field_key": rule["target_field_key"],
+                "target_field_label": rule["target_field_label"],
+                "target_field_scope": rule["target_field_scope"],
+                "action": rule["action"],
+                "source_field": source_field,
+                "target_field": target_field,
+            }
+        )
+    return resolved
+
+
+def get_conditional_rules_for_form(category_key_value: str) -> list[dict[str, Any]]:
+    rules = get_conditional_rules(category_key_value)
+    form_rules: list[dict[str, Any]] = []
+    for rule in rules:
+        source_values = list(rule.get("source_values") or [])
+        targets: list[dict[str, Any]] = []
+        if rule.get("target_field"):
+            targets.append(
+                {
+                    "label": rule["target_field"]["label"],
+                    "scope": rule["target_field"]["scope"],
+                    "requiredWhenVisible": rule["action"] == "show",
+                }
+            )
+        elif rule.get("target_field_label"):
+            targets.append(
+                {
+                    "label": rule["target_field_label"],
+                    "scope": rule["target_field_scope"],
+                    "requiredWhenVisible": rule["action"] == "show",
+                }
+            )
+        if not targets:
+            continue
+        form_rules.append(
+            {
+                "sourceLabel": rule["source_field_label"],
+                "sourceScope": rule["source_field_scope"],
+                "mode": "showWhen" if rule["action"] == "show" else "hideWhen",
+                "matchBy": "option",
+                "values": source_values,
+                "targets": targets,
+            }
+        )
+    return form_rules
 
 
 def _sheet_for_view(workbook, category: dict[str, Any]):
@@ -1004,7 +1359,7 @@ def list_saved_registrations(category_key_value: str) -> dict[str, Any]:
     except PermissionError:
         result["workbook_locked"] = True
         result["error_message"] = (
-            "A planilha está aberta em outro programa e não pode ser lida agora. "
+            "A planilha estÃ¡ aberta em outro programa e nÃ£o pode ser lida agora. "
             "Feche o Excel para visualizar os cadastros."
         )
         return result
@@ -1077,7 +1432,7 @@ def sync_workbook_headers(workbook: Path, category_key_value: str) -> None:
         _save_workbook_atomic(wb, workbook)
     except PermissionError as exc:
         raise PermissionError(
-            "Não consegui salvar a planilha. Feche o Excel se ela estiver aberta e tente novamente."
+            "NÃ£o consegui salvar a planilha. Feche o Excel se ela estiver aberta e tente novamente."
         ) from exc
     finally:
         wb.close()
@@ -1120,7 +1475,15 @@ def _copy_row_style(ws, source_row: int, target_row: int) -> None:
         if source.protection:
             target.protection = copy(source.protection)
     if source_row in ws.row_dimensions:
-        ws.row_dimensions[target_row].height = ws.row_dimensions[source_row].height
+        source_dimension = ws.row_dimensions[source_row]
+        target_dimension = ws.row_dimensions[target_row]
+        if source_dimension.height is not None:
+            target_dimension.height = source_dimension.height
+        target_dimension.hidden = source_dimension.hidden
+        target_dimension.outlineLevel = source_dimension.outlineLevel
+        target_dimension.collapsed = source_dimension.collapsed
+        target_dimension.thickBot = source_dimension.thickBot
+        target_dimension.thickTop = source_dimension.thickTop
 
 
 def _copy_row_formulas(ws, source_row: int, target_row: int) -> None:
@@ -1213,7 +1576,7 @@ def build_descriptions(fields: list[dict[str, Any]], data: Any) -> dict[str, str
     secondary_parts: list[str] = []
     secondary_codes: list[str] = []
 
-    for field in fields:
+    for field in _ordered_fields_for_description(fields):
         values = _serialize_field_values(field, data)
         if not values:
             continue
@@ -1256,13 +1619,131 @@ def _validate_banco_dependencies(fields: list[dict[str, Any]], data: Any) -> Non
 
     if _has_any_option_code(pre_fixo_values, {"4", "5", "6"}) and not veiculo_values:
         raise ValueError(
-            "O campo VEÍCULO é obrigatório quando PRE FIXO for "
+            "O campo VEÃCULO Ã© obrigatÃ³rio quando PRE FIXO for "
             "BCO CARONA ORIGINAL, BCO MOTORISTA ORIGINAL ou BCO ORIGINAL."
         )
 
 
 def _has_any_value(values: dict[str, str]) -> bool:
     return any(values.values())
+
+
+def _selected_conditional_tokens(field: dict[str, Any], data: Any) -> list[str]:
+    tokens: list[str] = []
+    for value in _serialize_field_values(field, data):
+        token = rule_option_token(value)
+        if token:
+            tokens.append(token)
+    return tokens
+
+
+def _selected_conditional_prefixes(field: dict[str, Any], data: Any) -> list[str]:
+    prefixes: list[str] = []
+    for value in _serialize_field_values(field, data):
+        prefix = option_code(value)
+        if not prefix:
+            match = re.match(r"^\s*(\d+)", clean_text(value))
+            prefix = match.group(1) if match else ""
+        if prefix:
+            prefixes.append(prefix)
+    return prefixes
+
+
+def _rule_match_values(rule: dict[str, Any]) -> list[str]:
+    values = [clean_text(value) for value in rule.get("source_values") or []]
+    if clean_text(rule.get("match_by")).lower() == "prefix" or rule.get("source_field_key") == "pre_fixo":
+        normalized: list[str] = []
+        for value in values:
+            code = option_code(value)
+            if code:
+                normalized.append(code)
+                continue
+            match = re.match(r"^\s*(\d+)", value)
+            if match:
+                normalized.append(match.group(1))
+                continue
+            token = normalize_label(value).replace(" ", "")
+            if token:
+                normalized.append(token)
+        return normalized
+    return [token for token in (rule_option_token(value) for value in values) if token]
+
+
+def _rule_matches(field: dict[str, Any], data: Any, rule: dict[str, Any]) -> bool:
+    match_by = clean_text(rule.get("match_by")).lower()
+    if not match_by and rule.get("source_field_key") == "pre_fixo":
+        match_by = "prefix"
+    selected_values = (
+        _selected_conditional_prefixes(field, data)
+        if match_by == "prefix"
+        else _selected_conditional_tokens(field, data)
+    )
+    if not selected_values:
+        return False
+
+    rule_values = _rule_match_values(rule)
+    if not rule_values:
+        return False
+
+    for token in selected_values:
+        for value in rule_values:
+            if token == value or token.startswith(value):
+                return True
+    return False
+
+
+def _combined_conditional_rules(category_key_value: str) -> list[dict[str, Any]]:
+    rules: list[dict[str, Any]] = []
+    for rule in DEFAULT_CONDITIONAL_RULES:
+        copied = deepcopy(rule)
+        if not clean_text(copied.get("match_by")) and copied.get("source_field_key") == "pre_fixo":
+            copied["match_by"] = "prefix"
+        rules.append(copied)
+    for rule in get_conditional_rules(category_key_value):
+        copied = deepcopy(rule)
+        if not clean_text(copied.get("match_by")) and copied.get("source_field_key") == "pre_fixo":
+            copied["match_by"] = "prefix"
+        rules.append(copied)
+    return rules
+
+
+def _visible_field_keys(fields: list[dict[str, Any]], category_key_value: str, data: Any) -> set[str]:
+    field_map = {field["key"]: field for field in fields}
+    visibility: dict[str, bool] = {field["key"]: True for field in fields}
+
+    for rule in _combined_conditional_rules(category_key_value):
+        source_key = clean_text(rule.get("source_field_key"))
+        target_key = clean_text(rule.get("target_field_key"))
+        source_field = field_map.get(source_key)
+        target_field = field_map.get(target_key)
+        if source_field is None or target_field is None:
+            continue
+
+        should_show = _rule_matches(source_field, data, rule)
+        if clean_text(rule.get("action")).lower() != "show":
+            should_show = not should_show
+        visibility[target_key] = visibility.get(target_key, True) and should_show
+
+    return {field_key for field_key, is_visible in visibility.items() if is_visible}
+
+
+def _validate_visible_field_requirements(
+    fields: list[dict[str, Any]],
+    category_key_value: str,
+    data: Any,
+) -> None:
+    visible_keys = _visible_field_keys(fields, category_key_value, data)
+    missing_fields: list[str] = []
+    for field in fields:
+        if field["key"] not in visible_keys:
+            continue
+        if _serialize_field_values(field, data):
+            continue
+        missing_fields.append(field["label"])
+
+    if missing_fields:
+        labels = ", ".join(missing_fields)
+        raise ValueError(f"Preencha os campos visÃ­veis antes de salvar: {labels}.")
 
 
 def _row_values(ws, field_columns: dict[str, tuple[int | None, int | None]], row: int) -> dict[str, str]:
@@ -1280,7 +1761,7 @@ def _find_duplicate_registration(
 ) -> int | None:
     submitted = _submitted_values(fields, data)
     if not _has_any_value(submitted):
-        raise ValueError("Selecione pelo menos uma opção antes de salvar o cadastro.")
+        raise ValueError("Selecione pelo menos uma opÃ§Ã£o antes de salvar o cadastro.")
 
     for row in range(FIRST_DATA_ROW, ws.max_row + 1):
         existing = _row_values(ws, field_columns, row)
@@ -1289,6 +1770,42 @@ def _find_duplicate_registration(
         if existing == submitted:
             return row
     return None
+
+
+def _find_duplicate_registration_by_description(
+    ws,
+    fields: list[dict[str, Any]],
+    field_columns: dict[str, tuple[int | None, int | None]],
+    data: Any,
+    description_columns: tuple[int | None, int | None, int | None],
+) -> int | None:
+    submitted = _submitted_values(fields, data)
+    if not _has_any_value(submitted):
+        raise ValueError("Selecione pelo menos uma opÃƒÂ§ÃƒÂ£o antes de salvar o cadastro.")
+
+    primary_column, secondary_column, suffix_column = description_columns
+    if not (primary_column and secondary_column and suffix_column):
+        return _find_duplicate_registration(ws, fields, field_columns, data)
+
+    descriptions = build_descriptions(fields, data)
+    submitted_primary = normalize_label(descriptions.get("primaria"))
+    submitted_secondary = normalize_label(descriptions.get("secundaria"))
+    submitted_suffix = clean_text(descriptions.get("sufixo"))
+
+    for row in range(FIRST_DATA_ROW, ws.max_row + 1):
+        existing = _row_values(ws, field_columns, row)
+        if not _has_any_value(existing):
+            continue
+        existing_primary = normalize_label(ws.cell(row, primary_column).value)
+        existing_secondary = normalize_label(ws.cell(row, secondary_column).value)
+        existing_suffix = clean_text(ws.cell(row, suffix_column).value)
+        if (
+            existing_primary == submitted_primary
+            and existing_secondary == submitted_secondary
+            and existing_suffix == submitted_suffix
+        ):
+            return row
+    return _find_duplicate_registration(ws, fields, field_columns, data)
 
 
 def _backup_workbook(workbook: Path, suffix: str) -> Path:
@@ -1302,22 +1819,29 @@ def _backup_workbook(workbook: Path, suffix: str) -> Path:
 def save_banco_registration(form_data: Any) -> dict[str, str]:
     category_key_value = clean_text(form_data.get("categoria"))
     category = selected_category(category_key_value)
+    catalog = load_catalog()
+    raw_category = _find_category(catalog, category["key"])
+    fields = get_banco_fields(category["key"])
+    _validate_banco_dependencies(fields, form_data)
+    _validate_visible_field_requirements(fields, category["key"], form_data)
     workbook = ensure_workbook_exists()
     workbook_source = _copy_to_temp(workbook)
     wb = _load(workbook_source)
     backup_path = None
 
     try:
-        catalog = load_catalog()
-        raw_category = _find_category(catalog, category["key"])
         ws = _sheet_for_category(wb, raw_category)
-        fields = get_banco_fields(category["key"])
-        _validate_banco_dependencies(fields, form_data)
         primary_column, secondary_column, suffix_column = _resolve_description_columns(ws, create_missing=True)
         field_columns = _resolve_field_column_map(ws, fields, create_missing=True)
-        duplicate_row = _find_duplicate_registration(ws, fields, field_columns, form_data)
+        duplicate_row = _find_duplicate_registration_by_description(
+            ws,
+            fields,
+            field_columns,
+            form_data,
+            (primary_column, secondary_column, suffix_column),
+        )
         if duplicate_row:
-            raise ValueError(f"Cadastro já existe na linha {duplicate_row}.")
+            raise ValueError(f"Cadastro jÃ¡ existe na linha {duplicate_row}.")
 
         backup_path = _backup_workbook(workbook, "cadastro")
         row = _next_available_row(ws)
@@ -1368,7 +1892,7 @@ def save_banco_registration(form_data: Any) -> dict[str, str]:
         }
     except PermissionError as exc:
         raise PermissionError(
-            "Não consegui salvar a planilha. Feche o Excel se ela estiver aberta e tente novamente."
+            "NÃ£o consegui salvar a planilha. Feche o Excel se ela estiver aberta e tente novamente."
         ) from exc
     finally:
         wb.close()
@@ -1389,7 +1913,7 @@ def _find_field(catalog: dict[str, Any], category_key_value: str, field_key_valu
     for field in category.get("fields") or []:
         if field["key"] == field_key_value:
             return field
-    raise ValueError("Campo não encontrado.")
+    raise ValueError("Campo nÃ£o encontrado.")
 
 
 def _next_option_code(options: list[str]) -> int:
@@ -1416,11 +1940,11 @@ def add_field_option(category_key_value: str, field_key_value: str, option_value
     field = _find_field(catalog, category_key_value, field_key_value)
     raw_option = clean_text(option_value)
     if not raw_option:
-        raise ValueError("Informe a nova opção.")
+        raise ValueError("Informe a nova opÃ§Ã£o.")
 
     options = field.setdefault("options", [])
     if option_identity(raw_option) in {option_identity(value) for value in options}:
-        raise ValueError("Essa opção já existe para o campo selecionado.")
+        raise ValueError("Essa opÃ§Ã£o jÃ¡ existe para o campo selecionado.")
 
     option = _format_option_value(raw_option, options)
     options.append(option)
@@ -1440,13 +1964,13 @@ def update_field_option(category_key_value: str, field_key_value: str, row_value
     options = field.setdefault("options", [])
     index = int(row_value) - 1
     if index < 0 or index >= len(options):
-        raise ValueError("Opção não encontrada.")
+        raise ValueError("OpÃ§Ã£o nÃ£o encontrada.")
 
     current = options[index]
     option = _format_option_value(option_value, options, current)
     other_options = [value for pos, value in enumerate(options) if pos != index]
     if option_identity(option) in {option_identity(value) for value in other_options}:
-        raise ValueError("Essa opção já existe para o campo selecionado.")
+        raise ValueError("Essa opÃ§Ã£o jÃ¡ existe para o campo selecionado.")
 
     options[index] = option
     save_catalog(catalog)
@@ -1454,6 +1978,83 @@ def update_field_option(category_key_value: str, field_key_value: str, row_value
         "field": field["label"],
         "option": option,
         "row": row_value,
+        "path": str(DATA_PATH),
+        "backup": "",
+    }
+
+
+def add_conditional_rule(
+    category_key_value: str,
+    source_field_key_value: str,
+    source_value_value: str,
+    target_field_key_value: str,
+    target_field_label_value: str = "",
+    action_value: str = "hide",
+) -> dict[str, Any]:
+    catalog = load_catalog()
+    category = _find_category(catalog, category_key_value)
+    fields = category.get("fields") or []
+    source_field = _find_field(catalog, category["key"], source_field_key_value)
+    target_field = None
+    target_key = clean_text(target_field_key_value)
+    target_label = clean_text(target_field_label_value)
+    if target_key:
+        target_field = _find_field(catalog, category["key"], target_key)
+    elif not target_label:
+        raise ValueError("Informe o campo alvo da regra.")
+    source_value = rule_option_token(clean_text(source_value_value))
+    if not source_value:
+        raise ValueError("Informe a opÃ§Ã£o condicional.")
+    action = clean_text(action_value).lower()
+    if action not in {"hide", "show"}:
+        action = "hide"
+
+    rules = category.setdefault("conditional_rules", [])
+    for rule in rules:
+        if (
+            rule.get("source_field_key") == source_field["key"]
+            and rule.get("target_field_key") == (target_field["key"] if target_field else "")
+            and rule_option_token(clean_text(rule.get("target_field_label"))) == rule_option_token(
+                target_label or (target_field["label"] if target_field else "")
+            )
+            and rule_option_token(rule.get("source_values", [""])[0] if rule.get("source_values") else "") == source_value
+            and rule.get("action") == action
+        ):
+            raise ValueError("Essa regra jÃ¡ existe.")
+
+    rule = {
+        "key": uuid.uuid4().hex[:12],
+        "source_field_key": source_field["key"],
+        "source_field_label": source_field["label"],
+        "source_field_scope": source_field["scope"],
+        "source_values": [source_value],
+        "target_field_key": target_field["key"] if target_field else "",
+        "target_field_label": target_field["label"] if target_field else target_label,
+        "target_field_scope": target_field["scope"] if target_field else "secundaria",
+        "action": action,
+    }
+    rules.append(rule)
+    save_catalog(catalog)
+    return {
+        "rule": rule,
+        "source_field": source_field["label"],
+        "target_field": target_field["label"] if target_field else target_label,
+        "path": str(DATA_PATH),
+        "backup": "",
+    }
+
+
+def delete_conditional_rule(category_key_value: str, rule_key_value: str) -> dict[str, str]:
+    catalog = load_catalog()
+    category = _find_category(catalog, category_key_value)
+    rules = category.setdefault("conditional_rules", [])
+    rule_index = next((index for index, rule in enumerate(rules) if rule.get("key") == rule_key_value), None)
+    if rule_index is None:
+        raise ValueError("Regra nÃ£o encontrada.")
+    rule = rules.pop(rule_index)
+    save_catalog(catalog)
+    return {
+        "rule": rule.get("key", ""),
         "path": str(DATA_PATH),
         "backup": "",
     }
@@ -1469,13 +2070,13 @@ def update_field_options(
     field = _find_field(catalog, category_key_value, field_key_value)
     options = field.setdefault("options", [])
     if len(row_values) != len(option_values):
-        raise ValueError("Quantidade de alterações inválida.")
+        raise ValueError("Quantidade de alteraÃ§Ãµes invÃ¡lida.")
 
     updates: list[tuple[int, str, int]] = []
     for row_value, raw_option in zip(row_values, option_values):
         index = int(row_value) - 1
         if index < 0 or index >= len(options):
-            raise ValueError("Opção não encontrada.")
+            raise ValueError("OpÃ§Ã£o nÃ£o encontrada.")
         raw_text = clean_text(raw_option)
         if not raw_text:
             continue
@@ -1500,7 +2101,7 @@ def update_field_options(
     for option in new_options:
         identity = option_identity(option)
         if identity in seen_identities:
-            raise ValueError("Essa opção já existe para o campo selecionado.")
+            raise ValueError("Essa opÃ§Ã£o jÃ¡ existe para o campo selecionado.")
         seen_identities.add(identity)
 
     options[:] = new_options
@@ -1520,7 +2121,7 @@ def delete_field_option(category_key_value: str, field_key_value: str, row_value
     options = field.setdefault("options", [])
     index = int(row_value) - 1
     if index < 0 or index >= len(options):
-        raise ValueError("Opção não encontrada.")
+        raise ValueError("OpÃ§Ã£o nÃ£o encontrada.")
     option = options.pop(index)
     save_catalog(catalog)
     return {
@@ -1539,17 +2140,24 @@ def add_field(category_key_value: str, label: str, scope: str, selection_mode: s
     if not label_clean:
         raise ValueError("Informe o nome do campo.")
     if normalize_label(label_clean) in {normalize_label(field["label"]) for field in category["fields"]}:
-        raise ValueError("Esse campo já existe nesta categoria.")
+        raise ValueError("Esse campo jÃ¡ existe nesta categoria.")
 
     used = {field["key"] for field in category["fields"]}
+    scope_value = field_scope(scope)
+    next_order = max(
+        (_field_description_order(field, 0) for field in category["fields"] if field.get("scope") == scope_value),
+        default=0,
+    ) + 1
     field = {
         "key": _unique_key(label_clean, used),
         "label": label_clean,
-        "scope": field_scope(scope),
+        "scope": scope_value,
         "selection_mode": field_selection_mode(selection_mode),
+        "description_order": next_order,
         "options": [],
     }
     category["fields"].append(field)
+    _normalize_field_orders(category)
     save_catalog(catalog)
     sync_workbook_structure(category["key"])
     return {
@@ -1577,11 +2185,19 @@ def update_field(
 
     for existing in category["fields"]:
         if existing["key"] != field_key_value and normalize_label(existing["label"]) == normalize_label(label_clean):
-            raise ValueError("Já existe outro campo com esse nome nesta categoria.")
+            raise ValueError("JÃ¡ existe outro campo com esse nome nesta categoria.")
 
+    previous_scope = field.get("scope")
+    new_scope = field_scope(scope)
     field["label"] = label_clean
-    field["scope"] = field_scope(scope)
+    field["scope"] = new_scope
     field["selection_mode"] = field_selection_mode(selection_mode)
+    if previous_scope != new_scope:
+        field["description_order"] = max(
+            (_field_description_order(existing_field, 0) for existing_field in category["fields"] if existing_field.get("scope") == new_scope),
+            default=0,
+        ) + 1
+    _normalize_field_orders(category)
     save_catalog(catalog)
     sync_workbook_structure(category["key"])
     return {
@@ -1598,5 +2214,38 @@ def delete_field(category_key_value: str, field_key_value: str) -> dict[str, str
     category = _find_category(catalog, category_key_value)
     field = _find_field(catalog, category["key"], field_key_value)
     category["fields"] = [item for item in category["fields"] if item["key"] != field_key_value]
+    _normalize_field_orders(category)
     save_catalog(catalog)
     return {"field": field["label"], "path": str(DATA_PATH), "backup": ""}
+
+
+def reorder_fields_by_description(
+    category_key_value: str,
+    scope_value: str,
+    ordered_field_keys: list[str],
+) -> dict[str, Any]:
+    catalog = load_catalog()
+    category = _find_category(catalog, category_key_value)
+    scope_clean = field_scope(scope_value)
+    fields = category.get("fields") or []
+    scoped_fields = [field for field in fields if field.get("scope") == scope_clean]
+    scoped_keys = {field["key"] for field in scoped_fields}
+    ordered_keys = [clean_text(key) for key in ordered_field_keys if clean_text(key)]
+    if set(ordered_keys) != scoped_keys:
+        raise ValueError("A ordenaÃ§Ã£o recebida nÃ£o corresponde aos campos da descriÃ§Ã£o selecionada.")
+
+    by_key = {field["key"]: field for field in scoped_fields}
+    for index, key in enumerate(ordered_keys, start=1):
+        by_key[key]["description_order"] = index
+
+    _normalize_field_orders(category)
+    save_catalog(catalog)
+    return {
+        "category": category["label"],
+        "scope": scope_clean,
+        "count": len(ordered_keys),
+        "path": str(DATA_PATH),
+        "backup": "",
+    }
+
+

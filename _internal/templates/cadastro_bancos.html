@@ -61,7 +61,7 @@
                     <p class="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">Nenhum campo primário cadastrado para esta categoria.</p>
                     {% endif %}
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        {% for field in fields if field.scope == 'primaria' %}
+                        {% for field in ordered_fields if field.scope == 'primaria' %}
                         <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}">
                             <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
                             {% if field.selection_mode == 'multipla' %}
@@ -93,7 +93,7 @@
                     <p class="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">Nenhum campo secundário cadastrado para esta categoria.</p>
                     {% endif %}
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        {% for field in fields if field.scope == 'secundaria' %}
+                        {% for field in ordered_fields if field.scope == 'secundaria' %}
                         <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}">
                             <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
                             {% if field.key == 'distancia_pe' %}
@@ -195,10 +195,11 @@
                     }
                 }
                 control.disabled = !visible;
+                control.required = visible;
             });
         };
 
-        const rules = [
+        const baseRules = [
             {
                 sourceLabel: "PRE FIXO",
                 sourceScope: "primaria",
@@ -237,10 +238,10 @@
                 sourceLabel: "BRACO",
                 sourceScope: "primaria",
                 mode: "hideWhen",
-                values: ["SAP", "NA"],
+                values: ["SAPOIODEBRACO", "NA", "N/A"],
                 targets: [
                     { label: ["TIPO APOIO BRACO", "TIPO APOIO DE BRACO"], scope: "secundaria" },
-                    { label: "LADO BRACO", scope: "primaria" },
+                    { label: ["POSICAO DO BRACO", "POSIÇÃO DO BRAÇO", "LADO BRACO"], scope: "primaria" },
                     { label: "BRACO CORREDOR", scope: "secundaria" },
                     { label: "BRACO CENTRAL", scope: "secundaria" },
                     { label: "COR DO BRACO", scope: "secundaria" },
@@ -277,9 +278,11 @@
             },
         ];
 
+        const configuredRules = {{ conditional_rules | tojson }};
+        const rules = baseRules.concat(configuredRules);
+
         const updateConditionalFields = () => {
             const visibility = new Map(fieldBlocks.map((block) => [block, true]));
-            const required = new Map(fieldBlocks.map((block) => [block, false]));
 
             rules.forEach((rule) => {
                 const sourceBlock = findBlock(rule.sourceLabel, rule.sourceScope);
@@ -299,19 +302,12 @@
                         return;
                     }
                     visibility.set(targetBlock, visibility.get(targetBlock) && shouldShow);
-                    if (target.requiredWhenVisible && shouldShow) {
-                        required.set(targetBlock, true);
-                    }
                 });
             });
 
             fieldBlocks.forEach((block) => {
                 const shouldShow = visibility.get(block) !== false;
                 clearAndToggleBlock(block, shouldShow);
-                const controls = block.querySelectorAll("input, select, textarea");
-                controls.forEach((control) => {
-                    control.required = shouldShow && required.get(block) === true;
-                });
             });
         };
 
@@ -321,6 +317,56 @@
                 select.addEventListener("change", updateConditionalFields);
             }
         });
+
+        const isBlockFilled = (block) => {
+            const controls = block.querySelectorAll("input, select, textarea");
+            for (const control of controls) {
+                if (control.disabled) {
+                    continue;
+                }
+                if (control.tagName === "SELECT" && control.multiple) {
+                    if (Array.from(control.selectedOptions).some((option) => option.value)) {
+                        return true;
+                    }
+                    continue;
+                }
+                if (control.type === "checkbox" || control.type === "radio") {
+                    const group = block.querySelectorAll(`input[name="${control.name}"]`);
+                    if (Array.from(group).some((item) => item.checked)) {
+                        return true;
+                    }
+                    continue;
+                }
+                if ((control.value || "").trim()) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        const form = document.querySelector("form[action='/cadastro/bancos']");
+        if (form) {
+            form.addEventListener("submit", (event) => {
+                updateConditionalFields();
+                const missing = fieldBlocks
+                    .filter((block) => !block.classList.contains("hidden"))
+                    .filter((block) => !isBlockFilled(block));
+                if (!missing.length) {
+                    return;
+                }
+
+                event.preventDefault();
+                const labels = missing
+                    .map((block) => (block.dataset.fieldLabel || "").trim())
+                    .filter(Boolean);
+                alert(`Preencha os campos visíveis antes de salvar:\n${labels.join("\n")}`);
+                const firstMissing = missing[0];
+                const firstControl = firstMissing.querySelector("select:not([disabled]), input:not([disabled]), textarea:not([disabled])");
+                if (firstControl) {
+                    firstControl.focus();
+                }
+            });
+        }
 
         updateConditionalFields();
     </script>

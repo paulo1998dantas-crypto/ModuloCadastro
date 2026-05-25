@@ -85,6 +85,8 @@ def _render_cadastro_page(request: Request, categoria: str = "", sucesso: str = 
             "categories": excel_bancos.list_categories(),
             "selected_category": selected_category,
             "fields": _enrich_fields(fields, normalized_form),
+            "ordered_fields": excel_bancos.get_banco_fields_for_display(selected_category["key"]),
+            "conditional_rules": excel_bancos.get_conditional_rules_for_form(selected_category["key"]),
             "workbook_path": excel_bancos.template_path(),
             "sucesso": sucesso,
             "erro": erro,
@@ -104,6 +106,8 @@ def _render_opcoes_page(request: Request, categoria: str = "", sucesso: str = ""
             "categories": excel_bancos.list_categories(),
             "selected_category": selected_category,
             "fields": excel_bancos.get_banco_fields(selected_category["key"]),
+            "ordered_fields": excel_bancos.get_banco_fields_for_display(selected_category["key"]),
+            "conditional_rules": excel_bancos.get_conditional_rules(selected_category["key"]),
             "workbook_path": excel_bancos.template_path(),
             "sucesso": sucesso,
             "erro": erro,
@@ -215,6 +219,82 @@ async def opcoes_excluir_post(
         message = f"Opção excluída: {result['option']}."
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote(message)}",
+            status_code=303,
+        )
+    except Exception as exc:
+        return RedirectResponse(
+            url=f"/opcoes?categoria={quote(category_key)}&erro={quote(str(exc))}",
+            status_code=303,
+        )
+
+
+@app.post("/campos/reordenar")
+async def campos_reordenar_post(
+    category_key: str = Form(...),
+    scope: str = Form(...),
+    ordered_field_keys: list[str] = Form(...),
+):
+    try:
+        result = excel_bancos.reorder_fields_by_description(category_key, scope, ordered_field_keys)
+        message = f"Ordem atualizada em {result['scope']}."
+        return RedirectResponse(
+            url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote(message)}",
+            status_code=303,
+        )
+    except Exception as exc:
+        return RedirectResponse(
+            url=f"/opcoes?categoria={quote(category_key)}&erro={quote(str(exc))}",
+            status_code=303,
+        )
+
+
+@app.post("/regras/adicionar")
+async def regras_adicionar_post(
+    category_key: str = Form(...),
+    source_field_key: str = Form(...),
+    source_value: str = Form(...),
+    target_field_key: str = Form(""),
+    target_field_label: str = Form(""),
+    target_field_scope: str = Form("secundaria"),
+    action: str = Form("hide"),
+):
+    try:
+        result = excel_bancos.add_conditional_rule(
+            category_key,
+            source_field_key,
+            source_value,
+            target_field_key,
+            target_field_label,
+            action,
+        )
+        if not excel_bancos.clean_text(target_field_key) and excel_bancos.clean_text(target_field_label):
+            catalog = excel_bancos.load_catalog()
+            category = next((item for item in catalog["categories"] if item["key"] == category_key), None)
+            if category is not None:
+                for rule in category.get("conditional_rules") or []:
+                    if rule.get("key") == result["rule"]["key"]:
+                        if excel_bancos.clean_text(target_field_label):
+                            rule["target_field_label"] = excel_bancos.clean_text(target_field_label)
+                        rule["target_field_scope"] = excel_bancos.clean_text(target_field_scope) or "secundaria"
+                        excel_bancos.save_catalog(catalog)
+                        break
+        return RedirectResponse(
+            url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote('Regra condicional criada.')}",
+            status_code=303,
+        )
+    except Exception as exc:
+        return RedirectResponse(
+            url=f"/opcoes?categoria={quote(category_key)}&erro={quote(str(exc))}",
+            status_code=303,
+        )
+
+
+@app.post("/regras/excluir")
+async def regras_excluir_post(category_key: str = Form(...), rule_key: str = Form(...)):
+    try:
+        excel_bancos.delete_conditional_rule(category_key, rule_key)
+        return RedirectResponse(
+            url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote('Regra condicional excluída.')}",
             status_code=303,
         )
     except Exception as exc:
