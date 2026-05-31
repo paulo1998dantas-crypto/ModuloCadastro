@@ -219,6 +219,17 @@
           ]
         },
         {
+          "key": "lado_cinto",
+          "label": "LADO CINTO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 8,
+          "options": [
+            "1- FECHAMENTO CINTO LD",
+            "2- FECHAMENTO CINTO LE"
+          ]
+        },
+        {
           "key": "tipo_costura",
           "label": "TIPO COSTURA",
           "scope": "secundaria",
