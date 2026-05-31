@@ -1,0 +1,797 @@
+{
+  "version": 2,
+  "active_category": "bancos",
+  "categories": [
+    {
+      "key": "bancos",
+      "label": "Bancos",
+      "sheet_name": "Bancos",
+      "fields": [
+        {
+          "key": "pre_fixo",
+          "label": "PRE FIXO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "1- BCO",
+            "2- BCO MOTORISTA",
+            "3- BCO CARONA",
+            "4- BCO CARONA ORIGINAL",
+            "5- BCO MOTORISTA ORIGINAL",
+            "6- BCO ORIGINAL",
+            "7- BCO E/S/J"
+          ]
+        },
+        {
+          "key": "fornecedor",
+          "label": "FORNECEDOR",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "1- MC",
+            "2- CS",
+            "3- MD",
+            "4- STF",
+            "5- INC",
+            "6- JL",
+            "7- ORI"
+          ]
+        },
+        {
+          "key": "linha",
+          "label": "LINHA",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "1- LB",
+            "2- LE",
+            "3- LS",
+            "4- LL",
+            "5- ORI"
+          ]
+        },
+        {
+          "key": "tipo_da_espuma",
+          "label": "TIPO DA ESPUMA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "1- ESPUM. LB JI",
+            "2- ESPUM. LB COMUM",
+            "3- ESPUM. LE RODOVIARIO",
+            "4- ESPUM. LE INCORPOL",
+            "5- ESPUM. LL IMPORTADA",
+            "6- ESPUM. LE E/S/J"
+          ]
+        },
+        {
+          "key": "veiculo",
+          "label": "VEÍCULO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "2- E/S/J",
+            "3- MASTER",
+            "4- TRANSIT",
+            "5- B/J/D",
+            "6- IVECO",
+            "7- KANGOO"
+          ]
+        },
+        {
+          "key": "encosto",
+          "label": "ENCOSTO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": [
+            "1- FIXO",
+            "2- RECLINAVEL",
+            "3- INTERICO"
+          ]
+        },
+        {
+          "key": "largura_encosto",
+          "label": "LARGURA ENCOSTO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "1- LARGURA ENCOSTO 430MM",
+            "2- LARGURA ENCOSTO 450MM",
+            "3- LARGURA ENCOSTO 480MM",
+            "4- LARGURA ENCOSTO 500MM",
+            "5- LARGURA ENCOSTO 550MM",
+            "6- LARGURA ENCOSTO 400MM",
+            "7- LARGURA ENCOSTO 410MM"
+          ]
+        },
+        {
+          "key": "profundidade_assento",
+          "label": "PROFUNDIDADE ASSENTO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": [
+            "1- PROFUNDIDADE 370 MM",
+            "2- PROFUNDIDADE 330 MM",
+            "3- PROFUNDIDADE 380 MM"
+          ]
+        },
+        {
+          "key": "lotacao",
+          "label": "LOTAÇÃO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": [
+            "1- 1 L",
+            "2- 2 L",
+            "3- 3 L",
+            "4- 4 L",
+            "5- 5 L"
+          ]
+        },
+        {
+          "key": "especificidade",
+          "label": "ESPECIFICIDADE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 6,
+          "options": [
+            "1- NORMAL",
+            "2- (2REC / 1 REB)",
+            "3- BJD",
+            "4- TRILHO"
+          ]
+        },
+        {
+          "key": "braco",
+          "label": "APOIO DE BRAÇO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 7,
+          "options": [
+            "1- S/ AP BRACO",
+            "2- C/ AP BRACO"
+          ]
+        },
+        {
+          "key": "tipo_apoio_braco",
+          "label": "TIPO APOIO BRAÇO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": [
+            "1- APOIO BRACO SIMPLES PU PRETO MCA"
+          ]
+        },
+        {
+          "key": "lado_braco",
+          "label": "LADO BRAÇO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 8,
+          "options": [
+            "1- LD",
+            "2- LE",
+            "3- LD/LE"
+          ]
+        },
+        {
+          "key": "acabamento_lateral",
+          "label": "ACABAMENTO LATERAL",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 7,
+          "options": [
+            "1- ACABAMENTO LATERAL LD PLASTICO INJETADO PRETO MCA",
+            "2- SEM ACABAMENTO LATERAL"
+          ]
+        },
+        {
+          "key": "altura_pe",
+          "label": "ALTURA DO PÉ",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 9,
+          "options": [
+            "1- 330 MM",
+            "2- 370 MM",
+            "3- 220 MM",
+            "4- 195 MM"
+          ]
+        },
+        {
+          "key": "tipo_cinto",
+          "label": "TIPO CINTO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 10,
+          "options": [
+            "1- 2P",
+            "2- 3P"
+          ]
+        },
+        {
+          "key": "tipo_costura",
+          "label": "TIPO COSTURA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 8,
+          "options": [
+            "1- COSTURA LB"
+          ]
+        },
+        {
+          "key": "cor_da_linha",
+          "label": "COR DA LINHA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 9,
+          "options": [
+            "1- COR LINHA LB"
+          ]
+        },
+        {
+          "key": "tipo_revestimento",
+          "label": "TIPO REVESTIMENTO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 11,
+          "options": [
+            "1- TECIDO",
+            "2- COURVIN"
+          ]
+        },
+        {
+          "key": "cor_do_revestimento",
+          "label": "COR DO REVESTIMENTO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 10,
+          "options": [
+            "1- CAPA LB PADRAO JI"
+          ]
+        },
+        {
+          "key": "usb",
+          "label": "USB",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 11,
+          "options": [
+            "1- S/ USB"
+          ]
+        },
+        {
+          "key": "resfriador",
+          "label": "RESFRIADOR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 12,
+          "options": [
+            "1- S/ RESFRIADOR"
+          ]
+        },
+        {
+          "key": "aquecedor",
+          "label": "AQUECEDOR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 13,
+          "options": [
+            "1- S/ AQUECEDOR"
+          ]
+        },
+        {
+          "key": "apoio_pe",
+          "label": "APOIO PÉ",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 14,
+          "options": [
+            "1- S/ APOIO PE"
+          ]
+        },
+        {
+          "key": "massageador",
+          "label": "MASSAGEADOR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 15,
+          "options": [
+            "1- S/ MASSAGEADOR"
+          ]
+        },
+        {
+          "key": "mesa_snack",
+          "label": "MESA SNACK",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 16,
+          "options": [
+            "1- S/ M. SNACK"
+          ]
+        },
+        {
+          "key": "isofix",
+          "label": "ISOFIX",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 17,
+          "options": [
+            "1- 1 ISOFIX",
+            "2- 2 ISOFIX",
+            "3- 3 ISOFIX",
+            "4- S/ ISOFIX"
+          ]
+        },
+        {
+          "key": "posicao_isofix",
+          "label": "POSIÇÃO ISOFIX",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 18,
+          "options": []
+        },
+        {
+          "key": "apoio_panturrilha",
+          "label": "APOIO PANTURRILHA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 19,
+          "options": [
+            "1- S/ APOIO PANTURRILHA"
+          ]
+        },
+        {
+          "key": "pega_mao",
+          "label": "PEGA MÃO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 20,
+          "options": [
+            "1- PEGA MAO BCO SIMPLES PU PRETO MCA",
+            "2- S/ PEGA MAO"
+          ]
+        },
+        {
+          "key": "modelo_pe",
+          "label": "MODELO PÉ",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 21,
+          "options": [
+            "1- PE BCO MCA"
+          ]
+        },
+        {
+          "key": "qtd_pe",
+          "label": "QTD PÉ",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 22,
+          "options": [
+            "1- UM PE",
+            "2- DOIS PES",
+            "3- TRES PES",
+            "4- QUATRO PES",
+            "5- CINCO PES"
+          ]
+        },
+        {
+          "key": "distancia_pe",
+          "label": "DISTÂNCIA PÉ",
+          "scope": "secundaria",
+          "selection_mode": "multipla",
+          "description_order": 23,
+          "options": [
+            "1- PRIMEIRO VAO 285 MM",
+            "2- SEGUNDO VAO 810 MM",
+            "3- TERCEIRO VAO 1155 MM",
+            "4- PRIMEIRO VAO 160 MM",
+            "5- SEGUNDO VAO 510 MM",
+            "6- TERCEIRO VAO 1140 MM",
+            "7- QUARTO VAO 1465 MM",
+            "8- PRIMEIRO VAO 265 MM",
+            "9- SEGUNDO VAO 930 MM",
+            "10- PRIMEIRO VAO 175 MM",
+            "11- SEGUNDO VAO 735 MM",
+            "12- PRIMEIRO VAO 165 MM",
+            "13- SEGUNDO VAO 1015 MM"
+          ]
+        },
+        {
+          "key": "tipo_do_reclinador",
+          "label": "TIPO DO RECLINADOR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 24,
+          "options": [
+            "1- AMORTECEDOR A GAS"
+          ]
+        },
+        {
+          "key": "grau_reclinacao",
+          "label": "GRAU RECLINAÇÃO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 25,
+          "options": [
+            "1- INCLINACAO 32"
+          ]
+        },
+        {
+          "key": "posicao_braco",
+          "label": "POSICAO BRACO",
+          "scope": "secundaria",
+          "selection_mode": "multipla",
+          "description_order": 6,
+          "options": [
+            "1- CORREDOR",
+            "2- CENTRAL",
+            "3- PAREDE"
+          ]
+        }
+      ],
+      "conditional_rules": [
+        {
+          "key": "cond_pre_fixo_veiculo",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL",
+            "BCOMOTORISTAORIGINAL",
+            "BCOORIGINAL"
+          ],
+          "target_field_key": "veiculo",
+          "target_field_label": "VEÍCULO",
+          "target_field_scope": "secundaria",
+          "action": "show"
+        },
+        {
+          "key": "cond_encosto_reclinador",
+          "source_field_key": "encosto",
+          "source_field_label": "ENCOSTO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "FIXO",
+            "INTERICO"
+          ],
+          "target_field_key": "tipo_do_reclinador",
+          "target_field_label": "TIPO DO RECLINADOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cond_encosto_grau_reclinacao",
+          "source_field_key": "encosto",
+          "source_field_label": "ENCOSTO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "FIXO",
+            "INTERICO"
+          ],
+          "target_field_key": "grau_reclinacao",
+          "target_field_label": "GRAU RECLINAÇÃO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cond_linha_usb",
+          "source_field_key": "linha",
+          "source_field_label": "LINHA",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "LB"
+          ],
+          "target_field_key": "usb",
+          "target_field_label": "USB",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cond_linha_resfriador",
+          "source_field_key": "linha",
+          "source_field_label": "LINHA",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "LB"
+          ],
+          "target_field_key": "resfriador",
+          "target_field_label": "RESFRIADOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cond_linha_aquecedor",
+          "source_field_key": "linha",
+          "source_field_label": "LINHA",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "LB"
+          ],
+          "target_field_key": "aquecedor",
+          "target_field_label": "AQUECEDOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cond_linha_massageador",
+          "source_field_key": "linha",
+          "source_field_label": "LINHA",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "LB"
+          ],
+          "target_field_key": "massageador",
+          "target_field_label": "MASSAGEADOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cond_linha_mesa_snack",
+          "source_field_key": "linha",
+          "source_field_label": "LINHA",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "LB"
+          ],
+          "target_field_key": "mesa_snack",
+          "target_field_label": "MESA SNACK",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cond_linha_isofix",
+          "source_field_key": "linha",
+          "source_field_label": "LINHA",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "LB"
+          ],
+          "target_field_key": "isofix",
+          "target_field_label": "ISOFIX",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cond_linha_posicao_isofix",
+          "source_field_key": "linha",
+          "source_field_label": "LINHA",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "LB"
+          ],
+          "target_field_key": "posicao_isofix",
+          "target_field_label": "POSIÇÃO ISOFIX",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cond_linha_apoio_panturrilha",
+          "source_field_key": "linha",
+          "source_field_label": "LINHA",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "LB"
+          ],
+          "target_field_key": "apoio_panturrilha",
+          "target_field_label": "APOIO PANTURRILHA",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cond_braco_tipo_apoio",
+          "source_field_key": "braco",
+          "source_field_label": "APOIO DE BRAÇO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "SAPOIODEBRACO",
+            "NA",
+            "NA"
+          ],
+          "target_field_key": "tipo_apoio_braco",
+          "target_field_label": "TIPO APOIO BRAÇO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cond_braco_lado_braco",
+          "source_field_key": "braco",
+          "source_field_label": "APOIO DE BRAÇO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "SAPOIODEBRACO",
+            "NA",
+            "NA"
+          ],
+          "target_field_key": "lado_braco",
+          "target_field_label": "LADO BRAÇO",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "cond_braco_corredor",
+          "source_field_key": "braco",
+          "source_field_label": "APOIO DE BRAÇO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "SAPOIODEBRACO",
+            "NA",
+            "NA"
+          ],
+          "target_field_key": "braco_corredor",
+          "target_field_label": "BRAÇO CORREDOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cond_braco_central",
+          "source_field_key": "braco",
+          "source_field_label": "APOIO DE BRAÇO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "SAPOIODEBRACO",
+            "NA",
+            "NA"
+          ],
+          "target_field_key": "braco_central",
+          "target_field_label": "BRAÇO CENTRAL",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cond_braco_cor_do_braco",
+          "source_field_key": "braco",
+          "source_field_label": "APOIO DE BRAÇO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "SAPOIODEBRACO",
+            "NA",
+            "NA"
+          ],
+          "target_field_key": "cor_do_braco",
+          "target_field_label": "COR DO BRAÇO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cond_braco_parede",
+          "source_field_key": "braco",
+          "source_field_label": "APOIO DE BRAÇO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "SAPOIODEBRACO",
+            "NA",
+            "NA"
+          ],
+          "target_field_key": "braco_parede",
+          "target_field_label": "BRAÇO PAREDE",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cond_pega_mao_cor",
+          "source_field_key": "pega_mao",
+          "source_field_label": "PEGA MÃO",
+          "source_field_scope": "secundaria",
+          "source_values": [
+            "SPEGAMAO",
+            "NA",
+            "NA"
+          ],
+          "target_field_key": "cor_pega_mao",
+          "target_field_label": "COR PEGA MÃO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cond_acabamento_cor",
+          "source_field_key": "acabamento_lateral",
+          "source_field_label": "ACABAMENTO LATERAL",
+          "source_field_scope": "secundaria",
+          "source_values": [
+            "SEMACABAMENTOLATERAL",
+            "NA"
+          ],
+          "target_field_key": "cor_acabamento",
+          "target_field_label": "COR ACABAMENTO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cond_isofix_posicao",
+          "source_field_key": "isofix",
+          "source_field_label": "ISOFIX",
+          "source_field_scope": "secundaria",
+          "source_values": [
+            "SISOFIX",
+            "4"
+          ],
+          "target_field_key": "posicao_isofix",
+          "target_field_label": "POSIÇÃO ISOFIX",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "28f3af483768",
+          "source_field_key": "braco",
+          "source_field_label": "APOIO DE BRAÇO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "SAPOIODEBRAO"
+          ],
+          "target_field_key": "",
+          "target_field_label": "POSIÇÃO DO BRAÇO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "10693c46274b",
+          "source_field_key": "braco",
+          "source_field_label": "APOIO DE BRAÇO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "SAPBRACO"
+          ],
+          "target_field_key": "posicao_braco",
+          "target_field_label": "POSICAO BRACO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "8b8facc51159",
+          "source_field_key": "braco",
+          "source_field_label": "APOIO DE BRAÇO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "SAPBRACO"
+          ],
+          "target_field_key": "tipo_apoio_braco",
+          "target_field_label": "TIPO APOIO BRAÇO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "d298a9e41d47",
+          "source_field_key": "braco",
+          "source_field_label": "APOIO DE BRAÇO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "SAPBRACO"
+          ],
+          "target_field_key": "lado_braco",
+          "target_field_label": "LADO BRAÇO",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        }
+      ]
+    },
+    {
+      "key": "fixadores",
+      "label": "FIxadores",
+      "sheet_name": "FIxadores",
+      "fields": [
+        {
+          "key": "teste",
+          "label": "TESTE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": null,
+          "options": [
+            "1- A"
+          ]
+        }
+      ],
+      "conditional_rules": []
+    }
+  ]
+}
