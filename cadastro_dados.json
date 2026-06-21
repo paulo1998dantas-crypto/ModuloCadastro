@@ -108,7 +108,8 @@
             "4- LARGURA ENCOSTO 500MM",
             "5- LARGURA ENCOSTO 550MM",
             "6- LARGURA ENCOSTO 400MM",
-            "7- LARGURA ENCOSTO 410MM"
+            "7- LARGURA ENCOSTO 410MM",
+            "8- LARGURA ENCOSTO 470MM"
           ]
         },
         {
@@ -120,7 +121,10 @@
           "options": [
             "1- PROFUNDIDADE 370 MM",
             "2- PROFUNDIDADE 330 MM",
-            "3- PROFUNDIDADE 380 MM"
+            "3- PROFUNDIDADE 380 MM",
+            "4- PROFUNDIDADE 360 MM",
+            "5- PROFUNDIDADE 430 MM",
+            "6- PROFUNDIDADE 450 MM"
           ]
         },
         {
@@ -147,7 +151,12 @@
             "1- NORMAL",
             "2- (2REC / 1 REB)",
             "3- BJD",
-            "4- TRILHO"
+            "4- TRILHO",
+            "5- FOCA",
+            "6- PME",
+            "7- ELEVITTA",
+            "8- SPRINTER",
+            "9- MASTER"
           ]
         },
         {
@@ -168,7 +177,8 @@
           "selection_mode": "unitaria",
           "description_order": 5,
           "options": [
-            "1- APOIO BRACO SIMPLES PU PRETO MCA"
+            "1- APOIO BRACO SIMPLES PU PRETO MCA",
+            "2- APOIO BRACO LD PLASTICO INJETADO GRAFITE ACRYLIS RODOVIARIOVIARIO"
           ]
         },
         {
@@ -191,7 +201,8 @@
           "description_order": 7,
           "options": [
             "1- ACABAMENTO LATERAL LD PLASTICO INJETADO PRETO MCA",
-            "2- SEM ACABAMENTO LATERAL"
+            "2- SEM ACABAMENTO LATERAL",
+            "3- ACABAMENTO LATERAL LD PLASTICO INJETADO GRAFITE ACRYLIS RODOVIARIO"
           ]
         },
         {
@@ -204,7 +215,14 @@
             "1- 330 MM",
             "2- 370 MM",
             "3- 220 MM",
-            "4- 195 MM"
+            "4- 195 MM",
+            "5- 60 MM",
+            "6- 100 MM",
+            "7- 262 MM",
+            "8- 270 MM",
+            "9- 255 MM",
+            "10- 65 MM",
+            "11- 120 MM"
           ]
         },
         {
@@ -219,24 +237,14 @@
           ]
         },
         {
-          "key": "lado_cinto",
-          "label": "LADO CINTO",
-          "scope": "secundaria",
-          "selection_mode": "unitaria",
-          "description_order": 8,
-          "options": [
-            "1- FECHAMENTO CINTO LD",
-            "2- FECHAMENTO CINTO LE"
-          ]
-        },
-        {
           "key": "tipo_costura",
           "label": "TIPO COSTURA",
           "scope": "secundaria",
           "selection_mode": "unitaria",
           "description_order": 8,
           "options": [
-            "1- COSTURA LB"
+            "1- COSTURA LB",
+            "2- COSTURA T-VANS-023"
           ]
         },
         {
@@ -246,7 +254,8 @@
           "selection_mode": "unitaria",
           "description_order": 9,
           "options": [
-            "1- COR LINHA LB"
+            "1- COR LINHA LB",
+            "2- COR LINHA VERMELHA"
           ]
         },
         {
@@ -257,7 +266,8 @@
           "description_order": 11,
           "options": [
             "1- TECIDO",
-            "2- COURVIN"
+            "2- COURVIN",
+            "3- MISTO"
           ]
         },
         {
@@ -267,7 +277,8 @@
           "selection_mode": "unitaria",
           "description_order": 10,
           "options": [
-            "1- CAPA LB PADRAO JI"
+            "1- CAPA LB PADRAO JI",
+            "2- CAPA LE PADRAO JL"
           ]
         },
         {
@@ -369,7 +380,8 @@
           "description_order": 20,
           "options": [
             "1- PEGA MAO BCO SIMPLES PU PRETO MCA",
-            "2- S/ PEGA MAO"
+            "2- S/ PEGA MAO",
+            "3- PEGA MAO PLASTICO PU ACRYLS RODOVIARIO"
           ]
         },
         {
@@ -379,7 +391,9 @@
           "selection_mode": "unitaria",
           "description_order": 21,
           "options": [
-            "1- PE BCO MCA"
+            "1- PE BCO MCA",
+            "2- PE PARAFUSO",
+            "3- PE BCO JL"
           ]
         },
         {
@@ -415,7 +429,37 @@
             "10- PRIMEIRO VAO 175 MM",
             "11- SEGUNDO VAO 735 MM",
             "12- PRIMEIRO VAO 165 MM",
-            "13- SEGUNDO VAO 1015 MM"
+            "13- SEGUNDO VAO 1015 MM",
+            "14- SEGUNDO VAO 800 MM",
+            "15- TERCEIRO VAO 1400 MM",
+            "16- TERCEIRO VAO 1370 MM",
+            "17- PRIMEIRO VAO 230 MM",
+            "18- QUARTO VAO 1600 MM",
+            "19- PRIMEIRO VAO 300 MM",
+            "20- SEGUNDO VAO 850 MM",
+            "21- TERCEIRO VAO 1170 MM",
+            "22- PRIMEIRO VAO 30 MM",
+            "23- SEGUNDO VAO 270 MM",
+            "24- TERCEIRO VAO 430 MM",
+            "25- SEGUNDO VAO 340 MM",
+            "26- QUARTO VAO 1420 MM",
+            "27- PRIMEIRO VAO 200 MM",
+            "28- TERCEIRO VAO 1115 MM",
+            "29- SEGUNDO VAO 300 MM",
+            "30- SEGUNDO VAO 770 MM",
+            "31- TERCEIRO VAO 1191 MM",
+            "32- SEGUNDO VAO 581 MM",
+            "33- PRIMEIRO VAO 288 MM",
+            "34- PRIMEIRO VAO 105 MM",
+            "35- SEGUNDO VAO 717 MM",
+            "36- PRIMEIRO VAO 85 MM",
+            "37- SEGUNDO VAO 681 MM",
+            "38- PRIMEIRO VAO 112 MM",
+            "39- SEGUNDO VAO 346 MM",
+            "40- PRIMEIRO VAO 217 MM",
+            "41- SEGUNDO VAO 691 MM",
+            "42- PRIMEIRO VAO 380 MM",
+            "43- SEGUNDO VAO 740 MM"
           ]
         },
         {
@@ -425,7 +469,8 @@
           "selection_mode": "unitaria",
           "description_order": 24,
           "options": [
-            "1- AMORTECEDOR A GAS"
+            "1- AMORTECEDOR A GAS",
+            "2- CATRACA"
           ]
         },
         {
@@ -435,7 +480,8 @@
           "selection_mode": "unitaria",
           "description_order": 25,
           "options": [
-            "1- INCLINACAO 32"
+            "1- INCLINACAO 32",
+            "2- INCLINACAO 41"
           ]
         },
         {
@@ -782,6 +828,45 @@
           "target_field_key": "lado_braco",
           "target_field_label": "LADO BRAÇO",
           "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "9e3ae4b1df32",
+          "source_field_key": "modelo_pe",
+          "source_field_label": "MODELO PÉ",
+          "source_field_scope": "secundaria",
+          "source_values": [
+            "PEPARAFUSO"
+          ],
+          "target_field_key": "altura_pe",
+          "target_field_label": "ALTURA DO PÉ",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "6b3e16b094d1",
+          "source_field_key": "modelo_pe",
+          "source_field_label": "MODELO PÉ",
+          "source_field_scope": "secundaria",
+          "source_values": [
+            "PEPARAFUSO"
+          ],
+          "target_field_key": "qtd_pe",
+          "target_field_label": "QTD PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "b14276e8083a",
+          "source_field_key": "modelo_pe",
+          "source_field_label": "MODELO PÉ",
+          "source_field_scope": "secundaria",
+          "source_values": [
+            "PEPARAFUSO"
+          ],
+          "target_field_key": "distancia_pe",
+          "target_field_label": "DISTÂNCIA PÉ",
+          "target_field_scope": "secundaria",
           "action": "hide"
         }
       ]
