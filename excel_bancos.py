@@ -601,8 +601,10 @@ def _sanitize_conditional_rules(
         if not source_values:
             continue
         action = clean_text(rule.get("action")).lower()
-        if action not in {"hide", "show"}:
+        if action not in {"hide", "show", "set_primary", "set_secondary"}:
             action = "hide"
+        if action in {"set_primary", "set_secondary"} and (source_field is None or target_field is None):
+            continue
         cleaned.append(
             {
                 "key": clean_text(rule.get("key")) or uuid.uuid4().hex[:12],
@@ -1311,6 +1313,7 @@ def get_conditional_rules_for_form(category_key_value: str) -> list[dict[str, An
             {
                 "sourceLabel": rule["source_field_label"],
                 "sourceScope": rule["source_field_scope"],
+                "action": rule["action"],
                 "mode": "showWhen" if rule["action"] == "show" else "hideWhen",
                 "matchBy": "option",
                 "values": source_values,
@@ -1571,19 +1574,25 @@ def _format_field_description(field: dict[str, Any], values: list[str]) -> str:
     return label
 
 
-def build_descriptions(fields: list[dict[str, Any]], data: Any) -> dict[str, str]:
+def build_descriptions(
+    fields: list[dict[str, Any]],
+    data: Any,
+    category_key_value: str = "",
+) -> dict[str, str]:
     primary_parts: list[str] = []
     secondary_parts: list[str] = []
     secondary_codes: list[str] = []
+    effective_scopes = _effective_field_scopes(fields, category_key_value, data)
 
     for field in _ordered_fields_for_description(fields):
         values = _serialize_field_values(field, data)
         if not values:
             continue
         label = _format_field_description(field, values)
-        if field["scope"] == "primaria":
+        effective_scope = effective_scopes.get(field["key"], field["scope"])
+        if effective_scope == "primaria":
             primary_parts.append(label)
-        elif field["scope"] == "secundaria":
+        elif effective_scope == "secundaria":
             secondary_parts.append(label)
             secondary_codes.extend(code for code in (option_code(value) for value in values) if code)
 
@@ -1651,7 +1660,7 @@ def _selected_conditional_prefixes(field: dict[str, Any], data: Any) -> list[str
 
 def _rule_match_values(rule: dict[str, Any]) -> list[str]:
     values = [clean_text(value) for value in rule.get("source_values") or []]
-    if clean_text(rule.get("match_by")).lower() == "prefix" or rule.get("source_field_key") == "pre_fixo":
+    if clean_text(rule.get("match_by")).lower() == "prefix":
         normalized: list[str] = []
         for value in values:
             code = option_code(value)
@@ -1671,8 +1680,6 @@ def _rule_match_values(rule: dict[str, Any]) -> list[str]:
 
 def _rule_matches(field: dict[str, Any], data: Any, rule: dict[str, Any]) -> bool:
     match_by = clean_text(rule.get("match_by")).lower()
-    if not match_by and rule.get("source_field_key") == "pre_fixo":
-        match_by = "prefix"
     selected_values = (
         _selected_conditional_prefixes(field, data)
         if match_by == "prefix"
@@ -1701,10 +1708,35 @@ def _combined_conditional_rules(category_key_value: str) -> list[dict[str, Any]]
         rules.append(copied)
     for rule in get_conditional_rules(category_key_value):
         copied = deepcopy(rule)
-        if not clean_text(copied.get("match_by")) and copied.get("source_field_key") == "pre_fixo":
-            copied["match_by"] = "prefix"
+        # Rules created in the Options screen store the option label token
+        # (for example, BCOMOTORISTAORIGINAL), not its numeric prefix.  They
+        # must therefore use the same option matching used by the browser.
+        copied["match_by"] = "option"
         rules.append(copied)
     return rules
+
+
+def _effective_field_scopes(
+    fields: list[dict[str, Any]],
+    category_key_value: str,
+    data: Any,
+) -> dict[str, str]:
+    scopes = {field["key"]: field["scope"] for field in fields}
+    if not clean_text(category_key_value):
+        return scopes
+
+    field_map = {field["key"]: field for field in fields}
+    for rule in _combined_conditional_rules(category_key_value):
+        action = clean_text(rule.get("action")).lower()
+        if action not in {"set_primary", "set_secondary"}:
+            continue
+        source_field = field_map.get(clean_text(rule.get("source_field_key")))
+        target_key = clean_text(rule.get("target_field_key"))
+        if source_field is None or target_key not in field_map:
+            continue
+        if _rule_matches(source_field, data, rule):
+            scopes[target_key] = "primaria" if action == "set_primary" else "secundaria"
+    return scopes
 
 
 def _visible_field_keys(fields: list[dict[str, Any]], category_key_value: str, data: Any) -> set[str]:
@@ -1712,6 +1744,9 @@ def _visible_field_keys(fields: list[dict[str, Any]], category_key_value: str, d
     visibility: dict[str, bool] = {field["key"]: True for field in fields}
 
     for rule in _combined_conditional_rules(category_key_value):
+        action = clean_text(rule.get("action")).lower()
+        if action in {"set_primary", "set_secondary"}:
+            continue
         source_key = clean_text(rule.get("source_field_key"))
         target_key = clean_text(rule.get("target_field_key"))
         source_field = field_map.get(source_key)
@@ -1720,7 +1755,7 @@ def _visible_field_keys(fields: list[dict[str, Any]], category_key_value: str, d
             continue
 
         should_show = _rule_matches(source_field, data, rule)
-        if clean_text(rule.get("action")).lower() != "show":
+        if action != "show":
             should_show = not should_show
         visibility[target_key] = visibility.get(target_key, True) and should_show
 
@@ -1778,6 +1813,7 @@ def _find_duplicate_registration_by_description(
     field_columns: dict[str, tuple[int | None, int | None]],
     data: Any,
     description_columns: tuple[int | None, int | None, int | None],
+    category_key_value: str = "",
 ) -> int | None:
     submitted = _submitted_values(fields, data)
     if not _has_any_value(submitted):
@@ -1787,7 +1823,7 @@ def _find_duplicate_registration_by_description(
     if not (primary_column and secondary_column and suffix_column):
         return _find_duplicate_registration(ws, fields, field_columns, data)
 
-    descriptions = build_descriptions(fields, data)
+    descriptions = build_descriptions(fields, data, category_key_value)
     submitted_primary = normalize_label(descriptions.get("primaria"))
     submitted_secondary = normalize_label(descriptions.get("secundaria"))
     submitted_suffix = clean_text(descriptions.get("sufixo"))
@@ -1832,6 +1868,8 @@ def save_banco_registration(form_data: Any) -> dict[str, str]:
     try:
         ws = _sheet_for_category(wb, raw_category)
         primary_column, secondary_column, suffix_column = _resolve_description_columns(ws, create_missing=True)
+        # Column identity always follows the field's structural/original scope.
+        # Conditional scope changes affect only descriptions for this record.
         field_columns = _resolve_field_column_map(ws, fields, create_missing=True)
         duplicate_row = _find_duplicate_registration_by_description(
             ws,
@@ -1839,6 +1877,7 @@ def save_banco_registration(form_data: Any) -> dict[str, str]:
             field_columns,
             form_data,
             (primary_column, secondary_column, suffix_column),
+            category["key"],
         )
         if duplicate_row:
             raise ValueError(f"Cadastro jÃ¡ existe na linha {duplicate_row}.")
@@ -1850,7 +1889,7 @@ def save_banco_registration(form_data: Any) -> dict[str, str]:
             _copy_row_formulas(ws, row - 1, row)
         _expand_table_to_row(ws, row)
 
-        descriptions = build_descriptions(fields, form_data)
+        descriptions = build_descriptions(fields, form_data, category["key"])
         if primary_column:
             ws.cell(row, primary_column).value = descriptions["primaria"]
         if secondary_column:
@@ -2006,21 +2045,27 @@ def add_conditional_rule(
     if not source_value:
         raise ValueError("Informe a opÃ§Ã£o condicional.")
     action = clean_text(action_value).lower()
-    if action not in {"hide", "show"}:
+    if action not in {"hide", "show", "set_primary", "set_secondary"}:
         action = "hide"
+    if action in {"set_primary", "set_secondary"} and target_field is None:
+        raise ValueError("Selecione um campo alvo existente para alterar a descri\u00e7\u00e3o.")
 
     rules = category.setdefault("conditional_rules", [])
     for rule in rules:
-        if (
+        same_trigger_and_target = (
             rule.get("source_field_key") == source_field["key"]
             and rule.get("target_field_key") == (target_field["key"] if target_field else "")
             and rule_option_token(clean_text(rule.get("target_field_label"))) == rule_option_token(
                 target_label or (target_field["label"] if target_field else "")
             )
             and rule_option_token(rule.get("source_values", [""])[0] if rule.get("source_values") else "") == source_value
-            and rule.get("action") == action
-        ):
+        )
+        if not same_trigger_and_target:
+            continue
+        if rule.get("action") == action:
             raise ValueError("Essa regra jÃ¡ existe.")
+        if action in {"set_primary", "set_secondary"} and rule.get("action") in {"set_primary", "set_secondary"}:
+            raise ValueError("JÃ¡ existe uma regra de classificaÃ§Ã£o para esse campo, opÃ§Ã£o e alvo.")
 
     rule = {
         "key": uuid.uuid4().hex[:12],
@@ -2247,5 +2292,3 @@ def reorder_fields_by_description(
         "path": str(DATA_PATH),
         "backup": "",
     }
-
-

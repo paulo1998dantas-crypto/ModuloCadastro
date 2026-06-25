@@ -299,9 +299,11 @@
                     </label>
                     <label class="space-y-1">
                         <span class="block text-xs font-bold uppercase text-slate-500">Ação</span>
-                        <select name="action" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                        <select name="action" id="conditional-action" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="hide">Ocultar campo alvo</option>
                             <option value="show">Exibir somente quando combinar</option>
+                            <option value="set_primary">Tornar campo alvo primário</option>
+                            <option value="set_secondary">Tornar campo alvo secundário</option>
                         </select>
                     </label>
                     <label class="space-y-1">
@@ -319,7 +321,7 @@
                     </label>
                     <label class="space-y-1">
                         <span class="block text-xs font-bold uppercase text-slate-500">Descrição do campo alvo</span>
-                        <select name="target_field_scope" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                        <select name="target_field_scope" id="conditional-target-scope" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="primaria">Primária</option>
                             <option value="secundaria" selected>Secundária</option>
                         </select>
@@ -332,8 +334,9 @@
                 <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
                     <p class="text-sm font-bold text-slate-900">Como usar</p>
                     <p class="mt-2 text-sm text-slate-600">
-                        Selecione o campo de origem, a opção que dispara a regra e o campo que deve ocultar ou aparecer.
-                        Se o alvo ainda não existir, escreva o nome exato no campo personalizado.
+                        Selecione o campo de origem, a opção que dispara a regra e a ação desejada.
+                        Para tornar um campo primário ou secundário, escolha obrigatoriamente um campo alvo existente;
+                        a coluna original da planilha será preservada.
                     </p>
                 </div>
             </div>
@@ -347,9 +350,14 @@
                         <div class="space-y-1">
                             <p class="text-sm font-black text-slate-900">{{ rule.source_field_label }} = {{ rule.source_value_labels | join(', ') }}</p>
                             <p class="text-sm text-slate-600">
-                                {% if rule.action == 'show' %}Exibe{% else %}Oculta{% endif %}
+                                {% if rule.action == 'show' %}Exibe
+                                {% elif rule.action == 'set_primary' %}Torna primário
+                                {% elif rule.action == 'set_secondary' %}Torna secundário
+                                {% else %}Oculta{% endif %}
                                 <span class="font-bold text-slate-900">{{ rule.target_field_label }}</span>
-                                {% if rule.target_field_scope %}<span class="text-slate-500">({{ rule.target_field_scope }})</span>{% endif %}
+                                {% if rule.action in ['set_primary', 'set_secondary'] %}
+                                <span class="text-slate-500">(classificação original: {{ rule.target_field_scope }})</span>
+                                {% elif rule.target_field_scope %}<span class="text-slate-500">({{ rule.target_field_scope }})</span>{% endif %}
                             </p>
                         </div>
                         <form method="post" action="/regras/excluir" onsubmit="return confirm('Excluir esta regra?')">
@@ -490,6 +498,8 @@
         const conditionalSourceValue = document.getElementById("conditional-source-value");
         const conditionalTargetField = document.getElementById("conditional-target-field");
         const conditionalTargetLabel = document.getElementById("conditional-target-label");
+        const conditionalAction = document.getElementById("conditional-action");
+        const conditionalTargetScope = document.getElementById("conditional-target-scope");
 
         const renderSourceOptions = () => {
             if (!conditionalSourceField || !conditionalSourceValue) {
@@ -518,9 +528,14 @@
             if (!conditionalTargetField || !conditionalTargetLabel) {
                 return;
             }
-            const usingCustomLabel = !conditionalTargetField.value;
+            const changesScope = conditionalAction && ["set_primary", "set_secondary"].includes(conditionalAction.value);
+            const usingCustomLabel = !changesScope && !conditionalTargetField.value;
+            conditionalTargetField.required = changesScope;
             conditionalTargetLabel.required = usingCustomLabel;
             conditionalTargetLabel.disabled = !usingCustomLabel;
+            if (conditionalTargetScope) {
+                conditionalTargetScope.disabled = changesScope || !usingCustomLabel;
+            }
             if (!usingCustomLabel) {
                 conditionalTargetLabel.value = "";
             }
@@ -533,6 +548,9 @@
         if (conditionalTargetField) {
             conditionalTargetField.addEventListener("change", syncTargetLabelState);
             syncTargetLabelState();
+        }
+        if (conditionalAction) {
+            conditionalAction.addEventListener("change", syncTargetLabelState);
         }
     </script>
 </body>

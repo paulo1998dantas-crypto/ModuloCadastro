@@ -73,7 +73,7 @@
           "label": "VEÍCULO",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 2,
+          "description_order": 22,
           "options": [
             "2- E/S/J",
             "3- MASTER",
@@ -100,7 +100,7 @@
           "label": "LARGURA ENCOSTO",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 3,
+          "description_order": 2,
           "options": [
             "1- LARGURA ENCOSTO 430MM",
             "2- LARGURA ENCOSTO 450MM",
@@ -109,7 +109,8 @@
             "5- LARGURA ENCOSTO 550MM",
             "6- LARGURA ENCOSTO 400MM",
             "7- LARGURA ENCOSTO 410MM",
-            "8- LARGURA ENCOSTO 470MM"
+            "8- LARGURA ENCOSTO 470MM",
+            "9- LARGURA ENCOSTO 440 MM"
           ]
         },
         {
@@ -117,14 +118,15 @@
           "label": "PROFUNDIDADE ASSENTO",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 4,
+          "description_order": 3,
           "options": [
             "1- PROFUNDIDADE 370 MM",
             "2- PROFUNDIDADE 330 MM",
             "3- PROFUNDIDADE 380 MM",
             "4- PROFUNDIDADE 360 MM",
             "5- PROFUNDIDADE 430 MM",
-            "6- PROFUNDIDADE 450 MM"
+            "6- PROFUNDIDADE 450 MM",
+            "7- PROFUNDIDADE 420 MM"
           ]
         },
         {
@@ -175,10 +177,13 @@
           "label": "TIPO APOIO BRAÇO",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 5,
+          "description_order": 4,
           "options": [
             "1- APOIO BRACO SIMPLES PU PRETO MCA",
-            "2- APOIO BRACO LD PLASTICO INJETADO GRAFITE ACRYLIS RODOVIARIOVIARIO"
+            "2- APOIO BRACO LD PLASTICO INJETADO GRAFITE ACRYLIS RODOVIARIOVIARIO",
+            "3- APOIO BRACO PLASTICO INJETADO CELSIL MARROM",
+            "4- APOIO BRACO PLASTICO INJETADO CELSIL PRETO",
+            "5- APOIO BRACO ORIGINAL E/S/J C/ REGULAGEM MILIMETRICA"
           ]
         },
         {
@@ -190,7 +195,8 @@
           "options": [
             "1- LD",
             "2- LE",
-            "3- LD/LE"
+            "3- LD/LE",
+            "4- AP BRACO INDIVIDUAL"
           ]
         },
         {
@@ -198,11 +204,13 @@
           "label": "ACABAMENTO LATERAL",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 7,
+          "description_order": 6,
           "options": [
             "1- ACABAMENTO LATERAL LD PLASTICO INJETADO PRETO MCA",
             "2- SEM ACABAMENTO LATERAL",
-            "3- ACABAMENTO LATERAL LD PLASTICO INJETADO GRAFITE ACRYLIS RODOVIARIO"
+            "3- ACABAMENTO LATERAL LD PLASTICO INJETADO GRAFITE ACRYLIS RODOVIARIO",
+            "4- ACABAMENTO LATERAL LD PLASTICO INJETADO MARROM CELSIL",
+            "5- ACABAMENTO LATERAL LD PLASTICO INJETADO PRETO CELSIL"
           ]
         },
         {
@@ -241,10 +249,13 @@
           "label": "TIPO COSTURA",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 8,
+          "description_order": 23,
           "options": [
             "1- COSTURA LB",
-            "2- COSTURA T-VANS-023"
+            "2- COSTURA T-VANS-023",
+            "3- CS COSTURA DIAMANTE",
+            "4- CS COSTURA BOOMERANG",
+            "5- CS COSTURA RETILINEA"
           ]
         },
         {
@@ -252,10 +263,15 @@
           "label": "COR DA LINHA",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 9,
+          "description_order": 24,
           "options": [
             "1- COR LINHA LB",
-            "2- COR LINHA VERMELHA"
+            "2- COR LINHA VERMELHA",
+            "3- COR LINHA BRANCA",
+            "4- COR LINHA PRETA",
+            "5- COR LINHA MARROM",
+            "6- COR LINHA DOURADO",
+            "7- COR LINHA CINZA"
           ]
         },
         {
@@ -275,10 +291,15 @@
           "label": "COR DO REVESTIMENTO",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 10,
+          "description_order": 25,
           "options": [
             "1- CAPA LB PADRAO JI",
-            "2- CAPA LE PADRAO JL"
+            "2- CAPA LE PADRAO JL",
+            "3- CAPA LE MARROM",
+            "4- CAPA LE PRETA",
+            "5- CAPA LE PRETA/CINZA",
+            "6- CAPA ORIGINAL MOTORISTA E/S/J",
+            "7- CAPA ORIGINAL CARONA E/S/J"
           ]
         },
         {
@@ -286,7 +307,7 @@
           "label": "USB",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 11,
+          "description_order": 7,
           "options": [
             "1- S/ USB"
           ]
@@ -296,7 +317,7 @@
           "label": "RESFRIADOR",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 12,
+          "description_order": 8,
           "options": [
             "1- S/ RESFRIADOR"
           ]
@@ -306,7 +327,7 @@
           "label": "AQUECEDOR",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 13,
+          "description_order": 9,
           "options": [
             "1- S/ AQUECEDOR"
           ]
@@ -316,7 +337,7 @@
           "label": "APOIO PÉ",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 14,
+          "description_order": 10,
           "options": [
             "1- S/ APOIO PE"
           ]
@@ -326,7 +347,7 @@
           "label": "MASSAGEADOR",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 15,
+          "description_order": 11,
           "options": [
             "1- S/ MASSAGEADOR"
           ]
@@ -336,7 +357,7 @@
           "label": "MESA SNACK",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 16,
+          "description_order": 12,
           "options": [
             "1- S/ M. SNACK"
           ]
@@ -346,7 +367,7 @@
           "label": "ISOFIX",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 17,
+          "description_order": 13,
           "options": [
             "1- 1 ISOFIX",
             "2- 2 ISOFIX",
@@ -359,7 +380,7 @@
           "label": "POSIÇÃO ISOFIX",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 18,
+          "description_order": 14,
           "options": []
         },
         {
@@ -367,7 +388,7 @@
           "label": "APOIO PANTURRILHA",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 19,
+          "description_order": 15,
           "options": [
             "1- S/ APOIO PANTURRILHA"
           ]
@@ -377,11 +398,13 @@
           "label": "PEGA MÃO",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 20,
+          "description_order": 16,
           "options": [
             "1- PEGA MAO BCO SIMPLES PU PRETO MCA",
             "2- S/ PEGA MAO",
-            "3- PEGA MAO PLASTICO PU ACRYLS RODOVIARIO"
+            "3- PEGA MAO PLASTICO PU ACRYLS RODOVIARIO",
+            "4- PEGA MAO BCO MARROM CELSIL",
+            "5- PEGA MAO BCO PRETO CELSIL"
           ]
         },
         {
@@ -389,11 +412,14 @@
           "label": "MODELO PÉ",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 21,
+          "description_order": 17,
           "options": [
             "1- PE BCO MCA",
             "2- PE PARAFUSO",
-            "3- PE BCO JL"
+            "3- PE BCO JL",
+            "4- PE BCO CE",
+            "5- BASE BANCO MOTORISTA ORIGINAL E/S/J",
+            "6- PE ORIGINAL CARONA"
           ]
         },
         {
@@ -401,7 +427,7 @@
           "label": "QTD PÉ",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 22,
+          "description_order": 18,
           "options": [
             "1- UM PE",
             "2- DOIS PES",
@@ -415,7 +441,7 @@
           "label": "DISTÂNCIA PÉ",
           "scope": "secundaria",
           "selection_mode": "multipla",
-          "description_order": 23,
+          "description_order": 19,
           "options": [
             "1- PRIMEIRO VAO 285 MM",
             "2- SEGUNDO VAO 810 MM",
@@ -459,7 +485,8 @@
             "40- PRIMEIRO VAO 217 MM",
             "41- SEGUNDO VAO 691 MM",
             "42- PRIMEIRO VAO 380 MM",
-            "43- SEGUNDO VAO 740 MM"
+            "43- SEGUNDO VAO 740 MM",
+            "44- TERCEIRO VAO 1230 MM"
           ]
         },
         {
@@ -467,7 +494,7 @@
           "label": "TIPO DO RECLINADOR",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 24,
+          "description_order": 20,
           "options": [
             "1- AMORTECEDOR A GAS",
             "2- CATRACA"
@@ -478,7 +505,7 @@
           "label": "GRAU RECLINAÇÃO",
           "scope": "secundaria",
           "selection_mode": "unitaria",
-          "description_order": 25,
+          "description_order": 21,
           "options": [
             "1- INCLINACAO 32",
             "2- INCLINACAO 41"
@@ -489,7 +516,7 @@
           "label": "POSICAO BRACO",
           "scope": "secundaria",
           "selection_mode": "multipla",
-          "description_order": 6,
+          "description_order": 5,
           "options": [
             "1- CORREDOR",
             "2- CENTRAL",
@@ -866,6 +893,1371 @@
           ],
           "target_field_key": "distancia_pe",
           "target_field_label": "DISTÂNCIA PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "377dbae421aa",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "altura_pe",
+          "target_field_label": "ALTURA DO PÉ",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "68f3c38c63c5",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "fornecedor",
+          "target_field_label": "FORNECEDOR",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "8f6f7e0f59ae",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "linha",
+          "target_field_label": "LINHA",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "76f25a490f97",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "tipo_da_espuma",
+          "target_field_label": "TIPO DA ESPUMA",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "fa223e7ea9e7",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "encosto",
+          "target_field_label": "ENCOSTO",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "ddcda3c58a4a",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "largura_encosto",
+          "target_field_label": "LARGURA ENCOSTO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "f538ca6ea1cc",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "profundidade_assento",
+          "target_field_label": "PROFUNDIDADE ASSENTO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "391d7346ff3c",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "lotacao",
+          "target_field_label": "LOTAÇÃO",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "5580d864c865",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "especificidade",
+          "target_field_label": "ESPECIFICIDADE",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "f6fbef15dac0",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "lado_braco",
+          "target_field_label": "LADO BRAÇO",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "7588acbce266",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "acabamento_lateral",
+          "target_field_label": "ACABAMENTO LATERAL",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "5bcea72fbf71",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "tipo_cinto",
+          "target_field_label": "TIPO CINTO",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "68151a85f736",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "tipo_costura",
+          "target_field_label": "TIPO COSTURA",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "e9eb86567258",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "cor_da_linha",
+          "target_field_label": "COR DA LINHA",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "4ea50e521046",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "tipo_revestimento",
+          "target_field_label": "TIPO REVESTIMENTO",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "4fba2757961d",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "usb",
+          "target_field_label": "USB",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "9a8b792e2bb6",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "apoio_panturrilha",
+          "target_field_label": "APOIO PANTURRILHA",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "82ce4fa822c0",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "posicao_braco",
+          "target_field_label": "POSICAO BRACO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "aca48cd6453e",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "grau_reclinacao",
+          "target_field_label": "GRAU RECLINAÇÃO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "699020130e7a",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "tipo_do_reclinador",
+          "target_field_label": "TIPO DO RECLINADOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "1c9cf13314b4",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "distancia_pe",
+          "target_field_label": "DISTÂNCIA PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "664d23ec28f8",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "qtd_pe",
+          "target_field_label": "QTD PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "ed029447a40b",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "pega_mao",
+          "target_field_label": "PEGA MÃO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "8e064084b7a9",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "posicao_isofix",
+          "target_field_label": "POSIÇÃO ISOFIX",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "6fac9bccebec",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "mesa_snack",
+          "target_field_label": "MESA SNACK",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "1e3dbe51c660",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "massageador",
+          "target_field_label": "MASSAGEADOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "2fd6ba015278",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "apoio_pe",
+          "target_field_label": "APOIO PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "5674af1edd5e",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "aquecedor",
+          "target_field_label": "AQUECEDOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "ab0991826a12",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "resfriador",
+          "target_field_label": "RESFRIADOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "9bc078209d70",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "fornecedor",
+          "target_field_label": "FORNECEDOR",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "87f6ae40cd0a",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "linha",
+          "target_field_label": "LINHA",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "ff2a143efd77",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "tipo_da_espuma",
+          "target_field_label": "TIPO DA ESPUMA",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "2d14d23f090c",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "largura_encosto",
+          "target_field_label": "LARGURA ENCOSTO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "472de8209891",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "profundidade_assento",
+          "target_field_label": "PROFUNDIDADE ASSENTO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "62e6efb0c01b",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "especificidade",
+          "target_field_label": "ESPECIFICIDADE",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "513a9540bbfd",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "braco",
+          "target_field_label": "APOIO DE BRAÇO",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "f08f8f27dad2",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "tipo_apoio_braco",
+          "target_field_label": "TIPO APOIO BRAÇO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "e163525bda5f",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "lado_braco",
+          "target_field_label": "LADO BRAÇO",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "a4f60c6743a6",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "acabamento_lateral",
+          "target_field_label": "ACABAMENTO LATERAL",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cab87695a337",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "altura_pe",
+          "target_field_label": "ALTURA DO PÉ",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "bc2395f887c8",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "tipo_cinto",
+          "target_field_label": "TIPO CINTO",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "61e426d8b143",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "tipo_costura",
+          "target_field_label": "TIPO COSTURA",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "c5e7c45648b4",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "cor_da_linha",
+          "target_field_label": "COR DA LINHA",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "2cdbb997c005",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "tipo_revestimento",
+          "target_field_label": "TIPO REVESTIMENTO",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "bfe033e87475",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "usb",
+          "target_field_label": "USB",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cabd044d1359",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "resfriador",
+          "target_field_label": "RESFRIADOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "f8eec571947e",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "aquecedor",
+          "target_field_label": "AQUECEDOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "8667ae9f4804",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "apoio_pe",
+          "target_field_label": "APOIO PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "4fd8ba2d2c07",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "massageador",
+          "target_field_label": "MASSAGEADOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "184b910702e8",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "mesa_snack",
+          "target_field_label": "MESA SNACK",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "ce4be08ccef2",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "isofix",
+          "target_field_label": "ISOFIX",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "999a896f7b20",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "posicao_isofix",
+          "target_field_label": "POSIÇÃO ISOFIX",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "ea046ad45578",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "apoio_panturrilha",
+          "target_field_label": "APOIO PANTURRILHA",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "f1b3c2bf0fbc",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "pega_mao",
+          "target_field_label": "PEGA MÃO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "06da54d61af7",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "modelo_pe",
+          "target_field_label": "MODELO PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "02cae5953758",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "qtd_pe",
+          "target_field_label": "QTD PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "f16042506782",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "distancia_pe",
+          "target_field_label": "DISTÂNCIA PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "f44b216e06be",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "tipo_do_reclinador",
+          "target_field_label": "TIPO DO RECLINADOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "3d9274000d6c",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "grau_reclinacao",
+          "target_field_label": "GRAU RECLINAÇÃO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "ff5756f6ba31",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTAORIGINAL"
+          ],
+          "target_field_key": "isofix",
+          "target_field_label": "ISOFIX",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "cafdc07a7d2e",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONAORIGINAL"
+          ],
+          "target_field_key": "posicao_braco",
+          "target_field_label": "POSICAO BRACO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "8e020a09d252",
+          "source_field_key": "modelo_pe",
+          "source_field_label": "MODELO PÉ",
+          "source_field_scope": "secundaria",
+          "source_values": [
+            "PEORIGINALCARONA"
+          ],
+          "target_field_key": "distancia_pe",
+          "target_field_label": "DISTÂNCIA PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "283d9b501ee5",
+          "source_field_key": "modelo_pe",
+          "source_field_label": "MODELO PÉ",
+          "source_field_scope": "secundaria",
+          "source_values": [
+            "PEORIGINALCARONA"
+          ],
+          "target_field_key": "qtd_pe",
+          "target_field_label": "QTD PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "b3583ba07a4e",
+          "source_field_key": "linha",
+          "source_field_label": "LINHA",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "LE"
+          ],
+          "target_field_key": "cor_do_revestimento",
+          "target_field_label": "COR DO REVESTIMENTO",
+          "target_field_scope": "secundaria",
+          "action": "set_primary"
+        },
+        {
+          "key": "67473b11434b",
+          "source_field_key": "linha",
+          "source_field_label": "LINHA",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "LE"
+          ],
+          "target_field_key": "tipo_costura",
+          "target_field_label": "TIPO COSTURA",
+          "target_field_scope": "secundaria",
+          "action": "set_primary"
+        },
+        {
+          "key": "5866d1950bd9",
+          "source_field_key": "linha",
+          "source_field_label": "LINHA",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "LE"
+          ],
+          "target_field_key": "cor_da_linha",
+          "target_field_label": "COR DA LINHA",
+          "target_field_scope": "secundaria",
+          "action": "set_primary"
+        },
+        {
+          "key": "37ef1660df10",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONA"
+          ],
+          "target_field_key": "veiculo",
+          "target_field_label": "VEÍCULO",
+          "target_field_scope": "secundaria",
+          "action": "set_primary"
+        },
+        {
+          "key": "9a4a339dcef7",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "veiculo",
+          "target_field_label": "VEÍCULO",
+          "target_field_scope": "secundaria",
+          "action": "set_primary"
+        },
+        {
+          "key": "4f475d341a4c",
+          "source_field_key": "modelo_pe",
+          "source_field_label": "MODELO PÉ",
+          "source_field_scope": "secundaria",
+          "source_values": [
+            "BASEBANCOMOTORISTAORIGINALESJ"
+          ],
+          "target_field_key": "distancia_pe",
+          "target_field_label": "DISTÂNCIA PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "ed359b7046c2",
+          "source_field_key": "modelo_pe",
+          "source_field_label": "MODELO PÉ",
+          "source_field_scope": "secundaria",
+          "source_values": [
+            "BASEBANCOMOTORISTAORIGINALESJ"
+          ],
+          "target_field_key": "qtd_pe",
+          "target_field_label": "QTD PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "81cd4ff0fb3f",
+          "source_field_key": "modelo_pe",
+          "source_field_label": "MODELO PÉ",
+          "source_field_scope": "secundaria",
+          "source_values": [
+            "BASEBANCOMOTORISTAORIGINALESJ"
+          ],
+          "target_field_key": "altura_pe",
+          "target_field_label": "ALTURA DO PÉ",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "7c34469cc5d4",
+          "source_field_key": "modelo_pe",
+          "source_field_label": "MODELO PÉ",
+          "source_field_scope": "secundaria",
+          "source_values": [
+            "PEORIGINALCARONA"
+          ],
+          "target_field_key": "altura_pe",
+          "target_field_label": "ALTURA DO PÉ",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "27b893c5d764",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONA"
+          ],
+          "target_field_key": "especificidade",
+          "target_field_label": "ESPECIFICIDADE",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "dcc60d7b2639",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONA"
+          ],
+          "target_field_key": "resfriador",
+          "target_field_label": "RESFRIADOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "319546f4157c",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONA"
+          ],
+          "target_field_key": "aquecedor",
+          "target_field_label": "AQUECEDOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "5a65108574a4",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONA"
+          ],
+          "target_field_key": "apoio_pe",
+          "target_field_label": "APOIO PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "c3a161a67b87",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONA"
+          ],
+          "target_field_key": "massageador",
+          "target_field_label": "MASSAGEADOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "d0c22b4b6fa8",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONA"
+          ],
+          "target_field_key": "isofix",
+          "target_field_label": "ISOFIX",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "b0ce44a296cd",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONA"
+          ],
+          "target_field_key": "posicao_isofix",
+          "target_field_label": "POSIÇÃO ISOFIX",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "d4ce029ca5fc",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONA"
+          ],
+          "target_field_key": "pega_mao",
+          "target_field_label": "PEGA MÃO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "c6f0a13a9f3c",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "largura_encosto",
+          "target_field_label": "LARGURA ENCOSTO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "ecc5c6469522",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "profundidade_assento",
+          "target_field_label": "PROFUNDIDADE ASSENTO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "4155a181174b",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "lotacao",
+          "target_field_label": "LOTAÇÃO",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "beaa8ee20f29",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "especificidade",
+          "target_field_label": "ESPECIFICIDADE",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "6b08eada285b",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "acabamento_lateral",
+          "target_field_label": "ACABAMENTO LATERAL",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "9d09f3530532",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "altura_pe",
+          "target_field_label": "ALTURA DO PÉ",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "be6c021ebffe",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "tipo_cinto",
+          "target_field_label": "TIPO CINTO",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "c2bf4801bc8c",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "lado_braco",
+          "target_field_label": "LADO BRAÇO",
+          "target_field_scope": "primaria",
+          "action": "hide"
+        },
+        {
+          "key": "92c68d27cec9",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "usb",
+          "target_field_label": "USB",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "4531d45d1836",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "resfriador",
+          "target_field_label": "RESFRIADOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "5ac0bb517031",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "aquecedor",
+          "target_field_label": "AQUECEDOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "9336527c00c2",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "apoio_pe",
+          "target_field_label": "APOIO PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "bbf738ac3f94",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "massageador",
+          "target_field_label": "MASSAGEADOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "4689abbca419",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "isofix",
+          "target_field_label": "ISOFIX",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "376bcd408bd1",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "posicao_isofix",
+          "target_field_label": "POSIÇÃO ISOFIX",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "8330f32a19ab",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "apoio_panturrilha",
+          "target_field_label": "APOIO PANTURRILHA",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "ce55c2929af0",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "pega_mao",
+          "target_field_label": "PEGA MÃO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "3aa61ede8805",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "qtd_pe",
+          "target_field_label": "QTD PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "6b9a4e9cfeb7",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "distancia_pe",
+          "target_field_label": "DISTÂNCIA PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "b54cba3c03fb",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "tipo_do_reclinador",
+          "target_field_label": "TIPO DO RECLINADOR",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "6a60f9078a2d",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "grau_reclinacao",
+          "target_field_label": "GRAU RECLINAÇÃO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "50dddc406248",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "posicao_braco",
+          "target_field_label": "POSICAO BRACO",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "ef43868103c0",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "tipo_da_espuma",
+          "target_field_label": "TIPO DA ESPUMA",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "463877492b85",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONA"
+          ],
+          "target_field_key": "tipo_da_espuma",
+          "target_field_label": "TIPO DA ESPUMA",
+          "target_field_scope": "secundaria",
+          "action": "hide"
+        },
+        {
+          "key": "5ab974246003",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "mesa_snack",
+          "target_field_label": "MESA SNACK",
           "target_field_scope": "secundaria",
           "action": "hide"
         }

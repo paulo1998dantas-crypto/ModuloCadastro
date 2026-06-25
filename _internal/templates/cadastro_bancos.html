@@ -60,9 +60,9 @@
                     {% if fields|selectattr('scope', 'equalto', 'primaria')|list|length == 0 %}
                     <p class="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">Nenhum campo primário cadastrado para esta categoria.</p>
                     {% endif %}
-                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div id="primary-field-grid" class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {% for field in ordered_fields if field.scope == 'primaria' %}
-                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}">
+                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-description-order="{{ field.description_order }}">
                             <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
                             {% if field.selection_mode == 'multipla' %}
                             <select name="{{ field.key }}" multiple size="6" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
@@ -92,9 +92,9 @@
                     {% if fields|selectattr('scope', 'equalto', 'secundaria')|list|length == 0 %}
                     <p class="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">Nenhum campo secundário cadastrado para esta categoria.</p>
                     {% endif %}
-                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div id="secondary-field-grid" class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {% for field in ordered_fields if field.scope == 'secundaria' %}
-                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}">
+                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-description-order="{{ field.description_order }}">
                             <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
                             {% if field.key == 'distancia_pe' %}
                             <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-slate-600">
@@ -280,9 +280,31 @@
 
         const configuredRules = {{ conditional_rules | tojson }};
         const rules = baseRules.concat(configuredRules);
+        const scopeContainers = {
+            primaria: document.getElementById("primary-field-grid"),
+            secundaria: document.getElementById("secondary-field-grid"),
+        };
+        const originalFieldIndexes = new Map(fieldBlocks.map((block, index) => [block, index]));
+
+        const arrangeFieldsByScope = (effectiveScopes) => {
+            ["primaria", "secundaria"].forEach((scope) => {
+                const container = scopeContainers[scope];
+                if (!container) {
+                    return;
+                }
+                fieldBlocks
+                    .filter((block) => effectiveScopes.get(block) === scope)
+                    .sort((left, right) => {
+                        const orderDifference = Number(left.dataset.descriptionOrder || 0) - Number(right.dataset.descriptionOrder || 0);
+                        return orderDifference || originalFieldIndexes.get(left) - originalFieldIndexes.get(right);
+                    })
+                    .forEach((block) => container.appendChild(block));
+            });
+        };
 
         const updateConditionalFields = () => {
             const visibility = new Map(fieldBlocks.map((block) => [block, true]));
+            const effectiveScopes = new Map(fieldBlocks.map((block) => [block, block.dataset.fieldScope]));
 
             rules.forEach((rule) => {
                 const sourceBlock = findBlock(rule.sourceLabel, rule.sourceScope);
@@ -294,6 +316,20 @@
                 const matches = selectedTokens.some((token) => {
                     return rule.values.some((value) => token === value || token.startsWith(value));
                 });
+                const action = rule.action || (rule.mode === "showWhen" ? "show" : "hide");
+
+                if (action === "set_primary" || action === "set_secondary") {
+                    if (matches) {
+                        rule.targets.forEach((target) => {
+                            const targetBlock = findBlock(target.label, target.scope);
+                            if (targetBlock) {
+                                effectiveScopes.set(targetBlock, action === "set_primary" ? "primaria" : "secundaria");
+                            }
+                        });
+                    }
+                    return;
+                }
+
                 const shouldShow = rule.mode === "showWhen" ? matches : !matches;
 
                 rule.targets.forEach((target) => {
@@ -308,7 +344,9 @@
             fieldBlocks.forEach((block) => {
                 const shouldShow = visibility.get(block) !== false;
                 clearAndToggleBlock(block, shouldShow);
+                block.dataset.effectiveScope = effectiveScopes.get(block);
             });
+            arrangeFieldsByScope(effectiveScopes);
         };
 
         fieldBlocks.forEach((block) => {

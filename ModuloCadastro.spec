@@ -12,18 +12,10 @@ TEMPLATE_FILES = [
     TEMPLATE_DIR / "opcoes.html",
     TEMPLATE_DIR / "planilha.html",
 ]
-PYDANTIC_CORE_PYD = Path(
-    r"C:\Users\PRODUCAO-2.0\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\site-packages\pydantic_core\_pydantic_core.cp312-win_amd64.pyd"
-)
-
-
 a = Analysis(
     ['desktop_launcher.py'],
     pathex=[],
-    binaries=(
-        collect_dynamic_libs("pydantic_core")
-        + ([(str(PYDANTIC_CORE_PYD), "pydantic_core")] if PYDANTIC_CORE_PYD.exists() else [])
-    ),
+    binaries=collect_dynamic_libs("pydantic_core"),
     datas=[(str(path), "_internal/templates") for path in TEMPLATE_FILES if path.exists()],
     hiddenimports=["pydantic_core._pydantic_core"],
     hookspath=[],
