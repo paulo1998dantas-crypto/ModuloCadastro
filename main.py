@@ -1,6 +1,11 @@
 import os
 import socket
 import sys
+import base64
+import hashlib
+import hmac
+import json
+import time
 from pathlib import Path
 from urllib.parse import quote
 
@@ -15,6 +20,8 @@ import excel_bancos
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "8001"))
 app = FastAPI(title="Módulo de Cadastro")
+SESSION_COOKIE = "cadastro_session"
+SESSION_MAX_AGE_SECONDS = 12 * 60 * 60
 def _app_dir() -> Path:
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve().parent
@@ -47,6 +54,113 @@ def _resource_file(name: str) -> Path:
         if candidate.exists():
             return candidate
     return BASE_DIR / name
+
+
+def _login_required() -> bool:
+    value = os.environ.get("CADASTRO_REQUIRE_LOGIN")
+    if value is not None:
+        return value.strip().lower() not in {"0", "false", "nao", "não", "no"}
+    return bridge_store.save_via_bridge()
+
+
+def _persistence_required() -> bool:
+    value = os.environ.get("CADASTRO_REQUIRE_PERSISTENCE")
+    if value is not None:
+        return value.strip().lower() not in {"0", "false", "nao", "não", "no"}
+    return bridge_store.save_via_bridge()
+
+
+def _persistence_ok() -> bool:
+    return bool(bridge_store.persistence_info().get("persistent"))
+
+
+def _auth_user() -> str:
+    return os.environ.get("CADASTRO_ADMIN_USER", "admin").strip() or "admin"
+
+
+def _auth_password() -> str:
+    return (
+        os.environ.get("CADASTRO_ADMIN_PASSWORD", "").strip()
+        or os.environ.get("CADASTRO_BRIDGE_TOKEN", "").strip()
+    )
+
+
+def _session_secret() -> bytes:
+    secret = (
+        os.environ.get("CADASTRO_SESSION_SECRET", "").strip()
+        or os.environ.get("CADASTRO_BRIDGE_TOKEN", "").strip()
+        or "dev-local-session-secret"
+    )
+    return secret.encode("utf-8")
+
+
+def _b64encode(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).decode("ascii").rstrip("=")
+
+
+def _b64decode(data: str) -> bytes:
+    padding = "=" * (-len(data) % 4)
+    return base64.urlsafe_b64decode((data + padding).encode("ascii"))
+
+
+def _sign_session(payload: str) -> str:
+    return hmac.new(_session_secret(), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def _make_session(username: str) -> str:
+    payload = {
+        "u": username,
+        "exp": int(time.time()) + SESSION_MAX_AGE_SECONDS,
+    }
+    encoded = _b64encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    return f"{encoded}.{_sign_session(encoded)}"
+
+
+def _read_session(request: Request) -> str:
+    raw = request.cookies.get(SESSION_COOKIE, "")
+    if "." not in raw:
+        return ""
+    encoded, signature = raw.rsplit(".", 1)
+    if not hmac.compare_digest(_sign_session(encoded), signature):
+        return ""
+    try:
+        payload = json.loads(_b64decode(encoded).decode("utf-8"))
+    except Exception:
+        return ""
+    if int(payload.get("exp") or 0) < int(time.time()):
+        return ""
+    return str(payload.get("u") or "")
+
+
+def _is_public_path(path: str) -> bool:
+    return (
+        path in {"/login", "/healthz", "/favicon.ico"}
+        or path.startswith("/api/ponte/")
+    )
+
+
+@app.middleware("http")
+async def require_login_middleware(request: Request, call_next):
+    if not _login_required() or _is_public_path(request.url.path):
+        return await call_next(request)
+    if _read_session(request):
+        if (
+            bridge_store.save_via_bridge()
+            and _persistence_required()
+            and request.method.upper() in {"POST", "PUT", "PATCH", "DELETE"}
+            and request.url.path not in {"/login", "/logout"}
+            and not request.url.path.startswith("/api/ponte/")
+            and not _persistence_ok()
+        ):
+            message = "Persistência do Render não está ativa. Configure o Persistent Disk antes de salvar alterações."
+            if request.url.path.startswith("/api/"):
+                return JSONResponse({"ok": False, "error": message}, status_code=503)
+            return HTMLResponse(message, status_code=503)
+        return await call_next(request)
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"ok": False, "error": "Login obrigatório."}, status_code=401)
+    next_url = quote(str(request.url.path))
+    return RedirectResponse(url=f"/login?next={next_url}", status_code=303)
 
 
 def port_is_in_use() -> bool:
@@ -186,6 +300,52 @@ async def home():
     return RedirectResponse(url="/cadastro/bancos", status_code=303)
 
 
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request, next: str = "/cadastro/bancos", erro: str = ""):
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={
+            "request": request,
+            "erro": erro,
+            "next_url": next or "/cadastro/bancos",
+            "username": _auth_user(),
+            "auth_configured": bool(_auth_password()),
+        },
+    )
+
+
+@app.post("/login")
+async def login_post(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    next_url: str = Form("/cadastro/bancos"),
+):
+    expected_password = _auth_password()
+    if not expected_password:
+        return RedirectResponse(url="/login?erro=Login não configurado.", status_code=303)
+    if username != _auth_user() or not hmac.compare_digest(password, expected_password):
+        return RedirectResponse(url=f"/login?erro={quote('Usuário ou senha inválidos.')}", status_code=303)
+    response = RedirectResponse(url=next_url or "/cadastro/bancos", status_code=303)
+    response.set_cookie(
+        SESSION_COOKIE,
+        _make_session(username),
+        max_age=SESSION_MAX_AGE_SECONDS,
+        httponly=True,
+        secure=request.url.scheme == "https",
+        samesite="lax",
+    )
+    return response
+
+
+@app.get("/logout")
+async def logout():
+    response = RedirectResponse(url="/login", status_code=303)
+    response.delete_cookie(SESSION_COOKIE)
+    return response
+
+
 @app.head("/")
 async def home_head():
     return Response(status_code=200)
@@ -193,7 +353,7 @@ async def home_head():
 
 @app.get("/healthz")
 async def healthz():
-    return {"ok": True, "mode": bridge_store.save_mode()}
+    return {"ok": True, "mode": bridge_store.save_mode(), "persistence": bridge_store.persistence_info()}
 
 
 @app.head("/healthz")
@@ -717,10 +877,12 @@ async def planilha_page(request: Request, sucesso: str = "", erro: str = ""):
         name="planilha.html",
         context={
             "request": request,
-            "workbooks": excel_bancos.list_workbooks(),
-            "folders": excel_bancos.list_folders(),
-            "workbook_path": excel_bancos.template_path(),
+            "workbooks": [] if bridge_store.save_via_bridge() else excel_bancos.list_workbooks(),
+            "folders": [] if bridge_store.save_via_bridge() else excel_bancos.list_folders(),
+            "workbook_path": _workbook_display_path(),
             "save_via_bridge": bridge_store.save_via_bridge(),
+            "bridge_status": bridge_store.status(limit=5),
+            "app_config": bridge_store.app_config(),
             "sucesso": sucesso,
             "erro": erro,
             "active_page": "planilha",
@@ -735,8 +897,17 @@ async def planilha_post(
     folder_select: str = Form(""),
     manual_folder_path: str = Form(""),
     workbook_name: str = Form(""),
+    master_workbook_path: str = Form(""),
+    master_workbook_url: str = Form(""),
 ):
     try:
+        if bridge_store.save_via_bridge():
+            config = bridge_store.save_app_config(master_workbook_path, master_workbook_url)
+            message = "Planilha-mãe definida para o modo online."
+            if config.get("master_workbook_path"):
+                message += f" Caminho: {config['master_workbook_path']}"
+            return RedirectResponse(url=f"/planilha?sucesso={quote(message)}", status_code=303)
+
         selected_workbook = excel_bancos.clean_text(manual_workbook_path) or excel_bancos.clean_text(workbook_select)
         selected_folder = excel_bancos.clean_text(manual_folder_path) or excel_bancos.clean_text(folder_select)
 

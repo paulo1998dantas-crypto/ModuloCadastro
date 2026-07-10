@@ -244,8 +244,31 @@ def _project_dir() -> Path:
 
 PROJECT_DIR = _project_dir()
 RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", PROJECT_DIR))
-CONFIG_PATH = PROJECT_DIR / "config.json"
-DATA_PATH = PROJECT_DIR / "cadastro_dados.json"
+
+
+def _runtime_data_dir() -> Path | None:
+    data_dir_env = (os.environ.get("CADASTRO_DATA_DIR") or "").strip()
+    save_mode_env = (os.environ.get("CADASTRO_SAVE_MODE") or "").strip().lower()
+    if data_dir_env or save_mode_env in {"bridge", "ponte", "online"}:
+        try:
+            import bridge_store
+
+            return bridge_store.data_dir()
+        except Exception:
+            if data_dir_env:
+                return Path(data_dir_env).resolve()
+    return None
+
+
+def _runtime_file(name: str) -> Path:
+    data_dir = _runtime_data_dir()
+    if data_dir is not None:
+        return data_dir / name
+    return PROJECT_DIR / name
+
+
+CONFIG_PATH = _runtime_file("config.json")
+DATA_PATH = _runtime_file("cadastro_dados.json")
 BACKUP_DIR = PROJECT_DIR / "backups"
 BOM_OUTPUT_DIR = PROJECT_DIR / "outputs" / "bom"
 _template_env = os.environ.get("CADASTRO_BANCO_TEMPLATE", "").strip()

@@ -17,8 +17,25 @@ Crie o serviço pelo `render.yaml` e configure:
 - `CADASTRO_SAVE_MODE=bridge`
 - `CADASTRO_DATA_DIR=/var/data`
 - `CADASTRO_BRIDGE_TOKEN=<um token grande e secreto>`
+- `CADASTRO_REQUIRE_LOGIN=1`
+- `CADASTRO_REQUIRE_PERSISTENCE=1`
+- `CADASTRO_ADMIN_USER=admin`
+- `CADASTRO_ADMIN_PASSWORD=<senha de acesso ao app online>`
+- `CADASTRO_SESSION_SECRET=<outro segredo longo>`
+- `CADASTRO_MASTER_WORKBOOK_PATH=<caminho local da planilha-mãe no PC da ponte>`
+- `CADASTRO_MASTER_WORKBOOK_URL=<link SharePoint da planilha-mãe>`
 
 O token do Render precisa ser o mesmo token usado pela Ponte Local.
+
+## Persistência obrigatória
+
+Para alterações de categorias, campos, opções, regras e fila não sumirem após restart/deploy, o Render precisa ter um **Persistent Disk** montado no caminho configurado em:
+
+```bash
+CADASTRO_DATA_DIR=/var/data
+```
+
+Com `CADASTRO_REQUIRE_PERSISTENCE=1`, o app bloqueia gravações quando o diretório persistente não está ativo. A tela **Planilha** e o endpoint `/healthz` mostram se a persistência está OK.
 
 ## Comando de start no Render
 

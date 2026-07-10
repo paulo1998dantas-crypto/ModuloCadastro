@@ -11,6 +11,8 @@ from typing import Any
 PROJECT_DIR = Path(__file__).resolve().parent
 DEFAULT_DATA_DIR = PROJECT_DIR / "outputs" / "online_bridge"
 BRIDGE_STORE_VERSION = 1
+DEFAULT_MASTER_WORKBOOK_PATH = r"C:\Users\PRODUCAO-2.0\J I MONTADORA DE VEICULOS ESPECIAIS LTDA\JI Montadora - 02 Produção\01 Controle de Produção\01 - Projeto Cadastro\01 - Gerador cadastros.xlsx"
+DEFAULT_MASTER_WORKBOOK_URL = "https://jimontadora1.sharepoint.com/Shared%20Documents/Dados/JI%20Montadora/02%20Produ%C3%A7%C3%A3o/01%20Controle%20de%20Produ%C3%A3o/01%20-%20Projeto%20Cadastro/01%20-%20Gerador%20cadastros.xlsx?web=1"
 _LOCK = threading.Lock()
 
 
@@ -32,6 +34,23 @@ def data_dir() -> Path:
         fallback = Path(os.environ.get("TMPDIR", "/tmp")) / "modulo-cadastro-data"
         fallback.mkdir(parents=True, exist_ok=True)
         return fallback.resolve()
+
+
+def persistence_info() -> dict[str, Any]:
+    requested = (Path(clean_text(os.environ.get("CADASTRO_DATA_DIR"))) if clean_text(os.environ.get("CADASTRO_DATA_DIR")) else DEFAULT_DATA_DIR).resolve()
+    active = data_dir()
+    persistent = active == requested and str(active) not in {"/tmp", tempfile_dir()}
+    return {
+        "requested_dir": str(requested),
+        "active_dir": str(active),
+        "persistent": persistent,
+        "using_fallback": active != requested,
+        "message": "Persistência OK." if persistent else "Diretório persistente não está gravável; configure o Persistent Disk no Render.",
+    }
+
+
+def tempfile_dir() -> str:
+    return str(Path(os.environ.get("TMPDIR", "/tmp")).resolve())
 
 
 def store_path() -> Path:
@@ -81,6 +100,7 @@ def _empty_store() -> dict[str, Any]:
         "products": [],
         "products_updated_at": "",
         "drafts": [],
+        "config": {},
     }
 
 
@@ -98,6 +118,7 @@ def _read_store_unlocked() -> dict[str, Any]:
     base.setdefault("bridge", _empty_store()["bridge"])
     base.setdefault("products", [])
     base.setdefault("drafts", [])
+    base.setdefault("config", {})
     return base
 
 
@@ -326,6 +347,32 @@ def replace_products(products: list[dict[str, Any]]) -> dict[str, Any]:
     return {"count": len(normalized), "updated_at": now_text()}
 
 
+def app_config() -> dict[str, str]:
+    store_config = read_store().get("config") or {}
+    return {
+        "master_workbook_path": clean_text(os.environ.get("CADASTRO_MASTER_WORKBOOK_PATH"))
+        or clean_text(store_config.get("master_workbook_path"))
+        or DEFAULT_MASTER_WORKBOOK_PATH,
+        "master_workbook_url": clean_text(os.environ.get("CADASTRO_MASTER_WORKBOOK_URL"))
+        or clean_text(store_config.get("master_workbook_url"))
+        or DEFAULT_MASTER_WORKBOOK_URL,
+    }
+
+
+def save_app_config(master_workbook_path: str, master_workbook_url: str) -> dict[str, str]:
+    config = {
+        "master_workbook_path": clean_text(master_workbook_path),
+        "master_workbook_url": clean_text(master_workbook_url),
+    }
+    if not config["master_workbook_path"] and not config["master_workbook_url"]:
+        raise ValueError("Defina a planilha-mãe por caminho local ou link SharePoint.")
+    with _LOCK:
+        data = _read_store_unlocked()
+        data["config"] = config
+        _write_store_unlocked(data)
+    return app_config()
+
+
 def products() -> list[dict[str, str]]:
     return read_store().get("products") or []
 
@@ -346,4 +393,6 @@ def status(limit: int = 20) -> dict[str, Any]:
         "products_updated_at": data.get("products_updated_at") or "",
         "jobs": list(reversed(jobs))[:limit],
         "store_path": str(store_path()),
+        "persistence": persistence_info(),
+        "config": app_config(),
     }

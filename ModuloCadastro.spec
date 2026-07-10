@@ -12,6 +12,7 @@ TEMPLATE_FILES = [
     TEMPLATE_DIR / "opcoes.html",
     TEMPLATE_DIR / "planilha.html",
     TEMPLATE_DIR / "ponte.html",
+    TEMPLATE_DIR / "login.html",
 ]
 DOWNLOAD_FILES = [
     ROOT / "local_bridge.py",

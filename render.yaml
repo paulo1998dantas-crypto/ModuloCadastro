@@ -12,6 +12,20 @@ services:
         value: /var/data
       - key: CADASTRO_BRIDGE_TOKEN
         sync: false
+      - key: CADASTRO_REQUIRE_LOGIN
+        value: "1"
+      - key: CADASTRO_REQUIRE_PERSISTENCE
+        value: "1"
+      - key: CADASTRO_ADMIN_USER
+        value: admin
+      - key: CADASTRO_ADMIN_PASSWORD
+        sync: false
+      - key: CADASTRO_SESSION_SECRET
+        sync: false
+      - key: CADASTRO_MASTER_WORKBOOK_PATH
+        value: "C:\\Users\\PRODUCAO-2.0\\J I MONTADORA DE VEICULOS ESPECIAIS LTDA\\JI Montadora - 02 Produção\\01 Controle de Produção\\01 - Projeto Cadastro\\01 - Gerador cadastros.xlsx"
+      - key: CADASTRO_MASTER_WORKBOOK_URL
+        value: "https://jimontadora1.sharepoint.com/Shared%20Documents/Dados/JI%20Montadora/02%20Produ%C3%A7%C3%A3o/01%20Controle%20de%20Produ%C3%A3o/01%20-%20Projeto%20Cadastro/01%20-%20Gerador%20cadastros.xlsx?web=1"
     disk:
       name: modulo-cadastro-data
       mountPath: /var/data
