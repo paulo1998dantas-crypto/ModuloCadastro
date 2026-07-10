@@ -5,7 +5,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import FastAPI, Form, Header, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 import bridge_store
@@ -155,6 +155,21 @@ def _render_opcoes_page(request: Request, categoria: str = "", sucesso: str = ""
 @app.get("/", response_class=HTMLResponse)
 async def home():
     return RedirectResponse(url="/cadastro/bancos", status_code=303)
+
+
+@app.head("/")
+async def home_head():
+    return Response(status_code=200)
+
+
+@app.get("/healthz")
+async def healthz():
+    return {"ok": True, "mode": bridge_store.save_mode()}
+
+
+@app.head("/healthz")
+async def healthz_head():
+    return Response(status_code=200)
 
 
 @app.get("/cadastro/bancos", response_class=HTMLResponse)
