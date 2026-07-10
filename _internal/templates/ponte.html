@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Ponte Local</title>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800">
+    <header class="bg-slate-950 text-white shadow-sm">
+        <div class="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-4">
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wide text-yellow-400">Módulo de Cadastro</p>
+                    <h1 class="text-2xl font-black tracking-tight">Ponte Local</h1>
+                </div>
+                <div class="max-w-3xl truncate text-xs text-slate-300">
+                    {% if save_via_bridge %}Modo online via ponte{% else %}Modo local direto{% endif %}
+                </div>
+            </div>
+            <nav class="flex flex-wrap gap-2">
+                <a href="/cadastro/bancos" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'cadastro' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Cadastro</a>
+                <a href="/opcoes" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'opcoes' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Opções</a>
+                <a href="/planilha" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'planilha' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Planilha</a>
+                <a href="/ponte" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'ponte' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Ponte Local</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="mx-auto max-w-7xl p-6">
+        {% if sucesso %}
+        <div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">{{ sucesso }}</div>
+        {% endif %}
+        {% if erro %}
+        <div class="mb-5 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-700">{{ erro }}</div>
+        {% endif %}
+
+        <section class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-4">
+            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="text-xs font-black uppercase tracking-wide text-slate-500">Modo</div>
+                <div class="mt-2 text-2xl font-black {% if save_via_bridge %}text-blue-700{% else %}text-emerald-700{% endif %}">
+                    {% if save_via_bridge %}Online/Ponte{% else %}Local{% endif %}
+                </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="text-xs font-black uppercase tracking-wide text-slate-500">Ponte vista por último</div>
+                <div class="mt-2 text-lg font-black text-slate-800">{{ status.bridge.last_seen or "Nunca conectou" }}</div>
+                <div class="mt-1 text-xs font-semibold text-slate-500">{{ status.bridge.machine }}</div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="text-xs font-black uppercase tracking-wide text-slate-500">Fila</div>
+                <div class="mt-2 text-lg font-black text-slate-800">
+                    {{ status.counts.queued or 0 }} pendente(s)
+                </div>
+                <div class="mt-1 text-xs font-semibold text-slate-500">{{ status.counts.processing or 0 }} processando · {{ status.counts.failed or 0 }} falha(s)</div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="text-xs font-black uppercase tracking-wide text-slate-500">Produtos sincronizados</div>
+                <div class="mt-2 text-lg font-black text-slate-800">{{ status.products_count }}</div>
+                <div class="mt-1 text-xs font-semibold text-slate-500">{{ status.products_updated_at }}</div>
+            </div>
+        </section>
+
+        {% if not status.token_configured %}
+        <section class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-5 text-sm font-semibold text-amber-900">
+            Defina a variável <span class="font-black">CADASTRO_BRIDGE_TOKEN</span> no Render antes de usar a ponte.
+            Use um token longo, por exemplo uma senha aleatória. O mesmo token deve ser colocado no PC local.
+        </section>
+        {% endif %}
+
+        <section class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 class="mb-2 text-sm font-black uppercase tracking-wide text-slate-700">Baixar ponte local</h2>
+                <p class="mb-4 text-sm font-semibold text-slate-500">
+                    Baixe o arquivo da ponte, coloque dentro da pasta do Módulo Cadastro no computador que acessa a planilha,
+                    e rode por Python. A ponte usa a mesma configuração local do app.
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/ponte/download" class="inline-flex rounded-lg bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700">
+                        Baixar ponte_local_modulo_cadastro.py
+                    </a>
+                    <a href="/ponte/download-bat" class="inline-flex rounded-lg bg-slate-900 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800">
+                        Baixar iniciar_ponte_local.bat
+                    </a>
+                </div>
+                <div class="mt-4 rounded-lg bg-slate-950 p-4 font-mono text-xs text-slate-100">
+                    python local_bridge.py --server https://SEU-APP.onrender.com --token SEU_TOKEN
+                </div>
+            </div>
+
+            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 class="mb-2 text-sm font-black uppercase tracking-wide text-slate-700">Planilha conectada pela ponte</h2>
+                <p class="break-all rounded-lg bg-slate-50 p-4 text-sm font-bold text-slate-800">
+                    {{ status.bridge.workbook_path or "A ponte ainda não informou uma planilha local." }}
+                </p>
+                <p class="mt-3 text-sm font-semibold text-slate-500">
+                    Quando a ponte estiver aberta, os cadastros feitos online serão gravados nessa planilha local.
+                </p>
+            </div>
+        </section>
+
+        <section class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <h2 class="text-sm font-black uppercase tracking-wide text-slate-700">Últimos jobs</h2>
+                <a href="/ponte" class="rounded-lg bg-slate-100 px-4 py-2 text-xs font-black uppercase tracking-wide text-slate-700 hover:bg-slate-200">Atualizar</a>
+            </div>
+            <div class="overflow-auto">
+                <table class="min-w-full text-left text-sm">
+                    <thead class="bg-slate-100 text-xs font-black uppercase tracking-wide text-slate-500">
+                        <tr>
+                            <th class="px-3 py-2">Protocolo</th>
+                            <th class="px-3 py-2">Status</th>
+                            <th class="px-3 py-2">Categoria</th>
+                            <th class="px-3 py-2">Criado</th>
+                            <th class="px-3 py-2">Atualizado</th>
+                            <th class="px-3 py-2">Resultado / Erro</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for job in status.jobs %}
+                        <tr class="border-b border-slate-100">
+                            <td class="px-3 py-2 font-mono text-xs font-bold">{{ job.id }}</td>
+                            <td class="px-3 py-2 font-black">{{ job.status }}</td>
+                            <td class="px-3 py-2">{{ job.category_key }}</td>
+                            <td class="px-3 py-2">{{ job.created_at }}</td>
+                            <td class="px-3 py-2">{{ job.updated_at }}</td>
+                            <td class="px-3 py-2">
+                                {% if job.error %}
+                                <span class="text-rose-700">{{ job.error }}</span>
+                                {% elif job.result %}
+                                <span class="text-emerald-700">SKU {{ job.result.sku or "-" }} · linha {{ job.result.row or "-" }}</span>
+                                {% else %}
+                                <span class="text-slate-400">Aguardando</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="px-3 py-8 text-center font-semibold text-slate-500">Nenhum job na fila.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

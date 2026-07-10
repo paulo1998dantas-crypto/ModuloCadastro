@@ -77,6 +77,24 @@ class ConditionalScopeTests(unittest.TestCase):
 
         self.assertEqual(visible, {field["key"] for field in self.fields})
 
+    def test_multiple_show_rules_for_same_target_are_alternatives(self):
+        first_rule = self._rule("show", "alvo_secundario")
+        second_rule = {
+            **self._rule("show", "alvo_secundario"),
+            "source_values": ["OUTRA OPCAO"],
+        }
+        with patch.object(excel_bancos, "_combined_conditional_rules", return_value=[first_rule, second_rule]):
+            visible = excel_bancos._visible_field_keys(self.fields, "teste", self.data)
+
+        self.assertIn("alvo_secundario", visible)
+
+    def test_hide_rule_overrides_matching_show_rule(self):
+        rules = [self._rule("show", "alvo_secundario"), self._rule("hide", "alvo_secundario")]
+        with patch.object(excel_bancos, "_combined_conditional_rules", return_value=rules):
+            visible = excel_bancos._visible_field_keys(self.fields, "teste", self.data)
+
+        self.assertNotIn("alvo_secundario", visible)
+
     def test_dynamic_scope_keeps_original_workbook_column(self):
         workbook = Workbook()
         worksheet = workbook.active
@@ -101,6 +119,67 @@ class ConditionalScopeTests(unittest.TestCase):
         self.assertEqual(worksheet.max_column, initial_columns)
         self.assertEqual(final_mapping["alvo_primario"], initial_mapping["alvo_primario"])
         self.assertEqual(worksheet.cell(1, final_mapping["alvo_primario"][0]).value, "ALVO PRIMARIO - PRIMARIO")
+
+
+class OptionIdentityTests(unittest.TestCase):
+    def test_parenthesized_options_keep_their_content_for_duplicate_detection(self):
+        self.assertNotEqual(
+            excel_bancos.option_identity("2- (2REC / 1 REB)"),
+            excel_bancos.option_identity("(2FIX / 1REB)"),
+        )
+        self.assertEqual(
+            excel_bancos.option_identity("12- 2FIX / 1REB"),
+            excel_bancos.option_identity("(2FIX / 1REB)"),
+        )
+
+
+class DistanciaPeTests(unittest.TestCase):
+    def test_distancia_pe_is_always_ordered_by_vao_sequence(self):
+        field = {
+            "key": excel_bancos.DISTANCIA_PE_KEY,
+            "label": "DISTÂNCIA PÉ",
+            "scope": "secundaria",
+            "selection_mode": excel_bancos.SELECTION_MODE_MULTIPLA,
+            "description_order": 1,
+            "options": [
+                "2- SEGUNDO VAO 810 MM",
+                "8- PRIMEIRO VAO 265 MM",
+                "16- TERCEIRO VAO 1370 MM",
+                "18- QUARTO VAO 1600 MM",
+            ],
+        }
+        data = {
+            excel_bancos.DISTANCIA_PE_KEY: [
+                "16- TERCEIRO VAO 1370 MM",
+                "2- SEGUNDO VAO 810 MM",
+                "18- QUARTO VAO 1600 MM",
+                "8- PRIMEIRO VAO 265 MM",
+            ]
+        }
+
+        values = excel_bancos._serialize_field_values(field, data)
+        saved = excel_bancos._format_field_saved_value(field, values)
+        description = excel_bancos._format_field_description(field, values)
+
+        self.assertEqual(
+            values,
+            [
+                "8- PRIMEIRO VAO 265 MM",
+                "2- SEGUNDO VAO 810 MM",
+                "16- TERCEIRO VAO 1370 MM",
+                "18- QUARTO VAO 1600 MM",
+            ],
+        )
+        self.assertEqual(
+            saved,
+            "ORIENTADO A ESQ: 8- PRIMEIRO VAO 265 MM | 2- SEGUNDO VAO 810 MM | "
+            "16- TERCEIRO VAO 1370 MM | 18- QUARTO VAO 1600 MM",
+        )
+        self.assertEqual(
+            description,
+            "ORIENTADO A ESQ: PRIMEIRO VAO 265 MM, SEGUNDO VAO 810 MM, "
+            "TERCEIRO VAO 1370 MM, QUARTO VAO 1600 MM",
+        )
 
 
 if __name__ == "__main__":

@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "active_category": "bancos",
+  "active_category": "cat_20_bco",
   "categories": [
     {
       "key": "bancos",
-      "label": "Bancos",
-      "sheet_name": "Bancos",
+      "label": "20 - BANCOS",
+      "sheet_name": "20 - BANCOS",
       "fields": [
         {
           "key": "pre_fixo",
@@ -65,7 +65,9 @@
             "3- ESPUM. LE RODOVIARIO",
             "4- ESPUM. LE INCORPOL",
             "5- ESPUM. LL IMPORTADA",
-            "6- ESPUM. LE E/S/J"
+            "6- ESPUM. LE E/S/J",
+            "7- ESPUM. LS",
+            "8- ESPUM. LB INCORPOL"
           ]
         },
         {
@@ -80,7 +82,8 @@
             "4- TRANSIT",
             "5- B/J/D",
             "6- IVECO",
-            "7- KANGOO"
+            "7- KANGOO",
+            "8- SPRINTER"
           ]
         },
         {
@@ -110,7 +113,11 @@
             "6- LARGURA ENCOSTO 400MM",
             "7- LARGURA ENCOSTO 410MM",
             "8- LARGURA ENCOSTO 470MM",
-            "9- LARGURA ENCOSTO 440 MM"
+            "9- LARGURA ENCOSTO 440MM",
+            "10- LARGURA ENCOSTO 460MM",
+            "11- LARGURA ENCOSTO 1700MM",
+            "12- LARGURA ENCOSTO 1420 MM",
+            "13- LARGURA ENCOSTO 380 MM"
           ]
         },
         {
@@ -126,7 +133,10 @@
             "4- PROFUNDIDADE 360 MM",
             "5- PROFUNDIDADE 430 MM",
             "6- PROFUNDIDADE 450 MM",
-            "7- PROFUNDIDADE 420 MM"
+            "7- PROFUNDIDADE 420 MM",
+            "8- PROFUNDIDADE 400 MM",
+            "9- PROFUNDIDADE 340 MM",
+            "10- PROFUNDIDADE 440 MM"
           ]
         },
         {
@@ -158,7 +168,11 @@
             "6- PME",
             "7- ELEVITTA",
             "8- SPRINTER",
-            "9- MASTER"
+            "9- MASTER",
+            "10- ESCOLAR",
+            "11- E/S/J",
+            "12- (2FIX / 1REB)",
+            "13- TRAS CX RODAS"
           ]
         },
         {
@@ -180,23 +194,13 @@
           "description_order": 4,
           "options": [
             "1- APOIO BRACO SIMPLES PU PRETO MCA",
-            "2- APOIO BRACO LD PLASTICO INJETADO GRAFITE ACRYLIS RODOVIARIOVIARIO",
-            "3- APOIO BRACO PLASTICO INJETADO CELSIL MARROM",
-            "4- APOIO BRACO PLASTICO INJETADO CELSIL PRETO",
-            "5- APOIO BRACO ORIGINAL E/S/J C/ REGULAGEM MILIMETRICA"
-          ]
-        },
-        {
-          "key": "lado_braco",
-          "label": "LADO BRAÇO",
-          "scope": "primaria",
-          "selection_mode": "unitaria",
-          "description_order": 8,
-          "options": [
-            "1- LD",
-            "2- LE",
-            "3- LD/LE",
-            "4- AP BRACO INDIVIDUAL"
+            "2- APOIO BRACO PLASTICO INJETADO GRAFITE ACRYLIS RODOVIARIO",
+            "3- APOIO BRACO SIMPLES PU CELSIL MARROM",
+            "4- APOIO BRACO SIMPLES PU CELSIL PRETO",
+            "5- APOIO BRACO ORIGINAL E/S/J C/ REGULAGEM MILIMETRICA",
+            "6- APOIO BRACO SIMPLES PU MDBUS",
+            "7- APOIO BRACO SIMPLES PU AMARELO",
+            "10- APOIO BRACO SIMPLES PU AMARELO C/ TAMPO PRETO"
           ]
         },
         {
@@ -210,7 +214,24 @@
             "2- SEM ACABAMENTO LATERAL",
             "3- ACABAMENTO LATERAL LD PLASTICO INJETADO GRAFITE ACRYLIS RODOVIARIO",
             "4- ACABAMENTO LATERAL LD PLASTICO INJETADO MARROM CELSIL",
-            "5- ACABAMENTO LATERAL LD PLASTICO INJETADO PRETO CELSIL"
+            "5- ACABAMENTO LATERAL LD PLASTICO INJETADO PRETO CELSIL",
+            "6- ACABAMENTO LATERAL LD PLASTICO INJETADO MDBUS",
+            "7- ACABAMENTO LATERAL LD PLASTICO INJETADO PRETO STF",
+            "9- ACABAMENTO LATERAL LD PLASTICO INJETADO GRAFITE INC",
+            "10- ACABAMENTO LATERAL LE PLASTICO INJETADO GRAFITE INC",
+            "11- ACABAMENTO LATERAL LE PLASTICO INJETADO PRETO MCA",
+            "12- ACABAMENTO LATERAL LE PLASTICO INJETADO GRAFITE ACRYLIS RODOVIARIO",
+            "13- ACABAMENTO LATERAL LE PLASTICO INJETADO MARROM CELSIL",
+            "14- ACABAMENTO LATERAL LE PLASTICO INJETADO PRETO CELSIL",
+            "15- ACABAMENTO LATERAL LE PLASTICO INJETADO MDBUS",
+            "16- ACABAMENTO LATERAL LE PLASTICO INJETADO PRETO STF",
+            "18- ACABAMENTO LATERAL LD/LE PLASTICO INJETADO GRAFITE INC",
+            "19- ACABAMENTO LATERAL LD/LE PLASTICO INJETADO PRETO MCA",
+            "20- ACABAMENTO LATERAL LD/LE PLASTICO INJETADO GRAFITE ACRYLIS RODOVIARIO",
+            "21- ACABAMENTO LATERAL LD/LE PLASTICO INJETADO MARROM CELSIL",
+            "22- ACABAMENTO LATERAL LD/LE PLASTICO INJETADO PRETO CELSIL",
+            "23- ACABAMENTO LATERAL LD/LE PLASTICO INJETADO MDBUS",
+            "24- ACABAMENTO LATERAL LD/LE PLASTICO INJETADO PRETO STF"
           ]
         },
         {
@@ -230,7 +251,16 @@
             "8- 270 MM",
             "9- 255 MM",
             "10- 65 MM",
-            "11- 120 MM"
+            "11- 120 MM",
+            "12- 250 MM",
+            "13- 280 MM",
+            "14- 380 MM",
+            "15- 340 MM",
+            "20- 430 MM",
+            "17- 390 MM",
+            "18- 110 MM",
+            "19- 410 MM",
+            "21- 400 MM"
           ]
         },
         {
@@ -255,7 +285,10 @@
             "2- COSTURA T-VANS-023",
             "3- CS COSTURA DIAMANTE",
             "4- CS COSTURA BOOMERANG",
-            "5- CS COSTURA RETILINEA"
+            "5- CS COSTURA RETILINEA",
+            "6- COSTURA LS",
+            "7- COSTURA ST02 STF",
+            "8- COSTURA SUPER SPORT"
           ]
         },
         {
@@ -299,7 +332,14 @@
             "4- CAPA LE PRETA",
             "5- CAPA LE PRETA/CINZA",
             "6- CAPA ORIGINAL MOTORISTA E/S/J",
-            "7- CAPA ORIGINAL CARONA E/S/J"
+            "7- CAPA ORIGINAL CARONA E/S/J",
+            "8- CAPA ORIGINAL MOTORISTA SPRINTER",
+            "9- CAPA ORIGINAL CARONA SPRINTER",
+            "10- CAPA LS MD SUPER SPORT PRETA C/ VIVO BRANCA",
+            "12- CAPA LB INC PRETA",
+            "13- CAPA LB INC C/ VIVO BRANCA",
+            "14- CAPA LB MC COURVIN PRETO",
+            "15- CAPA LB MC COURVIN GRAFITE"
           ]
         },
         {
@@ -400,11 +440,15 @@
           "selection_mode": "unitaria",
           "description_order": 16,
           "options": [
-            "1- PEGA MAO BCO SIMPLES PU PRETO MCA",
+            "1- PEGA MAO BCO SIMPLES PU PRETO MD/MCA 200 MM",
             "2- S/ PEGA MAO",
-            "3- PEGA MAO PLASTICO PU ACRYLS RODOVIARIO",
+            "3- PEGA MAO BCO PLASTICO PU ACRYLS RODOVIARIO",
             "4- PEGA MAO BCO MARROM CELSIL",
-            "5- PEGA MAO BCO PRETO CELSIL"
+            "5- PEGA MAO BCO PRETO CELSIL",
+            "6- PEGA MAO BCO PLASTICO PU SIMPLES MDBUS",
+            "7- PEGA MAO BCO PLASTICO PU SIMPLES AMARELO",
+            "8- PEGA MAO BCO SIMPLES PU CINZA ACRYLIS 200 MM",
+            "9- PEGA MAO BCO PRETO INJETADO PU EXECUTIVO STF"
           ]
         },
         {
@@ -417,9 +461,16 @@
             "1- PE BCO MCA",
             "2- PE PARAFUSO",
             "3- PE BCO JL",
-            "4- PE BCO CE",
+            "4- PE BCO CS",
             "5- BASE BANCO MOTORISTA ORIGINAL E/S/J",
-            "6- PE ORIGINAL CARONA"
+            "6- PE ORIGINAL CARONA",
+            "7- PE MCA ANTIGO",
+            "8- PE BCO MD",
+            "9- PE ORIGINAL MOTORISTA",
+            "10- PE BCO INC 2 ESTAMPADO S/ LOGO",
+            "11- PE BCO INC 3 ESTAMPADO C/ LOGO",
+            "12- PE BCO STF",
+            "13- PE BCO INC 1 - CP DOBRADA"
           ]
         },
         {
@@ -486,7 +537,26 @@
             "41- SEGUNDO VAO 691 MM",
             "42- PRIMEIRO VAO 380 MM",
             "43- SEGUNDO VAO 740 MM",
-            "44- TERCEIRO VAO 1230 MM"
+            "44- TERCEIRO VAO 1230 MM",
+            "45- PRIMEIRO VAO 10 MM",
+            "46- SEGUNDO VAO 720 MM",
+            "47- PRIMEIRO VAO 150 MM",
+            "48- SEGUNDO VAO 640 MM",
+            "49- TERCEIRO VAO 1150 MM",
+            "50- PRIMEIRO VAO 210 MM",
+            "51- SEGUNDO VAO 1100 MM",
+            "52- PRIMEIRO VAO 60 MM",
+            "53- SEGUNDO VAO 185 MM",
+            "54- SEGUNDO VAO 565 MM",
+            "55- TERCEIRO VAO 1030 MM",
+            "56- QUARTO VAO 1310 MM",
+            "57- SEGUNDO VAO 410 MM",
+            "58- PRIMEIRO VAO 120 MM",
+            "59- SEGUNDO VAO 475 MM",
+            "60- TERCEIRO VAO 1100 MM",
+            "61- QUARTO VAO 1435 MM",
+            "62- SEGUNDO VAO 705 MM",
+            "63- PRIMEIRO VAO 245 MM"
           ]
         },
         {
@@ -501,17 +571,6 @@
           ]
         },
         {
-          "key": "grau_reclinacao",
-          "label": "GRAU RECLINAÇÃO",
-          "scope": "secundaria",
-          "selection_mode": "unitaria",
-          "description_order": 21,
-          "options": [
-            "1- INCLINACAO 32",
-            "2- INCLINACAO 41"
-          ]
-        },
-        {
           "key": "posicao_braco",
           "label": "POSICAO BRACO",
           "scope": "secundaria",
@@ -521,6 +580,30 @@
             "1- CORREDOR",
             "2- CENTRAL",
             "3- PAREDE"
+          ]
+        },
+        {
+          "key": "lado_braco",
+          "label": "LADO BRAÇO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 8,
+          "options": [
+            "1- LD",
+            "2- LE",
+            "3- LD/LE",
+            "4- AP BRACO INDIVIDUAL"
+          ]
+        },
+        {
+          "key": "grau_reclinacao",
+          "label": "GRAU RECLINAÇÃO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 21,
+          "options": [
+            "1- INCLINACAO 32",
+            "2- INCLINACAO 41"
           ]
         }
       ],
@@ -538,7 +621,8 @@
           "target_field_key": "veiculo",
           "target_field_label": "VEÍCULO",
           "target_field_scope": "secundaria",
-          "action": "show"
+          "action": "show",
+          "match_by": "option"
         },
         {
           "key": "cond_encosto_reclinador",
@@ -552,7 +636,8 @@
           "target_field_key": "tipo_do_reclinador",
           "target_field_label": "TIPO DO RECLINADOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "cond_encosto_grau_reclinacao",
@@ -566,7 +651,8 @@
           "target_field_key": "grau_reclinacao",
           "target_field_label": "GRAU RECLINAÇÃO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "cond_linha_usb",
@@ -579,7 +665,8 @@
           "target_field_key": "usb",
           "target_field_label": "USB",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "cond_linha_resfriador",
@@ -592,7 +679,8 @@
           "target_field_key": "resfriador",
           "target_field_label": "RESFRIADOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "cond_linha_aquecedor",
@@ -605,7 +693,8 @@
           "target_field_key": "aquecedor",
           "target_field_label": "AQUECEDOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "cond_linha_massageador",
@@ -618,7 +707,8 @@
           "target_field_key": "massageador",
           "target_field_label": "MASSAGEADOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "cond_linha_mesa_snack",
@@ -631,7 +721,8 @@
           "target_field_key": "mesa_snack",
           "target_field_label": "MESA SNACK",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "cond_linha_isofix",
@@ -644,7 +735,8 @@
           "target_field_key": "isofix",
           "target_field_label": "ISOFIX",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "cond_linha_posicao_isofix",
@@ -657,7 +749,8 @@
           "target_field_key": "posicao_isofix",
           "target_field_label": "POSIÇÃO ISOFIX",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "cond_linha_apoio_panturrilha",
@@ -670,126 +763,8 @@
           "target_field_key": "apoio_panturrilha",
           "target_field_label": "APOIO PANTURRILHA",
           "target_field_scope": "secundaria",
-          "action": "hide"
-        },
-        {
-          "key": "cond_braco_tipo_apoio",
-          "source_field_key": "braco",
-          "source_field_label": "APOIO DE BRAÇO",
-          "source_field_scope": "primaria",
-          "source_values": [
-            "SAPOIODEBRACO",
-            "NA",
-            "NA"
-          ],
-          "target_field_key": "tipo_apoio_braco",
-          "target_field_label": "TIPO APOIO BRAÇO",
-          "target_field_scope": "secundaria",
-          "action": "hide"
-        },
-        {
-          "key": "cond_braco_lado_braco",
-          "source_field_key": "braco",
-          "source_field_label": "APOIO DE BRAÇO",
-          "source_field_scope": "primaria",
-          "source_values": [
-            "SAPOIODEBRACO",
-            "NA",
-            "NA"
-          ],
-          "target_field_key": "lado_braco",
-          "target_field_label": "LADO BRAÇO",
-          "target_field_scope": "primaria",
-          "action": "hide"
-        },
-        {
-          "key": "cond_braco_corredor",
-          "source_field_key": "braco",
-          "source_field_label": "APOIO DE BRAÇO",
-          "source_field_scope": "primaria",
-          "source_values": [
-            "SAPOIODEBRACO",
-            "NA",
-            "NA"
-          ],
-          "target_field_key": "braco_corredor",
-          "target_field_label": "BRAÇO CORREDOR",
-          "target_field_scope": "secundaria",
-          "action": "hide"
-        },
-        {
-          "key": "cond_braco_central",
-          "source_field_key": "braco",
-          "source_field_label": "APOIO DE BRAÇO",
-          "source_field_scope": "primaria",
-          "source_values": [
-            "SAPOIODEBRACO",
-            "NA",
-            "NA"
-          ],
-          "target_field_key": "braco_central",
-          "target_field_label": "BRAÇO CENTRAL",
-          "target_field_scope": "secundaria",
-          "action": "hide"
-        },
-        {
-          "key": "cond_braco_cor_do_braco",
-          "source_field_key": "braco",
-          "source_field_label": "APOIO DE BRAÇO",
-          "source_field_scope": "primaria",
-          "source_values": [
-            "SAPOIODEBRACO",
-            "NA",
-            "NA"
-          ],
-          "target_field_key": "cor_do_braco",
-          "target_field_label": "COR DO BRAÇO",
-          "target_field_scope": "secundaria",
-          "action": "hide"
-        },
-        {
-          "key": "cond_braco_parede",
-          "source_field_key": "braco",
-          "source_field_label": "APOIO DE BRAÇO",
-          "source_field_scope": "primaria",
-          "source_values": [
-            "SAPOIODEBRACO",
-            "NA",
-            "NA"
-          ],
-          "target_field_key": "braco_parede",
-          "target_field_label": "BRAÇO PAREDE",
-          "target_field_scope": "secundaria",
-          "action": "hide"
-        },
-        {
-          "key": "cond_pega_mao_cor",
-          "source_field_key": "pega_mao",
-          "source_field_label": "PEGA MÃO",
-          "source_field_scope": "secundaria",
-          "source_values": [
-            "SPEGAMAO",
-            "NA",
-            "NA"
-          ],
-          "target_field_key": "cor_pega_mao",
-          "target_field_label": "COR PEGA MÃO",
-          "target_field_scope": "secundaria",
-          "action": "hide"
-        },
-        {
-          "key": "cond_acabamento_cor",
-          "source_field_key": "acabamento_lateral",
-          "source_field_label": "ACABAMENTO LATERAL",
-          "source_field_scope": "secundaria",
-          "source_values": [
-            "SEMACABAMENTOLATERAL",
-            "NA"
-          ],
-          "target_field_key": "cor_acabamento",
-          "target_field_label": "COR ACABAMENTO",
-          "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "cond_isofix_posicao",
@@ -803,20 +778,8 @@
           "target_field_key": "posicao_isofix",
           "target_field_label": "POSIÇÃO ISOFIX",
           "target_field_scope": "secundaria",
-          "action": "hide"
-        },
-        {
-          "key": "28f3af483768",
-          "source_field_key": "braco",
-          "source_field_label": "APOIO DE BRAÇO",
-          "source_field_scope": "primaria",
-          "source_values": [
-            "SAPOIODEBRAO"
-          ],
-          "target_field_key": "",
-          "target_field_label": "POSIÇÃO DO BRAÇO",
-          "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "10693c46274b",
@@ -829,7 +792,8 @@
           "target_field_key": "posicao_braco",
           "target_field_label": "POSICAO BRACO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "8b8facc51159",
@@ -842,7 +806,8 @@
           "target_field_key": "tipo_apoio_braco",
           "target_field_label": "TIPO APOIO BRAÇO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "d298a9e41d47",
@@ -855,7 +820,8 @@
           "target_field_key": "lado_braco",
           "target_field_label": "LADO BRAÇO",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "9e3ae4b1df32",
@@ -868,7 +834,8 @@
           "target_field_key": "altura_pe",
           "target_field_label": "ALTURA DO PÉ",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "6b3e16b094d1",
@@ -881,7 +848,8 @@
           "target_field_key": "qtd_pe",
           "target_field_label": "QTD PÉ",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "b14276e8083a",
@@ -894,7 +862,8 @@
           "target_field_key": "distancia_pe",
           "target_field_label": "DISTÂNCIA PÉ",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "377dbae421aa",
@@ -907,7 +876,8 @@
           "target_field_key": "altura_pe",
           "target_field_label": "ALTURA DO PÉ",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "68f3c38c63c5",
@@ -920,7 +890,8 @@
           "target_field_key": "fornecedor",
           "target_field_label": "FORNECEDOR",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "8f6f7e0f59ae",
@@ -933,7 +904,8 @@
           "target_field_key": "linha",
           "target_field_label": "LINHA",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "76f25a490f97",
@@ -946,7 +918,8 @@
           "target_field_key": "tipo_da_espuma",
           "target_field_label": "TIPO DA ESPUMA",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "fa223e7ea9e7",
@@ -959,7 +932,8 @@
           "target_field_key": "encosto",
           "target_field_label": "ENCOSTO",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "ddcda3c58a4a",
@@ -972,7 +946,8 @@
           "target_field_key": "largura_encosto",
           "target_field_label": "LARGURA ENCOSTO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "f538ca6ea1cc",
@@ -985,7 +960,8 @@
           "target_field_key": "profundidade_assento",
           "target_field_label": "PROFUNDIDADE ASSENTO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "391d7346ff3c",
@@ -998,7 +974,8 @@
           "target_field_key": "lotacao",
           "target_field_label": "LOTAÇÃO",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "5580d864c865",
@@ -1011,7 +988,8 @@
           "target_field_key": "especificidade",
           "target_field_label": "ESPECIFICIDADE",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "f6fbef15dac0",
@@ -1024,7 +1002,8 @@
           "target_field_key": "lado_braco",
           "target_field_label": "LADO BRAÇO",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "7588acbce266",
@@ -1037,7 +1016,8 @@
           "target_field_key": "acabamento_lateral",
           "target_field_label": "ACABAMENTO LATERAL",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "5bcea72fbf71",
@@ -1050,7 +1030,8 @@
           "target_field_key": "tipo_cinto",
           "target_field_label": "TIPO CINTO",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "68151a85f736",
@@ -1063,7 +1044,8 @@
           "target_field_key": "tipo_costura",
           "target_field_label": "TIPO COSTURA",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "e9eb86567258",
@@ -1076,7 +1058,8 @@
           "target_field_key": "cor_da_linha",
           "target_field_label": "COR DA LINHA",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "4ea50e521046",
@@ -1089,7 +1072,8 @@
           "target_field_key": "tipo_revestimento",
           "target_field_label": "TIPO REVESTIMENTO",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "4fba2757961d",
@@ -1102,7 +1086,8 @@
           "target_field_key": "usb",
           "target_field_label": "USB",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "9a8b792e2bb6",
@@ -1115,7 +1100,8 @@
           "target_field_key": "apoio_panturrilha",
           "target_field_label": "APOIO PANTURRILHA",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "82ce4fa822c0",
@@ -1128,7 +1114,8 @@
           "target_field_key": "posicao_braco",
           "target_field_label": "POSICAO BRACO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "aca48cd6453e",
@@ -1141,7 +1128,8 @@
           "target_field_key": "grau_reclinacao",
           "target_field_label": "GRAU RECLINAÇÃO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "699020130e7a",
@@ -1154,7 +1142,8 @@
           "target_field_key": "tipo_do_reclinador",
           "target_field_label": "TIPO DO RECLINADOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "1c9cf13314b4",
@@ -1167,7 +1156,8 @@
           "target_field_key": "distancia_pe",
           "target_field_label": "DISTÂNCIA PÉ",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "664d23ec28f8",
@@ -1180,7 +1170,8 @@
           "target_field_key": "qtd_pe",
           "target_field_label": "QTD PÉ",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "ed029447a40b",
@@ -1193,7 +1184,8 @@
           "target_field_key": "pega_mao",
           "target_field_label": "PEGA MÃO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "8e064084b7a9",
@@ -1206,7 +1198,8 @@
           "target_field_key": "posicao_isofix",
           "target_field_label": "POSIÇÃO ISOFIX",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "6fac9bccebec",
@@ -1219,7 +1212,8 @@
           "target_field_key": "mesa_snack",
           "target_field_label": "MESA SNACK",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "1e3dbe51c660",
@@ -1232,7 +1226,8 @@
           "target_field_key": "massageador",
           "target_field_label": "MASSAGEADOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "2fd6ba015278",
@@ -1245,7 +1240,8 @@
           "target_field_key": "apoio_pe",
           "target_field_label": "APOIO PÉ",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "5674af1edd5e",
@@ -1258,7 +1254,8 @@
           "target_field_key": "aquecedor",
           "target_field_label": "AQUECEDOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "ab0991826a12",
@@ -1271,7 +1268,8 @@
           "target_field_key": "resfriador",
           "target_field_label": "RESFRIADOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "9bc078209d70",
@@ -1284,7 +1282,8 @@
           "target_field_key": "fornecedor",
           "target_field_label": "FORNECEDOR",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "87f6ae40cd0a",
@@ -1297,7 +1296,8 @@
           "target_field_key": "linha",
           "target_field_label": "LINHA",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "ff2a143efd77",
@@ -1310,7 +1310,8 @@
           "target_field_key": "tipo_da_espuma",
           "target_field_label": "TIPO DA ESPUMA",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "2d14d23f090c",
@@ -1323,7 +1324,8 @@
           "target_field_key": "largura_encosto",
           "target_field_label": "LARGURA ENCOSTO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "472de8209891",
@@ -1336,7 +1338,8 @@
           "target_field_key": "profundidade_assento",
           "target_field_label": "PROFUNDIDADE ASSENTO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "62e6efb0c01b",
@@ -1349,7 +1352,8 @@
           "target_field_key": "especificidade",
           "target_field_label": "ESPECIFICIDADE",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "513a9540bbfd",
@@ -1362,7 +1366,8 @@
           "target_field_key": "braco",
           "target_field_label": "APOIO DE BRAÇO",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "f08f8f27dad2",
@@ -1375,7 +1380,8 @@
           "target_field_key": "tipo_apoio_braco",
           "target_field_label": "TIPO APOIO BRAÇO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "e163525bda5f",
@@ -1388,7 +1394,8 @@
           "target_field_key": "lado_braco",
           "target_field_label": "LADO BRAÇO",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "a4f60c6743a6",
@@ -1401,7 +1408,8 @@
           "target_field_key": "acabamento_lateral",
           "target_field_label": "ACABAMENTO LATERAL",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "cab87695a337",
@@ -1414,7 +1422,8 @@
           "target_field_key": "altura_pe",
           "target_field_label": "ALTURA DO PÉ",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "bc2395f887c8",
@@ -1427,7 +1436,8 @@
           "target_field_key": "tipo_cinto",
           "target_field_label": "TIPO CINTO",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "61e426d8b143",
@@ -1440,7 +1450,8 @@
           "target_field_key": "tipo_costura",
           "target_field_label": "TIPO COSTURA",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "c5e7c45648b4",
@@ -1453,7 +1464,8 @@
           "target_field_key": "cor_da_linha",
           "target_field_label": "COR DA LINHA",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "2cdbb997c005",
@@ -1466,7 +1478,8 @@
           "target_field_key": "tipo_revestimento",
           "target_field_label": "TIPO REVESTIMENTO",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "bfe033e87475",
@@ -1479,7 +1492,8 @@
           "target_field_key": "usb",
           "target_field_label": "USB",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "cabd044d1359",
@@ -1492,7 +1506,8 @@
           "target_field_key": "resfriador",
           "target_field_label": "RESFRIADOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "f8eec571947e",
@@ -1505,7 +1520,8 @@
           "target_field_key": "aquecedor",
           "target_field_label": "AQUECEDOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "8667ae9f4804",
@@ -1518,7 +1534,8 @@
           "target_field_key": "apoio_pe",
           "target_field_label": "APOIO PÉ",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "4fd8ba2d2c07",
@@ -1531,7 +1548,8 @@
           "target_field_key": "massageador",
           "target_field_label": "MASSAGEADOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "184b910702e8",
@@ -1544,7 +1562,8 @@
           "target_field_key": "mesa_snack",
           "target_field_label": "MESA SNACK",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "ce4be08ccef2",
@@ -1557,7 +1576,8 @@
           "target_field_key": "isofix",
           "target_field_label": "ISOFIX",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "999a896f7b20",
@@ -1570,7 +1590,8 @@
           "target_field_key": "posicao_isofix",
           "target_field_label": "POSIÇÃO ISOFIX",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "ea046ad45578",
@@ -1583,7 +1604,8 @@
           "target_field_key": "apoio_panturrilha",
           "target_field_label": "APOIO PANTURRILHA",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "f1b3c2bf0fbc",
@@ -1596,7 +1618,8 @@
           "target_field_key": "pega_mao",
           "target_field_label": "PEGA MÃO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "06da54d61af7",
@@ -1609,7 +1632,8 @@
           "target_field_key": "modelo_pe",
           "target_field_label": "MODELO PÉ",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "02cae5953758",
@@ -1622,7 +1646,8 @@
           "target_field_key": "qtd_pe",
           "target_field_label": "QTD PÉ",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "f16042506782",
@@ -1635,7 +1660,8 @@
           "target_field_key": "distancia_pe",
           "target_field_label": "DISTÂNCIA PÉ",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "f44b216e06be",
@@ -1648,7 +1674,8 @@
           "target_field_key": "tipo_do_reclinador",
           "target_field_label": "TIPO DO RECLINADOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "3d9274000d6c",
@@ -1661,7 +1688,8 @@
           "target_field_key": "grau_reclinacao",
           "target_field_label": "GRAU RECLINAÇÃO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "ff5756f6ba31",
@@ -1674,7 +1702,8 @@
           "target_field_key": "isofix",
           "target_field_label": "ISOFIX",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "cafdc07a7d2e",
@@ -1687,7 +1716,8 @@
           "target_field_key": "posicao_braco",
           "target_field_label": "POSICAO BRACO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "8e020a09d252",
@@ -1700,7 +1730,8 @@
           "target_field_key": "distancia_pe",
           "target_field_label": "DISTÂNCIA PÉ",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "283d9b501ee5",
@@ -1713,7 +1744,8 @@
           "target_field_key": "qtd_pe",
           "target_field_label": "QTD PÉ",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "b3583ba07a4e",
@@ -1726,7 +1758,8 @@
           "target_field_key": "cor_do_revestimento",
           "target_field_label": "COR DO REVESTIMENTO",
           "target_field_scope": "secundaria",
-          "action": "set_primary"
+          "action": "set_primary",
+          "match_by": "option"
         },
         {
           "key": "67473b11434b",
@@ -1739,7 +1772,8 @@
           "target_field_key": "tipo_costura",
           "target_field_label": "TIPO COSTURA",
           "target_field_scope": "secundaria",
-          "action": "set_primary"
+          "action": "set_primary",
+          "match_by": "option"
         },
         {
           "key": "5866d1950bd9",
@@ -1752,7 +1786,8 @@
           "target_field_key": "cor_da_linha",
           "target_field_label": "COR DA LINHA",
           "target_field_scope": "secundaria",
-          "action": "set_primary"
+          "action": "set_primary",
+          "match_by": "option"
         },
         {
           "key": "37ef1660df10",
@@ -1765,7 +1800,8 @@
           "target_field_key": "veiculo",
           "target_field_label": "VEÍCULO",
           "target_field_scope": "secundaria",
-          "action": "set_primary"
+          "action": "set_primary",
+          "match_by": "option"
         },
         {
           "key": "9a4a339dcef7",
@@ -1778,7 +1814,8 @@
           "target_field_key": "veiculo",
           "target_field_label": "VEÍCULO",
           "target_field_scope": "secundaria",
-          "action": "set_primary"
+          "action": "set_primary",
+          "match_by": "option"
         },
         {
           "key": "4f475d341a4c",
@@ -1791,7 +1828,8 @@
           "target_field_key": "distancia_pe",
           "target_field_label": "DISTÂNCIA PÉ",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "ed359b7046c2",
@@ -1804,7 +1842,8 @@
           "target_field_key": "qtd_pe",
           "target_field_label": "QTD PÉ",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "81cd4ff0fb3f",
@@ -1817,7 +1856,8 @@
           "target_field_key": "altura_pe",
           "target_field_label": "ALTURA DO PÉ",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "7c34469cc5d4",
@@ -1830,20 +1870,8 @@
           "target_field_key": "altura_pe",
           "target_field_label": "ALTURA DO PÉ",
           "target_field_scope": "primaria",
-          "action": "hide"
-        },
-        {
-          "key": "27b893c5d764",
-          "source_field_key": "pre_fixo",
-          "source_field_label": "PRE FIXO",
-          "source_field_scope": "primaria",
-          "source_values": [
-            "BCOCARONA"
-          ],
-          "target_field_key": "especificidade",
-          "target_field_label": "ESPECIFICIDADE",
-          "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "dcc60d7b2639",
@@ -1856,7 +1884,8 @@
           "target_field_key": "resfriador",
           "target_field_label": "RESFRIADOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "319546f4157c",
@@ -1869,7 +1898,8 @@
           "target_field_key": "aquecedor",
           "target_field_label": "AQUECEDOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "5a65108574a4",
@@ -1882,7 +1912,8 @@
           "target_field_key": "apoio_pe",
           "target_field_label": "APOIO PÉ",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "c3a161a67b87",
@@ -1895,7 +1926,8 @@
           "target_field_key": "massageador",
           "target_field_label": "MASSAGEADOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "d0c22b4b6fa8",
@@ -1908,7 +1940,8 @@
           "target_field_key": "isofix",
           "target_field_label": "ISOFIX",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "b0ce44a296cd",
@@ -1921,7 +1954,8 @@
           "target_field_key": "posicao_isofix",
           "target_field_label": "POSIÇÃO ISOFIX",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "d4ce029ca5fc",
@@ -1934,7 +1968,8 @@
           "target_field_key": "pega_mao",
           "target_field_label": "PEGA MÃO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "c6f0a13a9f3c",
@@ -1947,7 +1982,8 @@
           "target_field_key": "largura_encosto",
           "target_field_label": "LARGURA ENCOSTO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "ecc5c6469522",
@@ -1960,7 +1996,8 @@
           "target_field_key": "profundidade_assento",
           "target_field_label": "PROFUNDIDADE ASSENTO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "4155a181174b",
@@ -1973,20 +2010,8 @@
           "target_field_key": "lotacao",
           "target_field_label": "LOTAÇÃO",
           "target_field_scope": "primaria",
-          "action": "hide"
-        },
-        {
-          "key": "beaa8ee20f29",
-          "source_field_key": "pre_fixo",
-          "source_field_label": "PRE FIXO",
-          "source_field_scope": "primaria",
-          "source_values": [
-            "BCOMOTORISTA"
-          ],
-          "target_field_key": "especificidade",
-          "target_field_label": "ESPECIFICIDADE",
-          "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "6b08eada285b",
@@ -1999,7 +2024,8 @@
           "target_field_key": "acabamento_lateral",
           "target_field_label": "ACABAMENTO LATERAL",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "9d09f3530532",
@@ -2012,7 +2038,8 @@
           "target_field_key": "altura_pe",
           "target_field_label": "ALTURA DO PÉ",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "be6c021ebffe",
@@ -2025,7 +2052,8 @@
           "target_field_key": "tipo_cinto",
           "target_field_label": "TIPO CINTO",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "c2bf4801bc8c",
@@ -2038,7 +2066,8 @@
           "target_field_key": "lado_braco",
           "target_field_label": "LADO BRAÇO",
           "target_field_scope": "primaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "92c68d27cec9",
@@ -2051,7 +2080,8 @@
           "target_field_key": "usb",
           "target_field_label": "USB",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "4531d45d1836",
@@ -2064,7 +2094,8 @@
           "target_field_key": "resfriador",
           "target_field_label": "RESFRIADOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "5ac0bb517031",
@@ -2077,7 +2108,8 @@
           "target_field_key": "aquecedor",
           "target_field_label": "AQUECEDOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "9336527c00c2",
@@ -2090,7 +2122,8 @@
           "target_field_key": "apoio_pe",
           "target_field_label": "APOIO PÉ",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "bbf738ac3f94",
@@ -2103,7 +2136,8 @@
           "target_field_key": "massageador",
           "target_field_label": "MASSAGEADOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "4689abbca419",
@@ -2116,7 +2150,8 @@
           "target_field_key": "isofix",
           "target_field_label": "ISOFIX",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "376bcd408bd1",
@@ -2129,7 +2164,8 @@
           "target_field_key": "posicao_isofix",
           "target_field_label": "POSIÇÃO ISOFIX",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "8330f32a19ab",
@@ -2142,7 +2178,8 @@
           "target_field_key": "apoio_panturrilha",
           "target_field_label": "APOIO PANTURRILHA",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "ce55c2929af0",
@@ -2155,7 +2192,8 @@
           "target_field_key": "pega_mao",
           "target_field_label": "PEGA MÃO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "3aa61ede8805",
@@ -2168,7 +2206,8 @@
           "target_field_key": "qtd_pe",
           "target_field_label": "QTD PÉ",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "6b9a4e9cfeb7",
@@ -2181,7 +2220,8 @@
           "target_field_key": "distancia_pe",
           "target_field_label": "DISTÂNCIA PÉ",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "b54cba3c03fb",
@@ -2194,7 +2234,8 @@
           "target_field_key": "tipo_do_reclinador",
           "target_field_label": "TIPO DO RECLINADOR",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "6a60f9078a2d",
@@ -2207,7 +2248,8 @@
           "target_field_key": "grau_reclinacao",
           "target_field_label": "GRAU RECLINAÇÃO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "50dddc406248",
@@ -2220,7 +2262,8 @@
           "target_field_key": "posicao_braco",
           "target_field_label": "POSICAO BRACO",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "ef43868103c0",
@@ -2233,20 +2276,8 @@
           "target_field_key": "tipo_da_espuma",
           "target_field_label": "TIPO DA ESPUMA",
           "target_field_scope": "secundaria",
-          "action": "hide"
-        },
-        {
-          "key": "463877492b85",
-          "source_field_key": "pre_fixo",
-          "source_field_label": "PRE FIXO",
-          "source_field_scope": "primaria",
-          "source_values": [
-            "BCOCARONA"
-          ],
-          "target_field_key": "tipo_da_espuma",
-          "target_field_label": "TIPO DA ESPUMA",
-          "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
         },
         {
           "key": "5ab974246003",
@@ -2259,24 +2290,3729 @@
           "target_field_key": "mesa_snack",
           "target_field_label": "MESA SNACK",
           "target_field_scope": "secundaria",
-          "action": "hide"
+          "action": "hide",
+          "match_by": "option"
+        },
+        {
+          "key": "60c28d8baec5",
+          "source_field_key": "modelo_pe",
+          "source_field_label": "MODELO PÉ",
+          "source_field_scope": "secundaria",
+          "source_values": [
+            "PEMCAANTIGO"
+          ],
+          "target_field_key": "modelo_pe",
+          "target_field_label": "MODELO PÉ",
+          "target_field_scope": "secundaria",
+          "action": "set_primary",
+          "match_by": "option"
+        },
+        {
+          "key": "9828994dc5cc",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOMOTORISTA"
+          ],
+          "target_field_key": "veiculo",
+          "target_field_label": "VEÍCULO",
+          "target_field_scope": "secundaria",
+          "action": "show",
+          "match_by": "option"
+        },
+        {
+          "key": "f214e4f455c2",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONA"
+          ],
+          "target_field_key": "veiculo",
+          "target_field_label": "VEÍCULO",
+          "target_field_scope": "secundaria",
+          "action": "show",
+          "match_by": "option"
+        },
+        {
+          "key": "93d54f7accf0",
+          "source_field_key": "fornecedor",
+          "source_field_label": "FORNECEDOR",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "INC"
+          ],
+          "target_field_key": "modelo_pe",
+          "target_field_label": "MODELO PÉ",
+          "target_field_scope": "secundaria",
+          "action": "set_primary",
+          "match_by": "option"
+        },
+        {
+          "key": "f4dd15385440",
+          "source_field_key": "modelo_pe",
+          "source_field_label": "MODELO PÉ",
+          "source_field_scope": "secundaria",
+          "source_values": [
+            "PEBCOSTF"
+          ],
+          "target_field_key": "distancia_pe",
+          "target_field_label": "DISTÂNCIA PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide",
+          "match_by": "option"
+        },
+        {
+          "key": "5a6ec0485873",
+          "source_field_key": "modelo_pe",
+          "source_field_label": "MODELO PÉ",
+          "source_field_scope": "secundaria",
+          "source_values": [
+            "PEBCOSTF"
+          ],
+          "target_field_key": "qtd_pe",
+          "target_field_label": "QTD PÉ",
+          "target_field_scope": "secundaria",
+          "action": "hide",
+          "match_by": "option"
+        },
+        {
+          "key": "7d618f26994a",
+          "source_field_key": "pre_fixo",
+          "source_field_label": "PRE FIXO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "BCOCARONA"
+          ],
+          "target_field_key": "tipo_da_espuma",
+          "target_field_label": "TIPO DA ESPUMA",
+          "target_field_scope": "secundaria",
+          "action": "hide",
+          "match_by": "option"
+        },
+        {
+          "key": "e6142b15845d",
+          "source_field_key": "fornecedor",
+          "source_field_label": "FORNECEDOR",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "INC"
+          ],
+          "target_field_key": "cor_do_revestimento",
+          "target_field_label": "COR DO REVESTIMENTO",
+          "target_field_scope": "secundaria",
+          "action": "set_primary",
+          "match_by": "option"
+        },
+        {
+          "key": "5e437600d3ee",
+          "source_field_key": "tipo_revestimento",
+          "source_field_label": "TIPO REVESTIMENTO",
+          "source_field_scope": "primaria",
+          "source_values": [
+            "COURVIN"
+          ],
+          "target_field_key": "cor_do_revestimento",
+          "target_field_label": "COR DO REVESTIMENTO",
+          "target_field_scope": "secundaria",
+          "action": "set_primary",
+          "match_by": "option"
         }
       ]
     },
     {
-      "key": "fixadores",
-      "label": "FIxadores",
-      "sheet_name": "FIxadores",
+      "key": "cat_10_ar_condicionado",
+      "label": "10 - AR CONDICIONADO",
+      "sheet_name": "10 - AR CONDICIONADO",
       "fields": [
         {
-          "key": "teste",
-          "label": "TESTE",
+          "key": "prefixo",
+          "label": "PREFIXO",
           "scope": "primaria",
           "selection_mode": "unitaria",
-          "description_order": null,
+          "description_order": 1,
           "options": [
-            "1- A"
+            "FATURAMENTO DIRETO"
           ]
+        },
+        {
+          "key": "descritor_base",
+          "label": "DESCRITOR BASE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": []
+        },
+        {
+          "key": "veiculo_modelo",
+          "label": "VEÍCULO/MODELO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": []
+        },
+        {
+          "key": "posicao_lado",
+          "label": "POSIÇÃO/LADO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "TETO"
+          ]
+        },
+        {
+          "key": "medida",
+          "label": "MEDIDA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": []
+        },
+        {
+          "key": "material_cor",
+          "label": "MATERIAL/COR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": []
+        },
+        {
+          "key": "complemento_regra",
+          "label": "COMPLEMENTO/REGRA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": [
+            "AR CONDICIONADO COMPLEMENTO SALAO - CLIM",
+            "AR CONDICIONADO COMPLEMENTO SALAO - GE",
+            "AR CONDICIONADO C/ CX CONDESADORA TETO - CLIM",
+            "AR CONDICIONADO C/ CX CONDESADORA TETO - GE",
+            "AR CONDICIONADO COMPLEMENTO SALAO - ANTIBACTERICIDA - CLIM",
+            "AR QUENTE - GE",
+            "AR QUENTE - CLIM"
+          ]
+        },
+        {
+          "key": "fornecedor_referencia",
+          "label": "FORNECEDOR/REFERÊNCIA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": []
+        }
+      ],
+      "conditional_rules": []
+    },
+    {
+      "key": "cat_12_vidros",
+      "label": "12 - VIDROS",
+      "sheet_name": "12 - VIDROS",
+      "fields": [
+        {
+          "key": "prefixo",
+          "label": "PREFIXO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "CJ",
+            "VIDRO",
+            "JANELA"
+          ]
+        },
+        {
+          "key": "descritor_base",
+          "label": "DESCRITOR BASE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "VIDROS SELADO MASTER L2H2",
+            "FIXO MASTER L2H2/L3H2 VERDE",
+            "FIXO MASTER L2H2 VERDE",
+            "FIXO MASTER VIGIA VERDE",
+            "VIDROS SELADO MASTER L3H2",
+            "FIXO MASTER L3H2 VERDE",
+            "VIDROS SELADO MASTER L1H1",
+            "FIXO MASTER L1H1 VERDE",
+            "VIDROS SELADO TRANSIT L3H3",
+            "FIXO TRANSIT L3H3 VERDE",
+            "FIXOTRANSIT L3H3 VERDE",
+            "FIXO TRANSIT VIGIA VERDE",
+            "VIDROS SELADO TRANSIT L2H3",
+            "FIXO TRANSIT L2H3 VERDE",
+            "VIDROS SELADO SPRINTER",
+            "FIXO SPRINTER 10/ VERDE",
+            "FIXO SPRINTER VERDE",
+            "FIXO SPRINTER VIGIA VERDE",
+            "VIDROS SELADO E/S/ J",
+            "FIXO E/S/ J VERDE",
+            "FIXO E/S/ J VIGIA VERDE",
+            "VIDROS SELADO BOXER/JUMPER/DUCATO",
+            "FIXO B/J/D VERDE",
+            "FIXO B/J/D VIGIA VERDE",
+            "MASTER L2H2/L3H2 VERDE",
+            "MASTER L1H1 VERDE",
+            "TRANSIT L3H3 VERDE",
+            "TRANSIT L2H3 VERDE",
+            "SPRINTER 10/ VERDE",
+            "E/S/ J VERDE",
+            "B/J/D VERDE",
+            "VIDROS VISTA MASTER L2H2",
+            "VIDROS VISTA MASTER L3H2",
+            "VIDROS VISTA MASTER L1H1",
+            "VIDROS VISTA TRANSIT L3H3",
+            "VIDROS VISTA TRANSIT L2H3",
+            "VIDROS VISTA SPRINTER",
+            "VIDROS VISTA E/S/ J",
+            "VIDROS VISTA BOXER/JUMPER/DUCATO",
+            "VIDROS VISTA 1O 2O E/S/ J"
+          ]
+        },
+        {
+          "key": "veiculo_modelo",
+          "label": "VEÍCULO/MODELO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "MASTER",
+            "TRANSIT",
+            "SPRINTER",
+            "DUCATO / BOXER / JUMPER",
+            "B/J/D"
+          ]
+        },
+        {
+          "key": "posicao_lado",
+          "label": "POSIÇÃO/LADO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "1O VAO / LD",
+            "1O VAO / LE",
+            "2O VAO / LD",
+            "2O VAO / LE",
+            "LD",
+            "LE",
+            "3O VAO / LD",
+            "3O VAO / LE",
+            "CORREDICA / 1O VAO / LD",
+            "CORREDICA / 1O VAO / LE",
+            "LD/LE / LE",
+            "CORREDICA / 2O VAO / LE"
+          ]
+        },
+        {
+          "key": "medida",
+          "label": "MEDIDA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "1425X686 / 4MM",
+            "1431X686 / 4MM",
+            "1357X630 / 4MM",
+            "1357X686 / 4MM",
+            "838X798 / 5MM",
+            "686X793 / 5MM",
+            "923X630 / 4MM",
+            "923X686 / 4MM",
+            "1082X686 / 4MM",
+            "1195X686 / 4MM",
+            "1210X686 / 4MM",
+            "1078X630 / 4MM",
+            "1078X686 / 4MM",
+            "1389X739",
+            "1365X741",
+            "976X728",
+            "671X716",
+            "792X833",
+            "1383X739",
+            "1373X741",
+            "4MM / 1210X730",
+            "792X830",
+            "10 M",
+            "14 M / 1404X771 / 4MM",
+            "10 M / 1637X761 / 4MM",
+            "815X800 / 5MM",
+            "14 M",
+            "14 M / 1418X705 / 4MM",
+            "14 M / 1422X769 / 4MM",
+            "14 M / 1291X766 / 4MM",
+            "1089X556 / 4MM",
+            "1096X556 / 4MM",
+            "1177X534 / 4MM",
+            "1171X534 / 4MM",
+            "676X495 / 4MM",
+            "743X495 / 4MM",
+            "1400X667 / 4MM",
+            "1352X583 / 4MM",
+            "1352X667 / 4MM",
+            "771X667 / 4MM",
+            "830X667 / 4MM"
+          ]
+        },
+        {
+          "key": "material_cor",
+          "label": "MATERIAL/COR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "VERDE / VIDRO",
+            "VERDE"
+          ]
+        },
+        {
+          "key": "complemento_regra",
+          "label": "COMPLEMENTO/REGRA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": [
+            "VIDROFORTE",
+            "SELADO - VIDROFORTE",
+            "VISTA - VIDROFORTE",
+            "VETROEX",
+            "SELADO - VETROEX",
+            "VISTA - STYLLUS",
+            "STYLLUS"
+          ]
+        },
+        {
+          "key": "fornecedor_referencia",
+          "label": "FORNECEDOR/REFERÊNCIA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": []
+        }
+      ],
+      "conditional_rules": []
+    },
+    {
+      "key": "cat_14_piso",
+      "label": "14 - PISO",
+      "sheet_name": "14 - PISO",
+      "fields": [
+        {
+          "key": "prefixo",
+          "label": "PREFIXO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "ACESSORIO",
+            "CJ",
+            "PP"
+          ]
+        },
+        {
+          "key": "descritor_base",
+          "label": "DESCRITOR BASE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "SOLEIRA DEGRAU INOX JI MONTADORA MASTER",
+            "SOLEIRA DEGRAU INOX JI MONTADORA SPRINTER",
+            "SOLEIRA DEGRAU INOX JI MONTADORA TRANSIT",
+            "SOLEIRA B/J/D",
+            "SOLEIRA SPRINTER",
+            "PISO CN MASTER L2H2 LG BRIGHT GRAFITE 92402",
+            "PISO CN MASTER L3H2 LG BRIGHT GRAFITE 92402",
+            "PISO CN MASTER L3H2",
+            "CANTONEIRA PVC PRETA PORTAS ( E ) RENAULT MASTER L2H2/L3H2",
+            "ACABAMENTO TUBULACAO A/C RENAULT MASTER L3H2 VITRE LG BRIGHT GRAFITE",
+            "CAIXA COMPENSADO NAVAL P/ ACABAMENTO TUBULACAO A/C RENAULT MASTER L3H2",
+            "ACABAMENTO TUBULACAO A/C RENAULT MASTER L3H2 VITRE PASSADEIRA AMADEIRADA TARKETT",
+            "PISO CN MASTER L2H2",
+            "CANTONEIRA PVC PRETA PORTAS ( E ) B/J/D",
+            "DEGRAU ENTRADA TRANSIT COMPENSADO NAVAL LG BRIGHT GRAFITE 92402",
+            "DEGRAU ENTRADA TRANSIT COMPENSADO NAVAL",
+            "DEGRAU ENTRADA TRANSIT COMPENSADO NAVAL PASSADEIRA AMADEIRADA TARKETT DARK BROWN",
+            "PISO CN MASTER L2H2 PASSADEIRA AMADEIRADA TARKETT DARK BROWN",
+            "PISO CN MASTER L3H2 PASSADEIRA AMADEIRADA TARKETT DARK BROWN",
+            "PISO CN SPRINTER 417 10,5 FG LG BRIGHT GRAFITE 92402",
+            "PISO CN SPRINTER 417 10,5 FG",
+            "PISO CN SPRINTER 417 10,5 VITRE LG BRIGHT GRAFITE 92402",
+            "PISO CN SPRINTER 417 10,5 VITRE",
+            "PISO CN SPRINTER 417 10,5 FG PASSADEIRA AMADEIRADA TARKETT DARK",
+            "PISO CN SPRINTER 417 10,5 VITRE PASSADEIRA AMADEIRADA TARKETT DARK",
+            "PISO CN SPRINTER 417 14 FG LG BRIGHT GRAFITE 92402",
+            "PISO CN SPRINTER 417 14 FG",
+            "PISO CN SPRINTER 417 14 VITRE LG BRIGHT GRAFITE 92402",
+            "PISO CN SPRINTER 417 14 VITRE",
+            "PISO CN SPRINTER 417 14 FG PASSADEIRA AMADEIRADA TARKETT DARK",
+            "PISO CN SPRINTER 417 14 VITRE PASSADEIRA AMADEIRADA TARKETT DARK",
+            "PISO CN SPRINTER 517 14 FG LG BRIGHT GRAFITE 92402",
+            "PISO CN SPRINTER 517 14 FG",
+            "PISO CN SPRINTER 517 14 VITRE LG BRIGHT GRAFITE 92402",
+            "PISO CN SPRINTER 517 14 VITRE",
+            "PISO CN SPRINTER 517 14 FG PASSADEIRA AMADEIRADA TARKETT DARK",
+            "PISO CN SPRINTER 517 14 VITRE PASSADEIRA AMADEIRADA TARKETT DARK",
+            "PISO CN SPRINTER 517 15 FG LG BRIGHT GRAFITE 92402",
+            "PISO CN SPRINTER 517 15 FG",
+            "PISO CN SPRINTER 517 15 VITRE LG BRIGHT GRAFITE 92402",
+            "PISO CN SPRINTER 517 15 VITRE",
+            "PISO CN SPRINTER 517 15 FG PASSADEIRA AMADEIRADA TARKETT DARK",
+            "PISO CN SPRINTER 517 15 VITRE PASSADEIRA AMADEIRADA TARKETT DARK",
+            "PISO CN E/S/ J TB LG BRIGHT GRAFITE 92402",
+            "PISO CN E/S/ J TB",
+            "PISO CN E/S/ J TA LG BRIGHT GRAFITE 92402",
+            "PISO CN E/S/ J TA",
+            "PISO CN E/S/ J TB PASSADEIRA AMADEIRADA TARKETT DARK BROWN",
+            "PISO CN E/S/ J TA PASSADEIRA AMADEIRADA TARKETT DARK BROWN",
+            "PISO CN B/J/D FG LG BRIGHT GRAFITE 92402",
+            "PISO CN B/J/D FG",
+            "PISO CN B/J/D VITRE LG BRIGHT GRAFITE 92402",
+            "PISO CN B/J/D VITRE",
+            "PISO CN B/J/D FG PASSADEIRA AMADEIRADA TARKETT DARK BROWN",
+            "PISO CN B/J/D VITRE PASSADEIRA AMADEIRADA TARKETT DARK BROWN",
+            "PISO CN TRANSIT L3H2 VITRE LG BRIGHT GRAFITE 92402",
+            "PISO CN TRANSIT L3H2 VITRE",
+            "PISO CN TRANSIT L3H2 VITRE PASSADEIRA AMADEIRADA TARKETT DARK BROWN",
+            "PISO CN TRANSIT L4H3 VITRE LG BRIGHT GRAFITE 92402",
+            "PISO CN TRANSIT L4H3 VITRE",
+            "PISO CN TRANSIT L4H3 VITRE PASSADEIRA AMADEIRADA TARKETT DARK BROWN",
+            "PISO CN TRANSIT L3H3 LG BRIGHT GRAFITE 92402",
+            "PISO CN TRANSIT L3H3",
+            "PISO CN TRANSIT L3H3 PASSADEIRA AMADEIRADA TARKETT DARK BROWN",
+            "NIVELADOR DE PISO",
+            "COMPENSADO NAVAL",
+            "APOIO PISO E/S/ J",
+            "SOLEIRA PORTA MALA E/S/ J LB",
+            "SOLEIRA PORTA MALA E/S/ J 8/",
+            "CANTONEIRA PVC PRETA SOLEIRA PORTA MALA E/S/ J C/ LED"
+          ]
+        },
+        {
+          "key": "veiculo_modelo",
+          "label": "VEÍCULO/MODELO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "MASTER",
+            "SPRINTER",
+            "TRANSIT",
+            "B/J/D",
+            "MASTER / RENAULT"
+          ]
+        },
+        {
+          "key": "posicao_lado",
+          "label": "POSIÇÃO/LADO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "DIANTEIRA / SALAO / CABINE",
+            "LATERAL / TRASEIRA",
+            "ASSOALHO",
+            "LATERAL",
+            "LE"
+          ]
+        },
+        {
+          "key": "medida",
+          "label": "MEDIDA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "12 MM",
+            "700X60",
+            "700X100",
+            "11 L",
+            "9 L"
+          ]
+        },
+        {
+          "key": "material_cor",
+          "label": "MATERIAL/COR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "INOX",
+            "GRAFITE",
+            "PRETA / PVC",
+            "COMPENSADO NAVAL",
+            "GRAFITE / COMPENSADO NAVAL"
+          ]
+        },
+        {
+          "key": "complemento_regra",
+          "label": "COMPLEMENTO/REGRA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": [
+            "UNIVERSAL - R00 - 311-20.01-02.01-0001",
+            "UNIVERSAL - R00",
+            "LG BRIGHT",
+            "AMADEIRADO",
+            "3,2,3 - MC"
+          ]
+        },
+        {
+          "key": "fornecedor_referencia",
+          "label": "FORNECEDOR/REFERÊNCIA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": []
+        }
+      ],
+      "conditional_rules": []
+    },
+    {
+      "key": "cat_16_isolamento",
+      "label": "16 - ISOLAMENTO",
+      "sheet_name": "16 - ISOLAMENTO",
+      "fields": [
+        {
+          "key": "prefixo",
+          "label": "PREFIXO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "MP",
+            "CJ"
+          ]
+        },
+        {
+          "key": "descritor_base",
+          "label": "DESCRITOR BASE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "MANTA AUTOADESIVA ALUMINIZADA P/ ISOLAMENTO TERMICO",
+            "ISOLAMENTO TERMICO P/ MASTER L3H2 C/ MANTA AUTOADESIVA ALUMINIZADA",
+            "ISOLAMENTO TERMICO P/ E/S/ J TB C/ MANTA AUTOADESIVA ALUMINIZADA",
+            "ISOLAMENTO TERMICO P/ MASTER L2H2 C/ MANTA AUTOADESIVA ALUMINIZADA",
+            "ISOLAMENTO TERMICO P E/J TA C MANTA AUTOADESIVA ALUMINIZADA",
+            "ISOLAMENTO TERMICO P/ SPRINTER 417 C/ MANTA AUTOADESIVA ALUMINIZADA",
+            "ISOLAMENTO TERMICO P/ SPRINTER 517 C/ MANTA AUTOADESIVA ALUMINIZADA",
+            "CANTONEIRA PVC PRETA SPRINTER",
+            "ISOLAMENTO TERMICO P/ B/J/D C/ MANTA AUTOADESIVA ALUMINIZADA",
+            "ISOLAMENTO TERMICO P/ TRANSIT L3H3 C/ MANTA AUTOADESIVA",
+            "ISOLAMENTO TERMICO P/ TRANSIT L4H3 C/ MANTA AUTOADESIVA"
+          ]
+        },
+        {
+          "key": "veiculo_modelo",
+          "label": "VEÍCULO/MODELO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "MASTER",
+            "E/J",
+            "SPRINTER",
+            "B/J/D",
+            "TRANSIT"
+          ]
+        },
+        {
+          "key": "posicao_lado",
+          "label": "POSIÇÃO/LADO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "PORTA TRASEIRA"
+          ]
+        },
+        {
+          "key": "medida",
+          "label": "MEDIDA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "10 M",
+            "14 M",
+            "15 M"
+          ]
+        },
+        {
+          "key": "material_cor",
+          "label": "MATERIAL/COR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "ALUMINIZADA",
+            "PRETA / PVC"
+          ]
+        },
+        {
+          "key": "complemento_regra",
+          "label": "COMPLEMENTO/REGRA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": []
+        },
+        {
+          "key": "fornecedor_referencia",
+          "label": "FORNECEDOR/REFERÊNCIA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": []
+        }
+      ],
+      "conditional_rules": []
+    },
+    {
+      "key": "cat_18_revestimento",
+      "label": "18 - REVESTIMENTO",
+      "sheet_name": "18 - REVESTIMENTO",
+      "fields": [
+        {
+          "key": "prefixo",
+          "label": "PREFIXO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "CJ",
+            "ABS",
+            "ACESSORIO",
+            "PP",
+            "ALCA",
+            "COLUNA",
+            "TETO",
+            "QUEBRA",
+            "SUPORTE",
+            "ACABAMENTO PLASTICO",
+            "LUMINARIA"
+          ]
+        },
+        {
+          "key": "descritor_base",
+          "label": "DESCRITOR BASE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "REVESTIMENTO ESSENCIAL RENAULT MASTER L2H2",
+            "PC ESSENCIAL MASTER ACABAMENTO BATENTE",
+            "PC ESSENCIAL MASTER ACABAMENTO",
+            "PC ESSENCIAL MASTER BOCAL CAIXA AR CONDICIONADO",
+            "PC ESSENCIAL MASTER L2H2 ACABAMENTO CAPUCCINO",
+            "PC ESSENCIAL MASTER L2H2 ACABAMENTO COIFA DO",
+            "PC ESSENCIAL MASTER L2H2/L3H2 ACABAMENTO COLUNA CINTO SEGURANCA",
+            "PC ESSENCIAL MASTER L2H2/L3H2 ACABAMENTO DA COLUNA",
+            "PC ESSENCIAL MASTER L2H2",
+            "PC ESSENCIAL MASTER REFORCO PRFV COLUNA FALSA",
+            "REVESTIMENTO ESSENCIAL RENAULT MASTER L3H2",
+            "PC MASTER L3H2 ACABAMENTO CAPUCCINO",
+            "PC MASTER L3H2 ACABAMENTO COIFA DO",
+            "PC MASTER L3H2 ACABAMENTO CINTO SEGURANCA",
+            "PC MASTER L3H2 ACABAMENTO TAMPA INSPECAO /",
+            "PC MASTER L3H2",
+            "PC MASTER L3H2 2O/",
+            "PC MASTER L3H2 ACABAMENTO CAIXA DE RODAS",
+            "REVESTIMENTO B/J/D",
+            "PC B/J/D ACABAMENTO BATENTE",
+            "PC B/J/D ACABAMENTO CAPUCINO",
+            "PC B/J/D ACABAMENTO COIFA DO",
+            "PC B/J/D ACABAMENTO COLUNA CINTO SEGURANCA",
+            "PC B/J/D ACABAMENTO PORTA DE CORRER",
+            "PC B/J/D ACABAMENTO",
+            "PC B/J/D ARO JANELA PORTA DE CORRER",
+            "PC B/J/D",
+            "PC B/J/D 2O/",
+            "PC B/J/D 2O/ PASSAGERIO",
+            "PC B/J/D REFORCO PLASTICO COLUNA FALSA",
+            "PC B/J/D BJD",
+            "REVESTIMENTO E/S/ J TB",
+            "PC E/S/ J TB ACABAMENTO ARO",
+            "PC E/S/ J TB ACABAMENTO COLUNA CINTO SEGURANCA",
+            "PC E/S/ J TB ACABAMENTO",
+            "PC E/S/ J TB ACABAMENTO SOLEIRA FRONTAL /",
+            "PC E/S/ J TB ACABAMENTO SOLEIRA",
+            "PC E/S/ J TB 1O/",
+            "PC E/S/ J TB",
+            "PC REFORCO ACO",
+            "REVESTIMENTO IVECO 50-180",
+            "REVESTIMENTO PLUS SPRINTER 417",
+            "PARTE 1 PC PLUS SPRINTER 10,5/",
+            "PARTE 2 PC PLUS SPRINTER 10,5/",
+            "PC PLUS SPRINTER 10,5/14/",
+            "PC PLUS SPRINTER",
+            "PC PLUS SPRINTER 10,5/ ACABAMENTO CAIXA DE RODAS /",
+            "PC PLUS SPRINTER 10,5/14/ ACABAMENTO PORTA",
+            "PC PLUS SPRINTER 10,5/14/ ACABAMENTO",
+            "PC PLUS SPRINTER 10,5/14/ ACABAMENTO COLUNA",
+            "PC PLUS SPRINTER 10,5/14/ ACABAMENTO CONSOLE AR CONDICIONADO",
+            "PC PLUS SPRINTER 10,5/14/ ACABAMENTO COLUNA CINTO SEGURANCA",
+            "DUTO AR CONDICIONADO ABS PC PLUS SPRINTER",
+            "PC PLUS LENTE DUTO AR CONDICIONADO SPRINTER",
+            "DUTO AR CONDICIONADO ABS PC PLUS SPRINTER 14/",
+            "PC PLUS DUTO AR CONDICIONADO PARTE 1 SPRINTER 14/",
+            "PC PLUS LENTE DUTO AR CONDICIONADO PARTE 1 SPRINTER 14/",
+            "PC PLUS LENTE DUTO AR CONDICIONADO PARTE 2 SPRINTER 14/",
+            "PC PLUS SPRINTER 14/",
+            "PARTE 2 PC PLUS SPRINTER",
+            "REVESTIMENTO PLUS SPRINTER 517",
+            "PC PLUS SPRINTER ACABAMENTO CAIXA DE RODAS",
+            "PARTE 1 PC PLUS SPRINTER",
+            "PARTE 3 PC PLUS SPRINTER",
+            "PC PLUS SPRINTER ACABAMENTO COMPLEMENTO 3O VAO",
+            "REVESTIMENTO TRANSIT L3H2 VITRE",
+            "PC TRANSIT ACABAMENTO SOLEIRA DEGRAU ENTRADA PORTA CORRER",
+            "PC TRANSIT ACABAMENTO SOLEIRA",
+            "PC TRANSIT L3H2 VITRE ACABAMENTO CAPUCCINO",
+            "PC TRANSIT L3H2 VITRE ACABAMENTO COLUNA CINTO SEGURANCA",
+            "AR CONDICIONADO PC TRANSIT L3H2 VITRE ACABAMENTO",
+            "PC TRANSIT L3H2 VITRE",
+            "PC TRANSIT L3H2 VITRE 2O/",
+            "FRONTAL COM DUTO PC TRANSIT L3H2 VITRE",
+            "REVESTIMENTO TRANSIT L3H3 FURGAO",
+            "PC TRANSIT L2H3/L3H3",
+            "PC TRANSIT L2H3/L3H3 ACABAMENTO COLUNA CINTO SEGURANCA",
+            "PC TRANSIT L3H3 ACABAMENTO COLUNA",
+            "PC TRANSIT L2H3/L3H3 ACABAMENTO PORTA",
+            "PC TRANSIT L3H3 2O/",
+            "PC TRANSIT L3H3 ACABAMENTO MADEIRA REVESTIDA CONSOLE AR CONDICIONADO PECA",
+            "PARTE PC C/ DUTO TRANSIT L3H3",
+            "CONSOLE TV ABS PLUS SPRINTER 417 FG",
+            "CONSOLE TV ABS PLUS SPRINTER 417 REVESTIDA",
+            "CONSOLE TV ABS SPRINTER 417 REVESTIDA PRETO",
+            "CONSOLE TV PRFV MASTER L3H2 PILAR MOLDE JI",
+            "PC E/S/ J TB TAMPA INSPECAO CX AR CONDICIONADO",
+            "PC E/S/ J TB ACABAMENTO MACANETA",
+            "PC PLUS DUTO AR CONDICIONADO PARTE 2 SPRINTER 14/",
+            "PC PLUS DUTO AR CONDICIONADO PARTE 3 SPRINTER 14/",
+            "PC PLUS LENTE DUTO AR CONDICIONADO PARTE 3 SPRINTER 14/",
+            "REVESTIMENTO TRANSIT L4H3 VITRE",
+            "PC TRANSIT L4H3",
+            "PC TRANSIT L4H3 ACABAMENTO COLUNA CINTO SEGURANCA",
+            "PC TRANSIT L4H3 ACABAMENTO COLUNA",
+            "PC TRANSIT L4H3 ACABAMENTO PORTA",
+            "PC TRANSIT L4H3 2O/",
+            "C/ DUTO TRANSIT L4H3",
+            "SOBRE TRANSIT L4H3",
+            "PC TRANSIT L4H3 ACABAMENTO CAIXA DE RODAS",
+            "PC TRANSIT L4H3 ACABAMENTO CONSOLE AR CONDICIONADO",
+            "PARTE 4 PC PLUS SPRINTER",
+            "PC PLUS DUTO AR CONDICIONADO SPRINTER",
+            "REVESTIMENTO PLUS RENAULT MASTER L3H2",
+            "REVESTIMENTO PLUS RENAULT MASTER L2H2",
+            "REVESTIMENTO E/J TA",
+            "PC SPRINTER ACABAMENTO SOLEIRA DEGRAU ENTRADA PORTA CORRER",
+            "CONSOLE AC TRANSIT L3H3 ACABAMENTO MADEIRA REVESTIDA",
+            "PC PLUS MASTER L2H2/L3H2 ACABAMENTO BATENTE",
+            "PC PLUS MASTER L2H2/L3H2 ACABAMENTO",
+            "PC PLUS MASTER L2H2/L3H2 ACABAMENTO FORRO",
+            "PC PLUS MASTER L2H2/L3H2 BOCAL CAIXA AR CONDICIONADO",
+            "PC PLUS MASTER L2H2/L3H2 ACABAMENTO CAPUCCINO",
+            "PC PLUS MASTER L2H2/L3H2 ACABAMENTO COIFA DO",
+            "PC PLUS MASTER L2H2/L3H2 ACABAMENTO COLUNA CINTO SEGURANCA",
+            "PC PLUS MASTER L2H2/L3H2",
+            "PC PLUS MASTER L2H2",
+            "PC PLUS MASTER L2H2/L3H2 REFORCO ABS COLUNA FALSA",
+            "PC PLUS MASTER L3H2 2/",
+            "PC PLUS MASTER L3H2",
+            "PC IVECO 50-180 ACABAMENTO COLUNA",
+            "PC IVECO 50-180 ACABAMENTO CAPUCINO",
+            "PC IVECO 50-180 ACABAMENTO FORRO",
+            "PC IVECO 50-180 ACABAMENTO PARALAMA / /",
+            "PC IVECO 50-180 ACABAMENTO",
+            "PC IVECO 50-180 ACABAMENTO SOLEIRA",
+            "PC IVECO 50-180 ACABAMENTO COIFA",
+            "PC IVECO 50-180",
+            "PC IVECO 50-180 2O/",
+            "PC IVECO 50-180 ACABAMENTO DESEMBACADOR",
+            "ABS ACABAMENTO ARO JANELAS E/S/ J",
+            "CJ ARO JANELA PVC E/S/ J C-CLASS",
+            "ARO JANELA PVC E/S/ J C-CLASS",
+            "PC ALETA AR E/S/ J TB PILAR",
+            "ABS PC ALETA AR PRETA E/S/ J TB PILAR",
+            "ABS PC ALETA AR BEGE E/S/ J TB PILAR",
+            "ALCA PQP ORIGINAL E/S/ J",
+            "PC COLUNA B ORIGINAL CINTO SEGURANCA E/S/ J",
+            "PC COLUNA A ORIGINAL E/S/ J",
+            "PC ORIGINAL E/S/ J",
+            "PC QUEBRA SOL ORIGINAL E/S/ J",
+            "PC SUPORTE QUEBRA SOL ORIGINAL E/S/ J",
+            "PC PLASTICA ACAB. MICROFONE SOM ORIG E/S/ J",
+            "PC PLASTICA ACAB. MICROFONE SOM ORIG E/S/ J PRETA",
+            "PC PLASTICA ACAB. MICROFONE SOM ORIG E/S/ J BEGE",
+            "PC QUEBRA SOL ORIGINAL PRETO E/S/ J",
+            "PC QUEBRA SOL ORIGINAL BEGE E/S/ J",
+            "ABS FORROS E/S/ J PL/PTS",
+            "ABS VELUDO PRETO PC E/S/ J TB",
+            "PQP ORIGINAL E/S/ J",
+            "ALCA PQP ORIGINAL E/S/ J PRETO FOSCO VINILICA",
+            "B ORIGINAL CINTO SEGURANCA E/S/ J",
+            "COLUNA B ORIGINAL CINTO SEGURANCA E/S/ J VELUDO PRETO",
+            "A ORIGINAL E/S/ J",
+            "COLUNA A ORIGINAL E/S/ J VELUDO PRETO",
+            "ORIGINAL E/S/ J",
+            "ORIGINAL E/S/ J PRETO FOSCO VINILICA",
+            "SOL ORIGINAL E/S/ J",
+            "QUEBRA SOL ORIGINAL E/S/ J PRETO FOSCO VINILICA",
+            "QUEBRA SOL ORIGINAL E/S/ J",
+            "SUPORTE QUEBRA SOL ORIGINAL E/S/ J PRETO FOSCO VINILICA",
+            "ORIGINAL MICROFONE SOM E/S/ J",
+            "ACABAMENTO PLASTICO ORIGINAL MICROFONE SOM E/S/ J PRETO FOSCO VINILICA",
+            "LUMINARIA ORIGINAL E/S/ J PRETO FOSCO VINILICA",
+            "E/S/ J VELUDO PRETO / /COLUNA B/COLUNA A/ACESSORIOS ORI",
+            "REVESTIMENTO E/S/ J TB C/ VELUDO PRETO",
+            "ABS PC C/ MOLDURA CORTINA PVC E/S/ J C-CLASS TB",
+            "ABS PC E/S/ J TB ACABAMENTO CINZA RAL 7021 PU",
+            "ABS PC E/S/ J TB ACABAMENTO ARO CINZA RAL 7021",
+            "ABS PC E/S/ J TB ACABAMENTO COLUNA CINTO SEGURANCA CINZA",
+            "REVESTIMENTO E/S/ J TB CINZA RAL C/ MOLDURA P/ CORTINAS",
+            "ABS ACABAMENTO ARO JANELAS E/S/ J CINZA RAL 7021 PU",
+            "PC TRANSIT L3H2 VITRE ACABAMENTO TAMPA INSPECAO /"
+          ]
+        },
+        {
+          "key": "veiculo_modelo",
+          "label": "VEÍCULO/MODELO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "MASTER / RENAULT",
+            "MASTER",
+            "B/J/D",
+            "B/J/D / BJD",
+            "IVECO",
+            "SPRINTER",
+            "TRANSIT",
+            "E/J"
+          ]
+        },
+        {
+          "key": "posicao_lado",
+          "label": "POSIÇÃO/LADO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "ASSOALHO",
+            "SUPERIOR / PORTA LATERAL / LE",
+            "SUPERIOR / PORTA TRASEIRA / MOTORISTA / LE",
+            "SUPERIOR / PORTA TRASEIRA / PASSAGEIRO / LD",
+            "TETO",
+            "PASSAGEIRO / LD",
+            "CORREDICA",
+            "LATERAL / DIANTEIRA / 1O VAO / MOTORISTA / LE",
+            "LATERAL / TRASEIRA / 2O VAO / MOTORISTA / LE",
+            "LATERAL / TRASEIRA / 2O VAO / PASSAGEIRO / LD",
+            "INFERIOR / MOTORISTA / LE",
+            "SUPERIOR / MOTORISTA / LE",
+            "LE / LD",
+            "LATERAL / INFERIOR / 1O VAO / DIANTEIRA / MOTORISTA / LE",
+            "LATERAL / INFERIOR / 3O VAO / TRASEIRA / MOTORISTA / LE",
+            "LATERAL / INFERIOR / 3O VAO / TRASEIRA / PASSAGEIRO / LD",
+            "LATERAL / SUPERIOR / 1O VAO / DIANTEIRA / MOTORISTA / LE",
+            "LATERAL / SUPERIOR / 3O VAO / TRASEIRA / MOTORISTA / LE",
+            "LATERAL / SUPERIOR / 3O VAO / TRASEIRA / PASSAGEIRO / LD",
+            "LD/LE",
+            "INFERIOR / LD",
+            "INFERIOR / PORTA TRASEIRA / PASSAGEIRO / LD",
+            "SUPERIOR / LD",
+            "INFERIOR / PORTA TRASEIRA / MOTORISTA / LE",
+            "LATERAL / LD",
+            "LATERAL / SUPERIOR / 3O VAO / TRASEIRA / LD",
+            "PORTA LATERAL / PASSAGEIRO / LD",
+            "PORTA TRASEIRA / MOTORISTA / LE",
+            "PORTA TRASEIRA / PASSAGEIRO / LD",
+            "INFERIOR / PORTA LATERAL / PASSAGEIRO / LD",
+            "CABINE / SALAO",
+            "LATERAL",
+            "TRASEIRA",
+            "LATERAL / MOTORISTA / LE / 2O VAO",
+            "LATERAL / PASSAGEIRO / LD / 2O VAO",
+            "PORTA LATERAL",
+            "LATERAL / 1O VAO / SUPERIOR / MOTORISTA / LE",
+            "LATERAL / 1O VAO / INFERIOR / MOTORISTA / LE",
+            "LATERAL / 2O VAO / SUPERIOR / MOTORISTA / LE",
+            "LATERAL / 2O VAO / INFERIOR / MOTORISTA / LE",
+            "LATERAL / 2O VAO / SUPERIOR / PASSAGEIRO / LD",
+            "LATERAL / 2O VAO / INFERIOR / PASSAGEIRO / LD",
+            "SUPERIOR / CORREDICA / LD",
+            "TRASEIRA / INFERIOR / MOTORISTA / LE",
+            "MOTORISTA / LE",
+            "INFERIOR / CENTRAL / LE",
+            "INFERIOR / CENTRAL / LD",
+            "TRASEIRA / INFERIOR / PASSAGEIRO / LD",
+            "LATERAL / 3O VAO / INFERIOR / MOTORISTA / LE",
+            "LATERAL / 3O VAO / INFERIOR / PASSAGEIRO / LD",
+            "LE",
+            "LATERAL / 3O VAO / SUPERIOR / MOTORISTA / LE",
+            "LATERAL / 3O VAO / SUPERIOR / PASSAGEIRO / LD",
+            "LATERAL / TRASEIRA / SUPERIOR / MOTORISTA / LE",
+            "LATERAL / TRASEIRA / SUPERIOR / MOTORISTA / LD",
+            "LD",
+            "PORTA TRASEIRA",
+            "TETO / CABINE",
+            "LATERAL / TRASEIRA / 3O VAO / MOTORISTA / LE",
+            "LATERAL / TRASEIRA / 3O VAO / PASSAGEIRO / LD",
+            "TETO / TRASEIRA",
+            "LATERAL / 1O VAO / MOTORISTA / LE",
+            "TRASEIRA / MOTORISTA / LE",
+            "TRASEIRA / PASSAGEIRO / LD",
+            "LATERAL / INFERIOR / 3O VAO / PASSAGEIRO / LD",
+            "LATERAL / INFERIOR / 3O VAO / MOTORISTA / LE",
+            "LATERAL / SUPERIOR / 3O VAO / PASSAGEIRO / LD",
+            "LATERAL / SUPERIOR / 3O VAO / MOTORISTA / LE",
+            "INFERIOR",
+            "SUPERIOR",
+            "TETO / DIANTEIRA",
+            "TETO / LATERAL",
+            "TETO / CABINE / MOTORISTA",
+            "INFERIOR / PORTA LATERAL / LE",
+            "ASSOALHO / MOTORISTA",
+            "MOTORISTA / PASSAGEIRO / LE / LD",
+            "SUPERIOR / PORTA LATERAL / LD",
+            "INFERIOR / PORTA LATERAL / LD",
+            "LATERAL / TRASEIRA / 3O VAO / MOTORISTA / LD",
+            "1O VAO / LE",
+            "2O VAO / LE",
+            "2O VAO / LD",
+            "CABINE / LD",
+            "CABINE / LE",
+            "CABINE",
+            "TETO / SALAO / CABINE",
+            "SALAO / TRASEIRA"
+          ]
+        },
+        {
+          "key": "medida",
+          "label": "MEDIDA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "10,5M3",
+            "14M3",
+            "15M3",
+            "14 M3"
+          ]
+        },
+        {
+          "key": "material_cor",
+          "label": "MATERIAL/COR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "ABS",
+            "ABS / PRFV",
+            "ACO / ABS",
+            "PRETO / ABS",
+            "PRFV",
+            "PVC",
+            "PRETA / ABS",
+            "BEGE / ABS",
+            "PRETA",
+            "BEGE",
+            "PRETO",
+            "ABS / PVC",
+            "CINZA / ABS / PVC / PU",
+            "CINZA / ABS / PU",
+            "PRETO / CINZA",
+            "PRETA / CINZA / ABS / PU"
+          ]
+        },
+        {
+          "key": "complemento_regra",
+          "label": "COMPLEMENTO/REGRA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": [
+            "OBSOLETO",
+            "CANCELADO",
+            "CANCELADA",
+            "TI.01.J04",
+            "TI.01.J04 C/ CORTINA VELUDO PRETA"
+          ]
+        },
+        {
+          "key": "fornecedor_referencia",
+          "label": "FORNECEDOR/REFERÊNCIA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": [
+            "272",
+            "315",
+            "325",
+            "347",
+            "19",
+            "358",
+            "23",
+            "352",
+            "21",
+            "44",
+            "32",
+            "38",
+            "35",
+            "61",
+            "95",
+            "49",
+            "46",
+            "52",
+            "55",
+            "271",
+            "40",
+            "39",
+            "66",
+            "65",
+            "344",
+            "345",
+            "324",
+            "357",
+            "356",
+            "452",
+            "830",
+            "825",
+            "349",
+            "47",
+            "50",
+            "63",
+            "67",
+            "99",
+            "25",
+            "28",
+            "361",
+            "365",
+            "873",
+            "910",
+            "270",
+            "350",
+            "48",
+            "51",
+            "64",
+            "58",
+            "100",
+            "26",
+            "29",
+            "362",
+            "366",
+            "857",
+            "101",
+            "98"
+          ]
+        }
+      ],
+      "conditional_rules": []
+    },
+    {
+      "key": "cat_20_bco",
+      "label": "20 - CJ-BCO",
+      "sheet_name": "20 - CJ-BCO",
+      "fields": [
+        {
+          "key": "prefixo",
+          "label": "PREFIXO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "CJ"
+          ]
+        },
+        {
+          "key": "descritor_base",
+          "label": "DESCRITOR BASE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "BANCOS FIXOS",
+            "BANCOS REC"
+          ]
+        },
+        {
+          "key": "veiculo_modelo",
+          "label": "VEÍCULO/MODELO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "BJD"
+          ]
+        },
+        {
+          "key": "posicao_lado",
+          "label": "POSIÇÃO/LADO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "LE"
+          ]
+        },
+        {
+          "key": "medida",
+          "label": "MEDIDA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "2P",
+            "3P",
+            "2P / 2A"
+          ]
+        },
+        {
+          "key": "material_cor",
+          "label": "MATERIAL/COR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "TECIDO",
+            "COURVIN",
+            "MARROM / COURVIN"
+          ]
+        },
+        {
+          "key": "complemento_regra",
+          "label": "COMPLEMENTO/REGRA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": [
+            "MC - LB - 4,3,3,3 - 2P - TECIDO - BJD",
+            "MC - LB - 3,2,3 - 3P - COURVIN - E/S/ J",
+            "MC - LB - 3,2,3 - 3P - TECIDO - E/S/ J",
+            "MC - LB - 3,3 - 3P - TECIDO - E/S/ J",
+            "MC - LB - 3,3 - 3P - COURVIN - E/S/ J",
+            "MC - LB - 3,2,3 - 2P - COURVIN - E/S/ J",
+            "MC - LB - 3,2,3 - 2P - TECIDO - E/S/ J",
+            "MC - LB - 4,3,3,2,2-1 - 2P - TECIDO - TRILHO - FOCA",
+            "MC - LB - 4,3,3,3 - 2P - TECIDO - TRILHO",
+            "MC - LB - 1E,1E,1E,1D - 3P - COURVIN - NORMAL",
+            "MC - LB - 4,3,3,2-1 - 2P - TECIDO - NORMAL - FOCA",
+            "MC - LB - 4,2,2,3,3,3 - REC - 3P - COURVIN - NORMAL",
+            "MC - LB - 4,2,3,3,3 - REC - 2P - COURVIN - PME 2A",
+            "MC - LB - 1E,1E,1D,1D,3,3 - 3P - TECIDO - BJD",
+            "MC - LB - 4,2-1,2,3,3,3 - 2P - TECIDO - NORMAL",
+            "MC - LB - 1E,1E,1E,1D - 2P - TECIDO - TRILHO",
+            "MC - LB - 4,3,3,2-1 - 2P - TECIDO - TRILHO - ELEVITTA",
+            "MC - LB - 4,2-1,2,3,3,3 - 2P - TECIDO - TRILHO",
+            "MC - LB - 4,2-1,2,3,3,3 - 3P - COURVIN - NORMAL",
+            "MC - LB - 3,2,2-1 - 2P - TECIDO - E/S/ J - FOCA",
+            "3,3 - 3P - COURVIN MARROM/DIAMENTE/LINHA DOURADA - E/S/ J - EXECUTIVO",
+            "MC - LB - 4,3,3,3,4 - 3P - TECIDO - NORMAL",
+            "MC - LB - 3,4 - 2P - TECIDO",
+            "MC - LB - 4,3 - 2P - TECIDO"
+          ]
+        },
+        {
+          "key": "fornecedor_referencia",
+          "label": "FORNECEDOR/REFERÊNCIA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": []
+        }
+      ],
+      "conditional_rules": []
+    },
+    {
+      "key": "cat_22_pecas_bco",
+      "label": "22 - PEÇAS BCO",
+      "sheet_name": "22 - PEÇAS BCO",
+      "fields": [
+        {
+          "key": "prefixo",
+          "label": "PREFIXO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "APOIO BRACO",
+            "ACABAMENTO LATERAL",
+            "PEGA MAO",
+            "PE",
+            "CAPA",
+            "CINTO",
+            "CJ",
+            "POSTICO"
+          ]
+        },
+        {
+          "key": "descritor_base",
+          "label": "DESCRITOR BASE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "SIMPLES PU PRETO MCA/MD/STF",
+            "PLASTICO INJETADO PRETO MCA",
+            "BCO SIMPLES PU PRETO MD/MCA",
+            "BCO MCA",
+            "ENCOSTO MC LB COURVIN GRAFITE E/S/ J",
+            "ENCOSTO MC LB COURVIN GRAFITE TRANSIT",
+            "PLASTICO INJETADO GRAFITE ACRYLIS RODOVIARIO",
+            "BCO PLASTICO PU ACRYLS RODOVIARIO",
+            "BCO JL",
+            "SEGURANCA RETRATIL JL BANCOS",
+            "ENCOSTO MC LB COURVIN GRAFITE SPRINTER",
+            "BCO AMARELO ACO E/S/ J",
+            "PU AMARELO C/ APLIQUE PRETO",
+            "PU CELSIL MARROM",
+            "PLASTICO INJETADO MARROM CELSIL",
+            "PU CELSIL PRETO",
+            "PLASTICO INJETADO PRETO CELSIL",
+            "BCO MARROM CELSIL",
+            "BCO PRETO CELSIL",
+            "ORIGINAL E/S/ J C/ REGULAGEM MILIMETRICA",
+            "ENCOSTO ORIGINAL E/S/ J",
+            "ASSENTO ORIGINAL E/S/ J",
+            "ENCOSTO ORIGINAL CARONA E/S/ J",
+            "ASSENTO ORIGINAL CARONA E/S/ J",
+            "ASSENTO MC LB COURVIN GRAFITE E/S/ J",
+            "ASSENTO MC LB COURVIN GRAFITE TRANSIT",
+            "ASSENTO MC LB COURVIN GRAFITE SPRINTER",
+            "ENCOSTO CARONA MC LB COURVIN GRAFITE E/S/ J",
+            "ENCOSTO CARONA MC LB COURVIN GRAFITE TRANSIT",
+            "ENCOSTO CARONA MC LB COURVIN GRAFITE SPRINTER",
+            "ASSENTO CARONA MC LB COURVIN GRAFITE E/S/ J",
+            "ASSENTO CARONA MC LB COURVIN GRAFITE TRANSIT",
+            "ASSENTO CARONA MC LB COURVIN GRAFITE SPRINTER",
+            "ENCOSTO MC LB COURVIN GRAFITE MASTER",
+            "ASSENTO MC LB COURVIN GRAFITE MASTER",
+            "ENCOSTO CARONA MC LB COURVIN GRAFITE MASTER",
+            "ASSENTO CARONA MC LB COURVIN GRAFITE MASTER",
+            "CAPA COURVIN GRAFITE MC LB E/S/ J",
+            "CAPA COURVIN GRAFITE MC LB TRANSIT",
+            "CAPA COURVIN GRAFITE MC LB SPRINTER",
+            "CAPA COURVIN GRAFITE MC LB MASTER",
+            "CAPA COURVIN GRAFITE CARONA MC LB E/S/ J",
+            "CAPA COURVIN GRAFITE CARONA MC LB TRANSIT",
+            "CAPA COURVIN GRAFITE CARONA MC LB SPRINTER",
+            "CAPA COURVIN GRAFITE CARONA MC LB MASTER",
+            "CAPA COURVIN CS MARROM BOOMERANG LINHA BRANCA",
+            "CAPA COURVIN CS MARROM BOOMERANG LINHA CINZA",
+            "CAPA COURVIN CS MARROM BOOMERANG LINHA DOURADA",
+            "CAPA COURVIN CS MARROM BOOMERANG LINHA PRETA",
+            "CAPA COURVIN CS MARROM DIAMANTE LINHA BRANCA",
+            "CAPA COURVIN CS MARROM DIAMANTE LINHA CINZA",
+            "CAPA COURVIN CS MARROM DIAMANTE LINHA DOURADA",
+            "CAPA COURVIN CS MARROM DIAMANTE LINHA PRETA",
+            "CAPA COURVIN CS MARROM RETILINEA LINHA BRANCA",
+            "CAPA COURVIN CS MARROM RETILINEA LINHA CINZA",
+            "CAPA COURVIN CS MARROM RETILINEA LINHA DOURADA",
+            "CAPA COURVIN CS MARROM RETILINEA LINHA PRETA",
+            "CAPA COURVIN CS PRETO BOOMERANG LINHA BRANCA",
+            "CAPA COURVIN CS PRETO BOOMERANG LINHA CINZA",
+            "CAPA COURVIN CS PRETO BOOMERANG LINHA DOURADA",
+            "CAPA COURVIN CS PRETO BOOMERANG LINHA PRETA",
+            "CAPA COURVIN CS PRETO DIAMANTE LINHA BRANCA",
+            "CAPA COURVIN CS PRETO DIAMANTE LINHA CINZA",
+            "CAPA COURVIN CS PRETO DIAMANTE LINHA DOURADA",
+            "CAPA COURVIN CS PRETO DIAMANTE LINHA PRETA",
+            "CAPA COURVIN CS PRETO RETILINEA LINHA BRANCA",
+            "CAPA COURVIN CS PRETO RETILINEA LINHA CINZA",
+            "CAPA COURVIN CS PRETO RETILINEA LINHA DOURADA",
+            "CAPA COURVIN CS PRETO RETILINEA LINHA PRETA",
+            "CAPA COURVIN CS PRETO C/ LINHA CINZA BOOMERANG LINHA BRANCA",
+            "CAPA COURVIN CS PRETO C/ LINHA CINZA BOOMERANG LINHA CINZA",
+            "CAPA COURVIN CS PRETO C/ LINHA CINZA BOOMERANG LINHA DOURADA",
+            "CAPA COURVIN CS PRETO C/ LINHA CINZA BOOMERANG LINHA PRETA",
+            "CAPA CARONA COURVIN CS MARROM BOOMERANG LINHA BRANCA",
+            "CAPA CARONA COURVIN CS MARROM BOOMERANG LINHA CINZA",
+            "CAPA CARONA COURVIN CS MARROM BOOMERANG LINHA DOURADA",
+            "CAPA CARONA COURVIN CS MARROM BOOMERANG LINHA PRETA",
+            "CAPA CARONA COURVIN CS MARROM DIAMANTE LINHA BRANCA",
+            "CAPA CARONA COURVIN CS MARROM DIAMANTE LINHA CINZA",
+            "CAPA CARONA COURVIN CS MARROM DIAMANTE LINHA DOURADA",
+            "CAPA CARONA COURVIN CS MARROM DIAMANTE LINHA PRETA",
+            "CAPA CARONA COURVIN CS MARROM RETILINEA LINHA BRANCA",
+            "CAPA CARONA COURVIN CS MARROM RETILINEA LINHA CINZA",
+            "CAPA CARONA COURVIN CS MARROM RETILINEA LINHA DOURADA",
+            "CAPA CARONA COURVIN CS MARROM RETILINEA LINHA PRETA",
+            "CAPA CARONA COURVIN CS PRETO BOOMERANG LINHA BRANCA",
+            "CAPA CARONA COURVIN CS PRETO BOOMERANG LINHA CINZA",
+            "CAPA CARONA COURVIN CS PRETO BOOMERANG LINHA DOURADA",
+            "CAPA CARONA COURVIN CS PRETO BOOMERANG LINHA PRETA",
+            "CAPA CARONA COURVIN CS PRETO DIAMANTE LINHA BRANCA",
+            "CAPA CARONA COURVIN CS PRETO DIAMANTE LINHA CINZA",
+            "CAPA CARONA COURVIN CS PRETO DIAMANTE LINHA DOURADA",
+            "CAPA CARONA COURVIN CS PRETO DIAMANTE LINHA PRETA",
+            "CAPA CARONA COURVIN CS PRETO RETILINEA LINHA BRANCA",
+            "CAPA CARONA COURVIN CS PRETO RETILINEA LINHA CINZA",
+            "CAPA CARONA COURVIN CS PRETO RETILINEA LINHA DOURADA",
+            "CAPA CARONA COURVIN CS PRETO RETILINEA LINHA PRETA",
+            "CAPA CARONA COURVIN CS PRETO C/ LINHA CINZA BOOMERANG LINHA",
+            "APOIO BRACO SIMPLES PU PRETO MCA C/ ACAB",
+            "APOIO BRACO SIMPLES PU PRETO MCA BCO RENAULT MASTER",
+            "BCO MD",
+            "PLASTICO INJETADO MDBUS",
+            "BCO PLASTICO PU SIMPLES MDBUS",
+            "BCO PRETO INJETADO PU EXECUTIVO STF",
+            "PLASTICO PRETO STF",
+            "BCO SIMPLES PU AMARELO MD/MCA",
+            "BCO EXECUTIVO PU AMARELO P.L.",
+            "SIMPLES PU AMARELO MCA/MD/STF",
+            "SIMPLES PU AMARELO C/ TAMPO PRETO MCA/MD/STF",
+            "ACABA. BCO JL L.E. (BCO ) ACRILYS",
+            "ACABA. BCO LB MC L.E. (BCO )",
+            "BCO CS",
+            "BCO INC",
+            "BCO STF",
+            "BCO SIMPLES PU CINZA ACRILIS"
+          ]
+        },
+        {
+          "key": "veiculo_modelo",
+          "label": "VEÍCULO/MODELO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "TRANSIT",
+            "SPRINTER",
+            "MASTER",
+            "MASTER / RENAULT"
+          ]
+        },
+        {
+          "key": "posicao_lado",
+          "label": "POSIÇÃO/LADO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "LATERAL / LD",
+            "MOTORISTA",
+            "LATERAL",
+            "CABINE",
+            "MOTORISTA / LE",
+            "LE",
+            "LD / LATERAL",
+            "LE / LATERAL",
+            "LATERAL / LE / LD",
+            "LATERAL / LE"
+          ]
+        },
+        {
+          "key": "medida",
+          "label": "MEDIDA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "200 MM",
+            "370 MM",
+            "330 MM",
+            "220 MM",
+            "195 MM",
+            "60 MM",
+            "100 MM",
+            "65 MM",
+            "120 MM",
+            "262 MM",
+            "270 MM",
+            "255 MM",
+            "3P",
+            "380 MM",
+            "280 MM",
+            "400 MM",
+            "300 MM",
+            "110 MM"
+          ]
+        },
+        {
+          "key": "material_cor",
+          "label": "MATERIAL/COR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "PRETO / PU",
+            "PRETO",
+            "GRAFITE / COURVIN",
+            "GRAFITE",
+            "PU",
+            "AMARELO / ACO",
+            "PRETO / AMARELO / PU",
+            "MARROM / PU",
+            "MARROM",
+            "BRANCA / MARROM / COURVIN",
+            "CINZA / MARROM / COURVIN",
+            "MARROM / COURVIN",
+            "PRETA / MARROM / COURVIN",
+            "PRETO / BRANCA / COURVIN",
+            "PRETO / CINZA / COURVIN",
+            "PRETO / COURVIN",
+            "PRETO / PRETA / COURVIN",
+            "PRETO / BRANCA / CINZA / COURVIN",
+            "PRETO / PRETA / CINZA / COURVIN",
+            "AMARELO / PU",
+            "CINZA / PU"
+          ]
+        },
+        {
+          "key": "complemento_regra",
+          "label": "COMPLEMENTO/REGRA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": []
+        },
+        {
+          "key": "fornecedor_referencia",
+          "label": "FORNECEDOR/REFERÊNCIA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": []
+        }
+      ],
+      "conditional_rules": []
+    },
+    {
+      "key": "cat_24_acessorios",
+      "label": "24 - ACESSÓRIOS",
+      "sheet_name": "24 - ACESSÓRIOS",
+      "fields": [
+        {
+          "key": "prefixo",
+          "label": "PREFIXO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "ACESSORIO",
+            "CJ",
+            "FATURAMENTO DIRETO",
+            "INVERSOR",
+            "BOTOEIRA",
+            "CONTROLADOR",
+            "DECODER",
+            "DIAMOND",
+            "ESTROBO",
+            "EXAUSTOR",
+            "FAROL",
+            "ILUMINACAO",
+            "MINI",
+            "LED",
+            "LUMINARIA",
+            "LUZ",
+            "MODULO",
+            "PORTA",
+            "SIRENE",
+            "SUPORTE",
+            "TOMADA",
+            "LANTERNA",
+            "PP",
+            "PC"
+          ]
+        },
+        {
+          "key": "descritor_base",
+          "label": "DESCRITOR BASE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "ADESIVO IDENTIFICACAO JI MONTADORA",
+            "ADESIVO SAIDA EMERGENCIA JI",
+            "ADESIVO INSTRUCAO MARTELINHO SEGURANCA",
+            "ADESIVO MANUAL COM QR CODE LOTE MOBSUAS",
+            "ADESIVO SAIDA EMERGENCIA REFLETIVO",
+            "ADESIVO TATIL",
+            "ALCA PEGA MAO AMARELA",
+            "ALCA PEGA MAO AMARELA 30MMX430MM",
+            "ALCA PEGA MAO ELBUS",
+            "ALCA PEGA MAO MARCOPOLLO",
+            "ALCA PEGA MAO PRETO INJETADO PU RETO P.L.",
+            "ALCA PEGA MAO AMARELO ACO",
+            "ALCA PEGA MAO GRAFITE METALICO",
+            "APARELHO SOM SIMPLES COM ENTRADA USB",
+            "BALAUSTRE AMARELO ENCAPSULADO",
+            "CONE LAR/BCO PVC",
+            "CORDA PARA CORTINA CINZA",
+            "CORDA PARA CORTINA PRETA",
+            "CJ CORTINA PLISSADA PRETA MASTER L1H1",
+            "CJ CORTINA PLISSADA PRETA MASTER L2H2",
+            "CJ CORTINA PLISSADA PRETA MASTER L3H2",
+            "CJ CORTINA PLISSADA PRETA SPRINTER 417",
+            "CJ CORTINA PLISSADA PRETA SPRINTER 517",
+            "CJ CORTINA VELUDO PRETA B/J/D",
+            "CJ CORTINA VELUDO PRETA E/S/ J",
+            "CJ CORTINA VELUDO PRETA MASTER L1H1",
+            "CJ CORTINA VELUDO PRETA MASTER L2H2",
+            "CJ CORTINA VELUDO PRETA MASTER L3H2",
+            "CJ CORTINA VELUDO PRETA SPRINTER 417",
+            "CJ CORTINA VELUDO PRETA SPRINTER 517",
+            "CJ CORTINA VELUDO PRETA TRANSIT L3H2",
+            "CJ CORTINA VELUDO PRETA TRANSIT L3H3",
+            "CJ CORTINA LISA TECIDO FAUNA COR CHUMBO B/J/D",
+            "CJ CORTINA LISA E/S/ J TECIDO FAUNA COR CHUMBO",
+            "CJ CORTINA LISA TECIDO FAUNA COR CHUMBO MASTER L1H1",
+            "CJ CORTINA LISA TECIDO FAUNA COR CHUMBO MASTER L2H2",
+            "CJ CORTINA LISA TECIDO FAUNA COR CHUMBO MASTER L3H2",
+            "CJ CORTINA LISA TECIDO FAUNA COR CHUMBO SPRINTER 417",
+            "CJ CORTINA LISA TECIDO FAUNA COR CHUMBO SPRINTER 517",
+            "CJ CORTINA LISA TECIDO FAUNA COR CHUMBO TRANSIT L2H3",
+            "CJ CORTINA LISA TECIDO FAUNA COR CHUMBO TRANSIT L3H2 VISTRE",
+            "CJ CORTINA LISA TECIDO FAUNA COR CHUMBO TRANSIT L3H3",
+            "CJ CORTINA LISA TECIDO FAUNA COR CHUMBO TRANSIT L4H3",
+            "CJ CORTINA PLISSADA E/S/ J TECIDO PRETO",
+            "CJ DIVISORIA Z E/S/ J",
+            "CJ DIVISORIA Z MASTER L3H2/L2H2",
+            "DRENO",
+            "ELASTICO COM GANCHO",
+            "ESPELHO RETROVISOR INTERNO ESCORT 83/92 RF0I55PL",
+            "ESPELHO RETROVISOR INTERNO FIAT PRETO RT1I30PR",
+            "ESPELHO RETROVISOR INTERNO RENEGADE RT1I29PR",
+            "ESTICADOR PET",
+            "ESTRIBO PRETO EMBARQUE B/J/D",
+            "ESTRIBO CROMADO EMBARQUE L D B/J/D",
+            "ESTRIBO EMBARQUE PRETO E/S/ J",
+            "ESTRIBO EMBARQUE PRETO IVECO 50-180",
+            "ESTRIBO EMBARQUE PRETO MASTER L1H1",
+            "ESTRIBO EMBARQUE PRETO MASTER L2H2",
+            "ESTRIBO EMBARQUE CROMADO MASTER L2H2",
+            "ESTRIBO EMBARQUE PRETO MASTER L3H2",
+            "ESTRIBO EMBARQUE CROMADO MASTER L3H2",
+            "ESTRIBO EMBARQUE PRETO SPRINTER 417",
+            "ESTRIBO EMBARQUE PRETO SPRINTER 417/517 14/",
+            "ESTRIBO EMBARQUE CROMADO SPRINTER 417/517 14/",
+            "ESTRIBO EMBARQUE PRETO TRANSIT L4H3/L3H3/L3H2",
+            "ESTRIBO EMBARQUE PRETO TRANSIT L4H3",
+            "ESTRIBO CROMADO E/S/ J",
+            "EXTINTOR ABC",
+            "SUPORTE EXTINTOR ABC",
+            "CJ EXTINTOR COM SUPORTE ABC",
+            "FAIXA REFLETIVA LADO DIREITO",
+            "FAIXA REFLETIVA LADO ESQUERDO",
+            "FATURAMENTO DIRETO 03 CAMERAS LIGADO",
+            "FATURAMENTO DIRETO ALARME",
+            "BAGAGEIRO E/S/ J EQMAX BOX BIG RACK",
+            "BAGAGEIRO TUBULAR E/S/ J PRETO",
+            "BAGAGEIRO TUBULAR E/S/ J PRETO COM ESCADA",
+            "FATURAMENTO DIRETO CAIXA SUB SLIM COMPACTO PIONEER",
+            "FATURAMENTO DIRETO CALHA DE CHUVA",
+            "FATURAMENTO DIRETO CAMERA DE RE COM VISOR LCD",
+            "FATURAMENTO DIRETO CAMERA COM ARMAZENAMENTO",
+            "FATURAMENTO DIRETO ENGATE REBOQUE MASTER",
+            "FATURAMENTO DIRETO ESTRIBO AUTOMATICO EMBARQUE",
+            "FATURAMENTO DIRETO ESTRIBO EMBARQUE MASTER L3H2",
+            "FATURAMENTO DIRETO FAIXA ESCOLAR",
+            "GERENCIADOR BATERIA",
+            "FATURAMENTO DIRETO GIROFLEX S/ SIRENE AMBAR SINALIZACAO CHICOTE",
+            "FATURAMENTO DIRETO GIROFLEX S/ SIRENE VERMELHO AZUL SINALIZACAO DESCARACTERIZADA STROBO",
+            "FATURAMENTO DIRETO ILUMINACAO ESTROBO",
+            "FATURAMENTO DIRETO INSULFILM",
+            "FATURAMENTO DIRETO INSULFILM PARABRISA",
+            "FATURAMENTO DIRETO KIT 03 CAMERAS COM MONITOR",
+            "FATURAMENTO DIRETO KIT FAROL NEBLINA CHICOTE INSTALACAO",
+            "FATURAMENTO DIRETO KIT MULTIMIDIA FALANTES MOLDURA PAINEL",
+            "FATURAMENTO DIRETO KIT MULTIMIDIA FALANTES MOLDURA PAINEL E/S/ J PIONNER",
+            "FATURAMENTO DIRETO MODULO SUBIDA VIDROS",
+            "FATURAMENTO DIRETO PAR FALANTE 6 HURICANE",
+            "FATURAMENTO DIRETO PLOTAGEM CONFORME SOLICITADO",
+            "FATURAMENTO DIRETO PORTA AUTOMATICA",
+            "RACK E/S/ J EQMAX NEW WAVE CINZA",
+            "RACK BATERIA AUXILIAR",
+            "FATURAMENTO DIRETO RACK E/S/ J COM BAU",
+            "FATURAMENTO DIRETO RADIO USB BLUETOOTH FALANTES",
+            "FATURAMENTO DIRETO SENSOR DE RE VISOR INSTALACAO",
+            "FATURAMENTO DIRETO TAPETE",
+            "FATURAMENTO DIRETO TOLDO BOX E/S/ J ALUMINIO",
+            "TV 19 MULTIMIDIA SUPORTE CHICOTE FALANTES INSTALACAO",
+            "TV 19 SUPORTE CHICOTE INSTALACAO",
+            "TV 24 SUPORTE CHICOTE INSTALACAO",
+            "TV RETRATIL FLIP DOWN",
+            "GANCHO AMARRA PORTA MALAS",
+            "GELADEIRA PORTATIL ELBER CAB",
+            "INTERMEDIARIO BALAUSTRE COR CHUMBO",
+            "LACRE EMERGENCIA MARTELINHO 2023",
+            "MARTELO EMERGENCIA C/ LACRE PLASTICO P.L.",
+            "CJ PME PORTA MALAS ELEVADO 1 ANDAR",
+            "CJ PME PORTA MALAS ELEVADO 2 ANDARES",
+            "CJ PME MASTER L3H2 PORTA MALAS ELEVADO 3 ANDARES ELEVACAO",
+            "PASSA FIO APITO SUPORTE CORTINA COR PRETO",
+            "PASSA FIO BORRACHA",
+            "PASTILHA RETROVISOR INTERNO MASTER",
+            "PEGA MAO AMARELO ACO",
+            "PEGA MAO AMARELO ACO E/S/ J",
+            "PORTA COPO COM FUNDO COR PRETO",
+            "PORTA COPO COR PRETO",
+            "BATENTE PORTA MALAS E/S/ J LG-BRIGHT CINZA",
+            "BATENTE PORTA MALAS E/S/ J TARKET",
+            "PORTA PACOTE LUXO COR PRETO",
+            "PORTA REVISTA COM REDE COR PRETO",
+            "PRENDEDOR CORTINA PRETO",
+            "PROTETOR CARTER RR ACO PRETO SPRINTER",
+            "RETRATOR FIXACAO CADEIRA RODAS Q-8200-A1-L",
+            "SUPORTE CAMERA RE SPRINTER",
+            "SUPORTE CELULAR ACRILICO",
+            "CJ SUPORTE CONE",
+            "SUPORTE CORDA CORTINA PASSA FIO APITO PRETO RETO",
+            "SUPORTE CORTINA CORTADA C20",
+            "SUPORTE CORTINA PLISSADA POLAR",
+            "TAMPA PAINEL 1 DIN",
+            "TAPETE BOUCLE E/S/ J",
+            "TAPETE BORRACHA MASTER",
+            "TAPETE PASSADEIRA TARKET SPRINTER",
+            "TAPETE BORRACHA TRANSIT",
+            "CJ TAPETE BOUCLE E/S/ J CS 3,3 S/ TRILHO",
+            "TERMINAL BALAUSTRE",
+            "TRINCO JUDEU COM TAMPA PRETA",
+            "VARETA PEGA MALAS PME",
+            "LANTERNA SAIDA EMERGENCIA BASE RETA 6 LED",
+            "FONTE E CARREGADOR AUTOMOTIVO USINA BOLT BIVOLT AUTOMATICO",
+            "INVERSOR DE CORRENTE USINA - SENOIDAL",
+            "TV BOOSTER RETRATIL 15\"",
+            "TV BAK LED 17\" DIGITAL HDMI/USB",
+            "TV BAK LED 19\" DIGITAL HDMI/USB",
+            "TV PHILCO 24\" DIGITAL HDMI/USB BIVOLT",
+            "TV PHILCO 32\" DIGITAL HDMI/USB BIVOLT",
+            "ARANDELA BASE IMPRESSAO 3D",
+            "ARANDELA CAPA IMPRESSAO 3D",
+            "CJ ARANDELA IMPRESSAO 3D",
+            "CJ LUZ VIGIA",
+            "PUXADOR MACANETA INTERNO E/S/ J",
+            "DE TENSAO ONDA MODIFICADA",
+            "PARADA SOLICITADA",
+            "2 CANAIS MODULO PISCA PULSO NEGATIVO CL LUZ",
+            "SOLICITACAO DE PARADA",
+            "4 LEDS AZUL",
+            "4 LEDS BRANCO",
+            "6 LEDS AZUL",
+            "6 LEDS BRANCO",
+            "4 LEDS EXTERNO AZUL",
+            "4 LEDS EXTERNO BRANCO CRISTAL",
+            "4 LEDS EXTERNO VERMELHO",
+            "6 LEDS EXTERNO AZUL",
+            "6 LEDS EXTERNO BRANCO CRISTAL",
+            "REDONDO BRANCO 6 LEDS",
+            "80MMX80MM",
+            "EMBARQUE PRETO",
+            "BALIZADORA LED DECK EMBUTIR REDONDO 3000 K PROTECAO IP65",
+            "SPOT REDONDO PRETO 3000 K BIVOLT PROTECAO IP20",
+            "PILOTO AZUL IMPERMEAVEL IP67",
+            "PILOTO VERMELHO IMPERMEAVEL IP67",
+            "DICROICA EMBUTIR VE3 COM TOQUE COR CINZA TITANIO",
+            "DICROICA EMBUTIR VE3 COM TOQUE COR PRETA",
+            "VIGIA DELIMITADORA C/ ABA E LED ACRILICO CRISTAL",
+            "VIGIA DELIMITADORA C/ ABA E LED ACRILICO VERMELHO",
+            "COMANDO ESTROBO 6 FUNCOES",
+            "LAMPADA BASE CURVA MARTELINHO IMPRESSAO 3D",
+            "RE",
+            "GIROFLEX",
+            "GIROFLEX UNHA",
+            "TIPO ISQUEIRO COM TAMPA",
+            "MACHO RETA",
+            "MARGIRIUS P/ MOVEIS +T PRETA",
+            "PAINEL MARGIRIUS +T C/ RABICHO PRETA",
+            "PLUG STECK MACHO +T 200/ 6H AZ IP44",
+            "SOBREPOR STECK +T 200/ 6H AZ IP44",
+            "USB A LELONG 3 1 LUZ VERDE DUPLA SOBREPOR",
+            "USB A ORBE 3 1 LUZ AZUL DUPLA EMBUTIR COM",
+            "USB A ORBE 3 1 LUZ AZUL DUPLA EMBUTIR TAMPA",
+            "USB A ORBE 3 1 LUZ AZUL SIMPLES SMARTPLUG 1",
+            "USB DUPLA TIPO C",
+            "SAIDA EMERGENCIA BASE RETA 6 LED",
+            "TRILHO ALUMINIO FIXACAO BANCO",
+            "TRILHO ALUMINIO FIXACAO 417 14",
+            "CJ SUPORTE GELADEIRA CAB E/S/ J",
+            "CAIXA MADEIRA SUPORTE GELADEIRA CAB E/S/ J",
+            "CJ COMPLETO CAPACHO PORTAS E/S/ J",
+            "CAPACHO E/S/ J",
+            "CAPACHO E/S/ J CARONA",
+            "CAPACHO E/S/ J E/S/ J",
+            "CJ SOLEIRA PORTA MALA E/S/ J 8/",
+            "SOLEIRA PORTA MALA E/S/ J",
+            "TAPETE BOUCLE E/S/ J PC 1",
+            "TAPETE BOUCLE E/S/ J PC 2",
+            "TAPETE BOUCLE E/S/ J PC 3 PORTA MALAS",
+            "SUPORTE FIXO CABIDE",
+            "TUBO ALUMINIO CORTINA E/S/ J C-CLASS",
+            "TUBO ALUMINIO CORTINA E/S/ J",
+            "CJ CORTINA VELUDO PRETA E/S/ J C-CLASS SEM PORTAS",
+            "PC CORTINA VELUDO PRETA E/S/ J C-CLASS",
+            "PC CORTINA VELUDO PRETA E/S/ J",
+            "CJ CORTINA VELUDO PRETA PORTAS E/S/ J",
+            "PC CORTINA VELUDO PRETA E/S/ J PT 600X(450,430)",
+            "SUPORTE REDE REVISTEIRO",
+            "ACABAMENTO PLASTICO IMPRESSO TUBO CORTINA",
+            "CJ MOVEL MARROM E/S/ J C-CLASS",
+            "PC MOVEL PRFV E/S/ J C-CLASS",
+            "PC REVISTEIRO MOVEL PRFV E/S/ J C-CLASS",
+            "PC FUNDO MOVEL PRFV E/S/ J C-CLASS",
+            "CJ TAMPO ACRILICO MOVEL E/S/ J C-CLASS",
+            "PC TAMPO SUP ACRILICO PRETO MOVEL E/S/ J C-CLASS",
+            "PC TAMPO INF ACRILICO PRETO MOVEL E/S/ J C-CLASS",
+            "PC TAMPO ACRILICO CRISTAL MOVEL E/S/ J C-CLASS",
+            "ABS FLOCADO PRETO PC E/S/ J TB",
+            "ABS FLOCADO BEGE PC E/S/ J TB",
+            "TRILHO ALUMINIO FIXACAO 417 10",
+            "ARANDELA PLASTICA JI MONTADORA",
+            "CAIXA MADEIRA SUPORTE GELADEIRA CAB E/S/ J REVESTIDA CARPETE PRETO",
+            "COMPLETO CAPACHO PORTAS E/S/ J",
+            "TAPETE BOUCLE E/S/ J CS 3,3 S/ TRILHO PC 1",
+            "TAPETE BOUCLE E/S/ J CS 3,3 S/ TRILHO PC 2",
+            "TAPETE BOUCLE E/S/ J CS 3,3 S/ TRILHO PC 3",
+            "CORTINA VELUDO PRETA E/S/ J C-CLASS SEM PORTAS",
+            "CORTINA VELUDO PRETA PORTAS E/S/ J",
+            "ABS ACABAMENTO ARO JANELAS E/S/ J C/ CORTINA VELUDO PRETA",
+            "TUBO ALUMINIO DOBRADO CORTINA E/S/ J EMBUTIDA C-CLASS",
+            "ACABAMENTO PLASTICO IMPRESSO 3D TAMPA TUBO CORTINA",
+            "MOVEL MARROM E/S/ J C-CLASS",
+            "MOVEL PRETO E/S/ J C-CLASS",
+            "MOVEL BEGE E/S/ J C-CLASS",
+            "MOVEL PRFV E/S/ J C-CLASS",
+            "REVISTEIRO MOVEL PRFV E/S/ J C-CLASS",
+            "FUNDO MOVEL PRFV E/S/ J C-CLASS",
+            "PC REVISTEIRO MOVEL PRFV E/S/ J C-CLASS INTERNA REVESTIDA CARPETE",
+            "PC FUNDO MOVEL PRFV E/S/ J C-CLASS REVESTIDO CARPETE",
+            "PC MOVEL PRFV E/S/ J C-CLASS REVESTIDO MARROM",
+            "PC REVISTEIRO MOVEL PRFV E/S/ J C-CLASS REVESTIDO MARROM",
+            "PC MOVEL PRFV E/S/ J C-CLASS REVESTIDO PRETO",
+            "PC REVISTEIRO MOVEL PRFV E/S/ J C-CLASS REVESTIDO PRETO",
+            "PC MOVEL PRFV E/S/ J C-CLASS REVESTIDO BEGE",
+            "PC REVISTEIRO MOVEL PRFV E/S/ J C-CLASS REVESTIDO BEGE",
+            "FUNDO MOVEL PRFV E/S/ J C-CLASS INTERNA REVESTIDA CARPETE",
+            "MOVEL PRFV E/S/ J C-CLASS INTERNA REVESTIDA CARPETE",
+            "MOVEL PRFV E/S/ J C-CLASS REVESTIDO MARROM",
+            "MOVEL PRFV E/S/ J C-CLASS REVESTIDO PRETO",
+            "MOVEL PRFV E/S/ J C-CLASS REVESTIDO BEGE",
+            "TAMPO ACRILICO MOVEL E/S/ J C-CLASS",
+            "MOVEL PRFV E/S/ J C-CLASS REVESTIDA CARPETE",
+            "COMPLETO LIGACAO GELADEIRA ELBER CAB E/S/ J",
+            "TRILHO ALUMINIO FIXACAO 517 15",
+            "MECANISMO ABERTURA INTERNA PORTA E/S/ J",
+            "SUPORTE BALAUSTRE C/ ALMA GRAFITE C/ TAMPAO (AXLXINTERNA)",
+            "SUPORTE BALAUSTRE C/ ALMA PRETO C/ TAMPAO (AXLXINTERNA)",
+            "SUPORTE BALAUSTRE C/ ALMA GRAFITE VAZADO (AXLXINTERNA)",
+            "SUPORTE BALAUSTRE C/ ALMA CINZA CLARO VAZADO (AXLXINTERNA)",
+            "MACANETA INTERNA PORTA CABINA PRETA RENAULT MASTER",
+            "ALETA SAIDA AR PRETO G.P. (CXL)",
+            "MACANETA EXTERNA PRETA C/ BOTAO FIAT UNO",
+            "ADESIVO CODEVASF EQUIP. DOADO MINISTERIO DA INTEGRACAO E DO DESENVOLVIMENTO",
+            "ADESIVO AMARELO REGRAS ARTESP",
+            "ADESIVO PARABRISA FUNDO PRETO/LETRA BRANCA IDENTIFICACAO JI MONTADORA (CXL)",
+            "ADESIVO PARABRISA FUNDO PRETO/LETRA BRANCA IDENTIFICACAO ILUMINACAO PRINCIPAL (CXL)",
+            "ADESIVO PARABRISA FUNDO PRETO/LETRA BRANCA IDENTIFICACAO TOMADAS USB (CXL)",
+            "ADESIVO PARABRISA FUNDO PRETO/LETRA BRANCA IDENTIFICACAO ARANDELAS (CXL)",
+            "ADESIVO PARABRISA FUNDO PRETO/LETRA BRANCA IDENTIFICACAO LUZ CORTESIA (CXL)",
+            "ADESIVO PARABRISA FUNDO PRETO/LETRA BRANCA IDENTIFICACAO LUZ BALIZADORA (CXL)",
+            "ADESIVO PARABRISA FUNDO PRETO/LETRA BRANCA IDENTIFICACAO LED RGB (CXL)",
+            "ADESIVO PARABRISA FUNDO PRETO/LETRA BRANCA IDENTIFICACAO GELADEIRA (CXL)",
+            "ADESIVO PARABRISA FUNDO PRETO/LETRA BRANCA IDENTIFICACAO TV (CXL)",
+            "ADESIVO PARABRISA FUNDO PRETO/LETRA BRANCA IDENTIFICACAO ITENS INSTALADOS 7 (CXL)",
+            "PORTA COPOS PLASTICO INJETADO PRETO ABRE/FECHA UNIVERSAL (CXLXA)",
+            "SAPATA BALAUSTRE GRAFITE (AXLXINTERNA)",
+            "PROTETOR CARTER BELIS. ACO PRETO SPRINTER",
+            "ACO PROTETOR CARTER SPRINTER",
+            "MARTELO EMERGENCIA C/ LACRE ACO G.P.",
+            "ADESIVO IDENTIFICACAO GRUPO BELABRU (CXL)",
+            "ADESIVO IDENTIFICACAO GRUPO BELABRU SELANTE PNEUS (CXL)",
+            "ADESIVO AMARELO ARTESP",
+            "SUPORTE BALAUSTRE C/ ALMA CINZA CLARO C/ TAMPAO (AXLXINTERNA)",
+            "SUPORTE MOVEL CABIDE APOIO CABECA BANCOS PRETO \"L\"",
+            "PROTETOR CARTER TRANSIT"
+          ]
+        },
+        {
+          "key": "veiculo_modelo",
+          "label": "VEÍCULO/MODELO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "MASTER",
+            "SPRINTER",
+            "B/J/D",
+            "TRANSIT",
+            "FIAT",
+            "IVECO",
+            "MASTER / RENAULT"
+          ]
+        },
+        {
+          "key": "posicao_lado",
+          "label": "POSIÇÃO/LADO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "PORTA LATERAL",
+            "ASSOALHO",
+            "LD",
+            "LE",
+            "DIANTEIRA / TRASEIRA",
+            "DIANTEIRO / TRASEIRO",
+            "DIANTEIRA / TRASEIRA / LATERAL",
+            "CABINE / SALAO",
+            "TETO",
+            "DIANTEIRO / CABINE",
+            "CABINE",
+            "SALAO / LE",
+            "PORTA LATERAL / MOTORISTA / LE",
+            "PORTA LATERAL / LD",
+            "PORTA LATERAL / LE",
+            "SALAO / PORTA LATERAL",
+            "SALAO",
+            "INFERIOR / 1O VAO / LE",
+            "INFERIOR / 2O VAO / LE",
+            "INFERIOR / 2O VAO / LD",
+            "SUPERIOR / 1O VAO / LE",
+            "SUPERIOR / 2O VAO / LE",
+            "SUPERIOR / 2O VAO / LD",
+            "INFERIOR / PORTA LATERAL",
+            "INFERIOR / PORTA TRASEIRA / LE",
+            "INFERIOR / PORTA TRASEIRA / LD",
+            "SUPERIOR / PORTA LATERAL",
+            "SUPERIOR / PORTA TRASEIRA / LE",
+            "SUPERIOR / PORTA TRASEIRA / LD",
+            "SALAO / 1O VAO / LE",
+            "SALAO / 2O VAO / LE / LD",
+            "SALAO / LD",
+            "LATERAL / 1O VAO / LE",
+            "LATERAL / 2O VAO / LE",
+            "LATERAL / 2O VAO / LD",
+            "CENTRAL / LATERAL / 1O VAO / LE",
+            "CENTRAL / LATERAL / 2O VAO / LE",
+            "CENTRAL / LATERAL / 2O VAO / LD",
+            "PORTA LATERAL / CORREDICA / LE",
+            "SALAO / LE / PORTA LATERAL",
+            "CORREDICA",
+            "MOTORISTA"
+          ]
+        },
+        {
+          "key": "medida",
+          "label": "MEDIDA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "100X40X30 MM",
+            "200X110 MM",
+            "170X120 MM",
+            "200MM",
+            "540 MM",
+            "900MM",
+            "340MM",
+            "2,1M",
+            "50CM",
+            "10,5M3",
+            "14M3",
+            "15,5M3",
+            "1M",
+            "15M3",
+            "4KG",
+            "270L",
+            "400L",
+            "100A",
+            "18L",
+            "31L",
+            "51L",
+            "19MM",
+            "700MM",
+            "2,5M",
+            "3M",
+            "12V",
+            "50A / 12V / 180X200X70",
+            "1000W / 12V / 120V",
+            "1000W / 120V",
+            "12V / 2A",
+            "12V / 24V",
+            "1W",
+            "6W",
+            "2W",
+            "3W",
+            "6MM / 12V",
+            "117X26X35",
+            "2P / 10A",
+            "2P / 10A / 250V",
+            "2P / 16A / 250V",
+            "5A",
+            "3300 MM",
+            "3870 MM",
+            "600 MM",
+            "9 L",
+            "550X440",
+            "600X400",
+            "550X500",
+            "2900 MM",
+            "2400 MM",
+            "500 MM",
+            "82X90X33 MM",
+            "110X110X31 MM",
+            "110X20 MM",
+            "450X120 MM",
+            "270X110 MM",
+            "75X25 MM",
+            "75X12 MM",
+            "1 A / 140X80 MM",
+            "100X100X95 MM",
+            "90X45X30 MM",
+            "100X60X30 MM",
+            "110X50",
+            "85X65",
+            "105X105 MM"
+          ]
+        },
+        {
+          "key": "material_cor",
+          "label": "MATERIAL/COR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "AMARELA",
+            "PRETO / PU",
+            "AMARELO / ACO",
+            "GRAFITE",
+            "AMARELO",
+            "PVC",
+            "CINZA",
+            "PRETA",
+            "CHUMBO / TECIDO",
+            "PRETO / TECIDO",
+            "PRETO",
+            "AZUL",
+            "ALUMINIO",
+            "CHUMBO",
+            "BORRACHA",
+            "PRETO / ACO",
+            "BRANCO",
+            "VERDE",
+            "MARROM",
+            "PRFV",
+            "PRETO / ABS",
+            "BEGE / ABS",
+            "PRETA / ABS",
+            "CINZA / PU",
+            "BEGE",
+            "MARROM / PRFV",
+            "PRETO / PRFV",
+            "BEGE / PRFV",
+            "PRETO / BRANCA",
+            "ACO"
+          ]
+        },
+        {
+          "key": "complemento_regra",
+          "label": "COMPLEMENTO/REGRA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": [
+            "CANCELADO",
+            "SUPNV.",
+            "KIT MULTIMIDIA/FALANTES CABINE/SALAO/MOLDURA",
+            "CAMERA DE RE COM VISOR LCD",
+            "INSULFILM",
+            "PLOTAGEM CONFORME SOLICITADO",
+            "PAR DE FALANTE 6\" HURICANE",
+            "TAPETE DIANTEIRO CABINE",
+            "4,3,3,2,2-1 DPM",
+            "AMADEIRADO",
+            "GANCHO CABIDEIRO MARCOPOLO CINZA - CANCELADO",
+            "4,3,3,3",
+            "PLOTAGEM FAIXA ESCOLAR",
+            "PORTA AUTOMATICA",
+            "GANCHO CABIDEIRO MARCOPOLO CINZA ORIGINAL",
+            "GANCHO CABIDEIRO MARCOPOLO CINZA RAL 7021 PU - TI.01.J04",
+            "1E,1E,1E,1D PTA",
+            "4,3,3,2-1 DPM",
+            "4,2-1,2,3,3,3",
+            "SENSOR DE RE/VISOR/INSTALACAO",
+            "INSULFIM PARABRISA",
+            "TV 19 MULTIMIDIA SUPORTE CHICOTE FALANTES CABINE SALAO INSTALACAO",
+            "INSULFILM NANO CERAMICO TRANSIT L4H3",
+            "USO CINTO/FALAR C/ MOTORISTA/PROI. FUMAR/ DEGRAUS/ EM PE - 270X110 MM (CXL)",
+            "BOA VIAGEM 105X105 MM (CXL)"
+          ]
+        },
+        {
+          "key": "fornecedor_referencia",
+          "label": "FORNECEDOR/REFERÊNCIA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": []
+        }
+      ],
+      "conditional_rules": []
+    },
+    {
+      "key": "cat_26_eletrica",
+      "label": "26 - ELÉTRICA",
+      "sheet_name": "26 - ELÉTRICA",
+      "fields": [
+        {
+          "key": "prefixo",
+          "label": "PREFIXO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "ELETRICA",
+            "CJ",
+            "SUPORTE",
+            "TAMPA",
+            "CHICOTE"
+          ]
+        },
+        {
+          "key": "descritor_base",
+          "label": "DESCRITOR BASE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "INVERSOR DE TENSAO ONDA MODIFICADA",
+            "BASE RELE CONECTOR 6 3 FEMEA 5 PINOS",
+            "BATERIA AUX Z100E",
+            "BOTOEIRA GANGORRA 0/1 LIGA DESLIGA",
+            "BOTOEIRA GANGORRA 0/1 QUADRADA LIGA DESLIGA",
+            "BOTOEIRA PARADA SOLICITADA",
+            "BOTOEIRA TIC TAC HASTE FERRO 2 POSICOES",
+            "BOTOEIRA TIC TAC HASTE FERRO 3 POSICOES",
+            "CABO AUTOMOTIVO 105C PRETO",
+            "CABO AUTOMOTIVO 105C VERMELHO",
+            "CABO PP",
+            "CACHIMBO PROTECAO FIO",
+            "CHAVE GERAL",
+            "CHICOTE ILUMINACAO B/J/D FURGAO",
+            "CHICOTE ILUMINACAO B/J/D VITRE",
+            "CHICOTE ILUMINACAO E/S/ J TB",
+            "CHICOTE ILUMINACAO MASTER L1H1/L2H2/L3H2",
+            "CHICOTE TACOGRAFO B/J/D FURGAO",
+            "CHICOTE TACOGRAFO B/J/D VITRE",
+            "CHICOTE TACOGRAFO E/S/ J",
+            "CHICOTE TACOGRAFO MASTER L1H1/L2H2/L3H2",
+            "CONECTOR FASTON FEMEA BRANCO 2 VIAS",
+            "CONECTOR FASTON FEMEA BRANCO 3 VIAS",
+            "CONECTOR FASTON FEMEA BRANCO 4 VIAS",
+            "CONECTOR FASTON FEMEA BRANCO 5 VIAS",
+            "CONECTOR FASTON FEMEA BRANCO 8 VIAS",
+            "CONECTOR FASTON MACHO BRANCO 2 VIAS",
+            "CONECTOR FASTON MACHO BRANCO 3 VIAS",
+            "CONECTOR FASTON MACHO BRANCO 4 VIAS",
+            "CONECTOR FASTON MACHO BRANCO 5 VIAS",
+            "CONECTOR FASTON MACHO BRANCO 8 VIAS",
+            "CONTROLADOR 2 CANAIS MODULO PISCA PULSO NEGATIVO CL LUZ",
+            "CORRUGADO CONDUITE AUTOMOTIVO",
+            "DECODER SOLICITACAO DE PARADA",
+            "DIAMOND 4 LEDS AZUL",
+            "DIAMOND 4 LEDS BRANCO",
+            "DIAMOND 6 LEDS AZUL",
+            "DIAMOND 6 LEDS BRANCO",
+            "ESTROBO 4 LEDS EXTERNO AZUL",
+            "ESTROBO 4 LEDS EXTERNO BRANCO CRISTAL",
+            "ESTROBO 4 LEDS EXTERNO VERMELHO",
+            "ESTROBO 6 LEDS EXTERNO AZUL",
+            "ESTROBO 6 LEDS EXTERNO BRANCO CRISTAL",
+            "ESTROBO REDONDO BRANCO 6 LEDS",
+            "EXAUSTOR 80MMX80MM",
+            "FAROL EMBARQUE PRETO",
+            "FIO AMARELO",
+            "FIO AZUL",
+            "FIO BRANCO",
+            "FIO CINZA",
+            "FIO LARANJA",
+            "FIO MARROM",
+            "FIO PRETO",
+            "FIO VERDE",
+            "FIO VERMELHO",
+            "FITA 3528 LED RGB DIGITAL COM SILICONE PROTECAO IP20",
+            "FITA LED 2835 AZUL MONOCROMATICA COM SILICONE PROTECAO IP65",
+            "FITA LED 2835 AZUL MONOCROMATICA SEM SILICONE PROTECAO IP65",
+            "FITA LED 2835 BRANCO FRIO 6000 K MONOCROMATICA COM SILICONE",
+            "FITA LED 2835 BRANCO FRIO 6000 K MONOCROMATICA SEM SILICONE",
+            "FITA LED ULTRA FINA 2835 BRANCO QUENTE 4000 K SEM",
+            "FITA LED WS2811 5050 RGB ENDERECAVEL COM SILICONE PROTECAO IP65",
+            "FUSIVEL LAMINA",
+            "FUSIVEL LAMINA MINI",
+            "FUSIVEL MIDI",
+            "ILUMINACAO BALIZADORA LED DECK EMBUTIR REDONDO 3000 K PROTECAO IP65",
+            "ILUMINACAO MINI SPOT REDONDO PRETO 3000 K BIVOLT PROTECAO IP20",
+            "INTERRUPTOR LIGA DESLIGA UNIVERSAL ILUMINADO",
+            "INTERRUPTOR PORTA REGULAVEL PROVA DAGUA",
+            "LAMPADA 6/9 BASE METAL",
+            "LAMPADA TORPEDO LED",
+            "LANTERNA PLACA CORTESIA",
+            "LED PILOTO AZUL IMPERMEAVEL IP67",
+            "LED PILOTO VERMELHO IMPERMEAVEL IP67",
+            "LUMINARIA ALURE 30",
+            "LUMINARIA DICROICA EMBUTIR VE3 COM TOQUE COR CINZA TITANIO",
+            "LUMINARIA DICROICA EMBUTIR VE3 COM TOQUE COR PRETA",
+            "LUMINARIA VAN TAMANHO M",
+            "LUZ LED AZUL DIODO",
+            "LUZ LED BRANCO FRIO DIODO",
+            "LUZ LED BRANCO QUENTE DIODO",
+            "LUZ LED VERMELHO DIODO",
+            "LUZ VIGIA DELIMITADORA LED ACRILICO GF AMARELO",
+            "LUZ VIGIA DELIMITADORA LED ACRILICO GF VERMELHO",
+            "MODULO COMANDO ESTROBO 6 FUNCOES",
+            "PERFIL SILICONE 11MMX11MM TRANSLUCIDO",
+            "PLUG 90O PRETO MACHO +T",
+            "PLUG RETO PRETO FEMEA +T",
+            "PLUG RETO PRETO MACHO +T",
+            "PORTA FUSIVEL LAMINA COR PRETO",
+            "PORTA FUSIVEL MIDI COM TAMPA",
+            "PORTA LAMPADA BASE CURVA MARTELINHO IMPRESSAO 3D",
+            "REGUA LED 4014 BRANCO FRIO 6000 K MONOCROMATICA SEM SILICONE",
+            "REGULADOR TENSAO CORRENTE STEP DOWN BUCK DC",
+            "RELE UNIVERSAL 4 PINOS COM SUPORTE",
+            "RELE UNIVERSAL 5 PINOS COM SUPORTE",
+            "SENSOR MAGNETICO",
+            "SIRENE RE",
+            "SUPORTE E ABRACADEIRA SENSOR MAGNETICO",
+            "SUPORTE GIROFLEX",
+            "SUPORTE GIROFLEX UNHA",
+            "TACOGRAFO FIP SPY 32",
+            "TERMINAL BATERIA TIPO SAPO",
+            "TERMINAL FASTON LATAO FEMEA 1/4",
+            "TERMINAL FASTON LATAO MACHO 1/4",
+            "TERMINAL LATAO FEMEA MOSQUITO",
+            "TERMINAL LATAO OLHAL GRANDE 3/8",
+            "TERMINAL LATAO OLHAL MEDIO 1/4",
+            "TERMINAL LATAO OLHAL PEQUENO 3/16",
+            "TOMADA TIPO ISQUEIRO COM TAMPA",
+            "TOMADA MACHO RETA",
+            "TOMADA MARGIRIUS P/ MOVEIS +T PRETA",
+            "TOMADA PAINEL MARGIRIUS +T C/ RABICHO PRETA",
+            "TOMADA PLUG STECK MACHO +T 200/ 6H AZ IP44",
+            "TOMADA SOBREPOR STECK +T 200/ 6H AZ IP44",
+            "TOMADA USB A LELONG 3 1 LUZ VERDE DUPLA SOBREPOR",
+            "TOMADA USB A ORBE 3 1 LUZ AZUL DUPLA EMBUTIR",
+            "TOMADA USB A ORBE 3 1 LUZ AZUL SIMPLES SMARTPLUG",
+            "TOMADA USB DUPLA TIPO C",
+            "LANTERNA SAIDA EMERGENCIA BASE RETA 6 LED",
+            "CHICOTE 3 TOMADAS USB ORBE",
+            "LUMINARIA ORIGINAL E/S/ J",
+            "ELETRICA LUZ DE POSICAO",
+            "CHICOTE BOTOES E/S/ J",
+            "CHICOTE ELETRICA E/S/ J",
+            "CHICOTE INTERRUPTOR DE PORTA E/S/ J",
+            "CHICOTE ALIMENTACAO LED RGB MOVEL E/S/ J",
+            "CHICOTE INTERLIGACAO LED RGB MOVEL / E/S/ J",
+            "CHICOTE ALIMENTACAO RELE POS IGNICAO E/S/ J",
+            "CHICOTE ALIMENTACAO 4 ARANDELAS E/S/ J",
+            "CHICOTE TOMADA USB E/S/ J",
+            "CHICOTE LUZES CORTESIA E/S/ J",
+            "CHICOTE LUZ CORTESIA E/S/ J SOB PAINEL",
+            "CHICOTE PORTA FUSIVEL ACESSORIOS INTERNOS E/S/ J",
+            "CHICOTE TOMADA 110/ CORRENTE ALTERNADA E/S/ J",
+            "CHICOTE ELETRICO E/S/ J P/ LIGACAO ACESSORIOS",
+            "CHICOTE GELADEIRA ELBER CAB 18 E/S/ J",
+            "PC INTERNA JI BOTOEIRA 8 TECLAS E/S/ J",
+            "PC EXTERNA JI BOTOEIRA 8 TECLAS E/S/ J",
+            "CEGA JI BOTOEIRA E/S/ J",
+            "BOTOEIRA PLASTICA JI E/S/ J 8 TECLAS",
+            "CHICOTE ELETRICO E/S/ J P/ LIGACAO ACESSORIOS S/ BOTOEIRA",
+            "3 TOMADAS USB ORBE DUPLA E/S/ J",
+            "LUZES CORTESIA E/S/ J",
+            "CONECTOR EMENDA DERIVACAO FIO",
+            "LUZ CORTESIA E/S/ J SOB PAINEL",
+            "LUZ LED RGB MOVEIS LATERAIS JI C-CLASS E/S/ J",
+            "LUZ AZUL 4 ARANDELAS LATERAIS JI",
+            "DIODO1N5822 MIC",
+            "RESISTOR 110 OHMS POTENCIA 1/",
+            "LUZ BALIZADORA EMBUTIR REDONDO LED LUZ AMARELA IP 65",
+            "CHICOTE LUZ BALIZADOR E/S/ J",
+            "LUZ BALIZADORA E/S/ J",
+            "SUPORTE/ABRACADEIRA SENSOR MAGNETICO",
+            "SUPORTE SENSOR MAGNETICO",
+            "TACOGRAFO POSITRON TC100",
+            "LUZ VIGIA DELIMITADORA LED ACRILICO IVA VERMELHO",
+            "LUZ VIGIA DELIMITADORA LED ACRILICO IVA AMARELO",
+            "FITA LED 2835 BRANCO NEUTRO 4000 K MONOCROMATICA SEM SILICONE",
+            "CHICOTE LIGACAO EQUIPAMENTO D.P.M.",
+            "ACESSIBILIDADE"
+          ]
+        },
+        {
+          "key": "veiculo_modelo",
+          "label": "VEÍCULO/MODELO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "B/J/D",
+            "MASTER"
+          ]
+        },
+        {
+          "key": "posicao_lado",
+          "label": "POSIÇÃO/LADO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "SALAO / TRASEIRA",
+            "CABINE",
+            "CENTRAL",
+            "LATERAL",
+            "LATERAL / LE / LD",
+            "INFERIOR"
+          ]
+        },
+        {
+          "key": "medida",
+          "label": "MEDIDA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "1000W / 120V",
+            "100 A",
+            "4MM",
+            "10MM",
+            "2X1,5MM",
+            "3X2,5MM",
+            "12V",
+            "12V / 2A",
+            "12,5MM",
+            "15MM",
+            "18MM",
+            "25MM",
+            "4,5MM",
+            "7,5MM",
+            "9,5MM",
+            "12V / 24V",
+            "1W",
+            "6W",
+            "1,0MM",
+            "2,5MM",
+            "5 M",
+            "5M",
+            "10A",
+            "15A",
+            "20A",
+            "25A",
+            "30A",
+            "35A",
+            "5A",
+            "70A / 4 CM",
+            "2W",
+            "3W",
+            "12V / 2W",
+            "36MM",
+            "6MM / 12V",
+            "5MM",
+            "80X26X35",
+            "2P / 10A",
+            "4 CM",
+            "1M",
+            "300W / 9A",
+            "100A",
+            "40A",
+            "6,3MM",
+            "2,8MM",
+            "2P / 10A / 250V",
+            "2P / 16A / 250V",
+            "220V",
+            "4W",
+            "69X25X20"
+          ]
+        },
+        {
+          "key": "material_cor",
+          "label": "MATERIAL/COR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "PRETO",
+            "BRANCO",
+            "AZUL",
+            "AMARELO",
+            "CINZA",
+            "MARROM",
+            "VERDE",
+            "PRETA",
+            "AMARELA"
+          ]
+        },
+        {
+          "key": "complemento_regra",
+          "label": "COMPLEMENTO/REGRA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": [
+            "ZETTA FREE",
+            "DEGRAU, SOLEIRA PM, SOB BCO 1O FIL",
+            "QUALQUER MARCA - QUALQUER MMV"
+          ]
+        },
+        {
+          "key": "fornecedor_referencia",
+          "label": "FORNECEDOR/REFERÊNCIA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": []
+        }
+      ],
+      "conditional_rules": []
+    },
+    {
+      "key": "cat_28_materia_prima",
+      "label": "28 - MÁTERIA PRIMA",
+      "sheet_name": "28 - MÁTERIA PRIMA",
+      "fields": [
+        {
+          "key": "prefixo",
+          "label": "PREFIXO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "MERCEDES-BENZ SPRINTER",
+            "FORD",
+            "RENAULT",
+            "PEUGEOT",
+            "CITROEN",
+            "FIAT",
+            "IVECO",
+            "MP",
+            "BOBINA",
+            "CALCO"
+          ]
+        },
+        {
+          "key": "descritor_base",
+          "label": "DESCRITOR BASE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "417 FURGAO",
+            "417",
+            "417 VITRE REVESTIDA",
+            "517",
+            "517 VITRE REVESTIDA",
+            "417 ORIGINAL",
+            "517 ORIGINAL",
+            "TRANSIT L2H3",
+            "TRANSIT L3H3",
+            "TRANSIT L3H2 VITRE",
+            "TRANSIT L4H3 VITRE",
+            "TRANSIT L3H2 ORIGINAL",
+            "TRANSIT L4H3 ORIGINAL",
+            "MASTER L1H1",
+            "MASTER L2H2",
+            "MASTER L3H2",
+            "MASTER L3H2 VITRE",
+            "MASTER L3H2 ORIGINAL",
+            "KANGOO FURGAO",
+            "EXPERT FURGAO",
+            "EXPERT VITRE",
+            "BOXER FURGAO",
+            "BOXER VITRE",
+            "JUMPY FURGAO",
+            "JUMPY VITRE",
+            "JUMPER FURGAO",
+            "JUMPER VITRE",
+            "JUMPER ORIGINAL",
+            "SCUDO FURGAO",
+            "SCUDO VITRE",
+            "DUCATO FURGAO",
+            "DUCATO VITRE",
+            "DUCATO ORIGINAL",
+            "45- 160 ORIGINAL",
+            "50- 180 VITRE",
+            "50- 180 ORIGINAL",
+            "BARRA CHATA ACO 1 1/ X1/8\"",
+            "BARRA CHATA ACO X1/4\"",
+            "BARRA CHATA ACO X1/4\" 50,8MMX6,",
+            "BORRACHA PERFIL J E",
+            "BORRACHA PERFIL U JANELA REVESTIMENTO SPRINTER",
+            "BORRACHA PERFIL U ACABAMENTO ABS",
+            "BORRACHA PERFIL L ACABAMENTO PME",
+            "BORRACHA PERFIL T ACABAMENTO TRILHO",
+            "BORRACHA PERFIL U /",
+            "CANTONEIRA PVC PRETA C/ SUPORTE LED",
+            "CANTONEIRA PVC AMARELA PERFIL DEGRAU ESCADA",
+            "CANTONEIRA PVC PRETA PARAFUSO EMBUTIDO",
+            "CANTONEIRA PVC PRETA PERFIL DEGRAU ESCADA",
+            "CHAPA ACRILICO CRISTAL",
+            "CHAPA ACRILICO FUME",
+            "CHAPA ACRILICO PRETO",
+            "CHAPA ALUMINIO XADREZ",
+            "CHAPA COMPENSADO",
+            "CHAPA EUCATEX",
+            "CHAPA MDF",
+            "CHAPA POLICARBONATO C/ LINER",
+            "CHAPA PVC EXPANDIDO BRANCO C/ LINER EM 1 FACE",
+            "FITA ACABAMENTO CANTONEIRA PRETA PERFIL DEGRAU ESCADA",
+            "FITA ACABAMENTO CANTONEIRA AMARELA PERFIL DEGRAU ESCADA",
+            "FITA ACABAMENTO BANCO",
+            "FITA ANTI DERRAPANTE AUTO ADESIVA 50MMX15 M",
+            "METALON ACO",
+            "PASSADEIRA AMADEIRADA TARKETT DARK BROWN REF 5087",
+            "PASSADEIRA LG BRIGHT GRAFITE 92402",
+            "PASSADEIRA LG BRIGHT CINZA POLAR 92407",
+            "FITA ACABAMENTO CANTONEIRA TRANSLUCIDO PERFIL DEGRAU ESCADA",
+            "PERFIL PORTA PACOTES ENTRE FOCOS PORTA PACOTES",
+            "PERFIL RETO ESTRIADO PVC AMARELO",
+            "PERFIL RETO ESTRIADO PVC PRETO",
+            "PERFIL PORTA PACOTES FRONTAL CINZA METALIZADO PORTA PACOTES",
+            "PERFIL PORTA PACOTES LENTE BRANCO LEITOSO PORTA PACOTES",
+            "PERFIL PORTA PACOTES CINZA METALIZADO PORTA PACOTES",
+            "TUBO ALUMINIO PEGA MAO",
+            "TUBO ALUMINIO CORTINA",
+            "PERFIL ALUMINIO TRILHO BANCO JI MONTADORA",
+            "PERFIL ALUMINIO USINADO TRILHO RETRATOR CADEIRA DE RODAS",
+            "PERFIL PVC H EMENDA MADEIRA",
+            "CHAPA DE COMPENSADO RETALHO",
+            "COURVIN LISO URUGUAI GRAFITE",
+            "METALON",
+            "CHAPA ACO CARBONO",
+            "CARPETE RESINADO",
+            "MADEIRA PALLET",
+            "FLOCO DE NYLON",
+            "CAPACHO VINILICO PRETO X 10",
+            "COURVIN LISO MARROM CAFE URUGUAI",
+            "COURVIN LISO PRETO URUGUAI",
+            "COURVIN LISO BEGE URUGUAI",
+            "FLOCO NYLON"
+          ]
+        },
+        {
+          "key": "veiculo_modelo",
+          "label": "VEÍCULO/MODELO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "SPRINTER / MERCEDES-BENZ",
+            "TRANSIT / FORD",
+            "MASTER / RENAULT",
+            "KANGOO / RENAULT",
+            "BOXER",
+            "JUMPER",
+            "FIAT",
+            "FIAT / DUCATO",
+            "IVECO",
+            "SPRINTER"
+          ]
+        },
+        {
+          "key": "posicao_lado",
+          "label": "POSIÇÃO/LADO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "PORTA LATERAL / TRASEIRA",
+            "TRASEIRO",
+            "PAREDE"
+          ]
+        },
+        {
+          "key": "medida",
+          "label": "MEDIDA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "9,5 M3",
+            "9,5 M3 / 16L",
+            "10,5 M3",
+            "14 M3",
+            "15,5 M3",
+            "10,5 M3 / 16L",
+            "15,5 M3 / 18L",
+            "15,5 M3 / 20L",
+            "15,5 M3 / 21L",
+            "15L",
+            "18L",
+            "16L",
+            "17L",
+            "2\"",
+            "2\" / 35MM",
+            "11,9X35X15",
+            "20X17X15MM",
+            "12X9X7MM",
+            "14,49X9MM",
+            "39X21X13MM",
+            "19X15MM",
+            "6000MM",
+            "3050X2050X5MM",
+            "2000X1000X3,0MM",
+            "2000X1000X10MM",
+            "3000X1000X1,2MM",
+            "3870X2200X12MM",
+            "3270X2200X12MM",
+            "3000X1600X12MM",
+            "3800X1850X12MM",
+            "3200X1850X12MM",
+            "2200X1600X6MM",
+            "2750X1850X3MM",
+            "2750X1850X12MM",
+            "2750X1850X15MM",
+            "2750X1850X6MM",
+            "2750X1850X9MM",
+            "2440X1220X25MM",
+            "12MM",
+            "15,1MM",
+            "25MM",
+            "1,2X40X20",
+            "1,2X50X30",
+            "15MM",
+            "32MM",
+            "9,5X6000MM / 1,58MM",
+            "50X17X16X6000 MM",
+            "50X15X10MM",
+            "5000MM",
+            "6000X40X20",
+            "6000X80X10",
+            "1 KG",
+            "1200 X 1000",
+            "1KG"
+          ]
+        },
+        {
+          "key": "material_cor",
+          "label": "MATERIAL/COR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "ACO",
+            "BORRACHA",
+            "ABS / BORRACHA",
+            "PRETA / PVC",
+            "AMARELA / PVC",
+            "PRETO",
+            "ALUMINIO",
+            "MDF",
+            "BRANCO / PVC",
+            "PRETA",
+            "AMARELA",
+            "GRAFITE",
+            "CINZA",
+            "AMARELO / PVC",
+            "PRETO / PVC",
+            "BRANCO",
+            "PVC",
+            "GRAFITE / COURVIN",
+            "PRETO / NYLON",
+            "MARROM / COURVIN",
+            "PRETO / COURVIN",
+            "BEGE / COURVIN",
+            "NYLON"
+          ]
+        },
+        {
+          "key": "complemento_regra",
+          "label": "COMPLEMENTO/REGRA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": [
+            "15O",
+            "75O",
+            "PAREDE 1,58MM",
+            "012 PRETO - 1 KG",
+            "004 CRU - 1 KG",
+            "033 PRATA 1KG"
+          ]
+        },
+        {
+          "key": "fornecedor_referencia",
+          "label": "FORNECEDOR/REFERÊNCIA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": []
+        }
+      ],
+      "conditional_rules": []
+    },
+    {
+      "key": "cat_30_fx_fixadores",
+      "label": "30 - FX - FIXADORES",
+      "sheet_name": "30 - FX - FIXADORES",
+      "fields": [
+        {
+          "key": "prefixo",
+          "label": "PREFIXO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "FX",
+            "CHAPA",
+            "CJ",
+            "ARGOLA"
+          ]
+        },
+        {
+          "key": "descritor_base",
+          "label": "DESCRITOR BASE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "ABRACADEIRA NYLON PRETA",
+            "ABRACADEIRA NYLON PRETA COM TRAVA",
+            "ARRUELA FUNILEIRO 3/8 ZINCO BRANCO",
+            "ARRUELA LISA ZINCADA",
+            "ARRUELA LISA ZINCO BRANCO",
+            "ARRUELA GROSSA ZINCO BRANCO",
+            "ARRUELA ZINCO BRANCO",
+            "ARRUELA PRESSAO ZINCO BRANCO",
+            "BARRA ROSCADA",
+            "BUCHA ESPACADORA",
+            "PARAFUSO ALLEN CABECA CHATA ESCAREADO M10X40MM OLEADO",
+            "PARAFUSO ALLEN CABECA CHATA ESCAREADO M6X35MM OLEADO",
+            "PARAFUSO ALLEN CABECA CHATA ESCAREADO M8X40MM OLEADO",
+            "PARAFUSO AUTO BROCANTE PHILIPS FOSFATIZADO PRETO",
+            "PARAFUSO AUTO BROCANTE FLANGEADO PHILIPS ZINCO BRANCO",
+            "PARAFUSO CHIPBOARD CABECA CHATA PHILIPS BICROMATIZADO",
+            "PARAFUSO PANELA PHILIPS ZINCO BRANCO",
+            "PARAFUSO PONTA AGULHA FOSFATIZADO PRETO",
+            "PARAFUSO PONTA BROCA FOSFATIZADO PRETO",
+            "PARAFUSO SEXTAVADO M10X100MM ZINCO BRANCO CL8,8",
+            "PARAFUSO SEXTAVADO M10X110MM ZINCO BRANCO CL8,8",
+            "PARAFUSO SEXTAVADO M10X150MM ZINCO BRANCO CL8,8",
+            "PARAFUSO SEXTAVADO M10X180MM ZINCO BRANCO CL8,8",
+            "PARAFUSO SEXTAVADO M10X30MM ZINCO BRANCO CL8,8",
+            "PARAFUSO SEXTAVADO M10X35MM ZINCO BRANCO CL8,8",
+            "PARAFUSO SEXTAVADO M10X50MM ZINCO BRANCO CL8,8",
+            "PARAFUSO SEXTAVADO M10X60MM ZINCO BRANCO CL8,8",
+            "PARAFUSO SEXTAVADO M10X70MM ZINCO BRANCO CL8,8",
+            "PARAFUSO SEXTAVADO M5X80MM INOX A2",
+            "PORCA AUTO TRAVANTE ZINCO BRANCO CL8",
+            "PORCA AUTO TRAVANTE BAIXA ZINCO BRANCO CL8",
+            "PORCA TORQUE ZINCO BRANCO CL8",
+            "REBITE ARTICULADO PRETO COM ROSCA",
+            "REBITE RAPIDO PLASTICO BRANCO",
+            "REBITE RAPIDO PLASTICO CHUMBO",
+            "REBITE RAPIDO PLASTICO CINZA",
+            "REBITE RAPIDO PLASTICO INCOLOR",
+            "REBITE RAPIDO PLASTICO PLATINA",
+            "REBITE RAPIDO PLASTICO PRETO",
+            "REBITE REPUXO CABECA REDONDA ACO",
+            "BARRA ROSCADA ACO",
+            "PARAFUSO ALLEN CABECA CILINDRICA M10X35MM OLEADO",
+            "PORCA AUTO TRAVANTE ALTA ZINCO BRANCO CL8",
+            "PRONTA TRILHO ALUMINIO BCO INCOR. FIXO SOB BANCO CX RODAS",
+            "PRONTA TRILHO ALUMINIO BCO INCOR. RECLINAVEL",
+            "PRONTA TRILHO ALUMINIO BCO INCOR. FIXO",
+            "CHAPA PRONTA TRILHO ALUMINIO BCO INCOR. FIXO",
+            "CHAPA PRONTA TRILHO ALUMINIO BCO INCOR. RECLINAVEL",
+            "CHAPA FIXACAO TRILHO ALUMINIO JI",
+            "CHAPA FIXACAO BCO",
+            "CJ ARGOLA ORIGINAL E/S/ J FIXACAO CARGA C/ PARAFUSO",
+            "BOTAO PRESSAO METAL NIQUELADO",
+            "ORIGINAL E/S/ J FIXACAO CARGA C/ PARAFUSO",
+            "PASSA FIO APITO SUPORTE CORTINA COR PRETO \"L\" (CXLXAXINTERNA)",
+            "SUPORTE CORTINA DUPLO CINZA CLARO ACRYLS (CXL)",
+            "SUPORTE CORTINA INDIVIDUAL CINZA CLARO ACRYLS (CXL)",
+            "PASSA FIO APITO SUPORTE CORTINA COR PRETO RETO (CXLXINTERNA)",
+            "CABO ACELERADOR BICICLETA MOTORIZADA",
+            "SUPORTE CORTINA DUPLO PRETO ACRYLS (CXL)",
+            "SUPORTE CORTINA INDIVIDUAL PRETO ACRYLS (CXL)",
+            "PASSA FIO APITO SUPORTE CORTINA COR GRAFITE RETO (CXLXINTERNA)",
+            "PASSA FIO APITO SUPORTE CORTINA COR GRAFITE \"L\" (CXLXAXINTERNA)",
+            "PASSA FIO APITO SUPORTE CORTINA COR CINZA CLARO RETO (CXLXINTERNA)",
+            "ALCA PEGA MAO INJETADO PU PRETO RETO P.L.",
+            "ALCA PEGA MAO INJETADO PU AMARELO PONTA \"C\" EMBUTIDA P.L.",
+            "ALCA PEGA MAO ACO AMARELO ORIGINAL TRANSIT",
+            "ALCA PEGA MAO ACO PRETO ORIGINAL SPRINTER",
+            "ALCA PEGA MAO INJETADO PLASTICO GRAFITE P.L.",
+            "ALCA PEGA MAO INJETADO PLASTICO GRAFITE BRILHANTE C/ TIRA AMARELA",
+            "ALCA PEGA MAO INJETADO PU AMARELO \"C\" P.L.",
+            "ALCA PEGA MAO INJETADO PU AMARELO \"RETO\" P.L.",
+            "ALCA PEGA MAO ACO AMARELO ORIGINAL TRANSIT FURGAO",
+            "ARRUELA ESPECIAL LISA D36,5X2XD7 MM"
+          ]
+        },
+        {
+          "key": "veiculo_modelo",
+          "label": "VEÍCULO/MODELO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "SPRINTER",
+            "TRANSIT"
+          ]
+        },
+        {
+          "key": "posicao_lado",
+          "label": "POSIÇÃO/LADO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "PORTA LATERAL",
+            "PASSAGEIRO / PORTA LATERAL"
+          ]
+        },
+        {
+          "key": "medida",
+          "label": "MEDIDA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "100X2,5MM",
+            "150X3,6MM",
+            "280X4,8MM",
+            "100X4,8MM",
+            "10X30X2,5MM",
+            "M10",
+            "M3",
+            "M8",
+            "M6",
+            "M10 / 500MM",
+            "10MM",
+            "15MM",
+            "18MM",
+            "20MM",
+            "25MM",
+            "30MM",
+            "55MM",
+            "3,5X35MM",
+            "3,5X19MM",
+            "3,9X16MM",
+            "3,9X19MM",
+            "3,9X25MM",
+            "4,2X16MM",
+            "4,2X19MM",
+            "4,2X25MM",
+            "4,2X38MM",
+            "4,2X45MM",
+            "3,5X40MM",
+            "3X10MM",
+            "5X40MM",
+            "5X60MM",
+            "4,2X32MM",
+            "6,3X16MM",
+            "6,3X32MM",
+            "3,5X25MM",
+            "3,5X45MM",
+            "M12",
+            "4,8X21MM",
+            "4X10MM",
+            "4X15MM",
+            "4,8X16MM",
+            "1L / 104X29 MM",
+            "234X29 MM",
+            "166X29 MM",
+            "16 MM",
+            "20X15X28X10 MM",
+            "130X20 MM",
+            "65X20 MM",
+            "50X20X10 MM",
+            "35X15X10 MM",
+            "540 MM",
+            "380 MM",
+            "1420 MM",
+            "910 MM",
+            "860 MM",
+            "340 MM",
+            "300 MM",
+            "470 MM",
+            "130X30 MM",
+            "240 MM"
+          ]
+        },
+        {
+          "key": "material_cor",
+          "label": "MATERIAL/COR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "PRETA / NYLON",
+            "BRANCO / ZINCO",
+            "ZINCADA",
+            "PRETO",
+            "INOX",
+            "BRANCO",
+            "CHUMBO",
+            "CINZA",
+            "PLATINA",
+            "ACO",
+            "ALUMINIO",
+            "GRAFITE",
+            "PRETO / PU",
+            "AMARELO / PU",
+            "AMARELO / ACO",
+            "PRETO / ACO",
+            "GRAFITE / AMARELA"
+          ]
+        },
+        {
+          "key": "complemento_regra",
+          "label": "COMPLEMENTO/REGRA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": [
+            "63.05.11-0003",
+            "63.05.11-0002",
+            "63.05.11-0001",
+            "SPRINTER 517 - 4,2-1,2,3,3,3",
+            "UNIVERSAL - 4,3,3,3",
+            "FALTA MEDIDA"
+          ]
+        },
+        {
+          "key": "fornecedor_referencia",
+          "label": "FORNECEDOR/REFERÊNCIA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": []
+        }
+      ],
+      "conditional_rules": []
+    },
+    {
+      "key": "cat_32_cm_consumiveis",
+      "label": "32 - CM - CONSUMÍVEIS",
+      "sheet_name": "32 - CM - CONSUMÍVEIS",
+      "fields": [
+        {
+          "key": "prefixo",
+          "label": "PREFIXO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "CM",
+            "MP"
+          ]
+        },
+        {
+          "key": "descritor_base",
+          "label": "DESCRITOR BASE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "ACUCAR",
+            "ADOCANTE LIQUIDO",
+            "AGUA SANITARIA",
+            "ALCOOL 70 %",
+            "SHAMPOO APC AUTOMOTIVO",
+            "ARAME SOLDA MIG 1 BOBINA",
+            "ATADURA CREPE",
+            "BAND AID",
+            "BOBINA PAPEL KRAFT BEGE-MAX",
+            "BROCA 1",
+            "BROCA",
+            "BROCA 5",
+            "BROCA 7",
+            "BROCA X",
+            "BUCHA LIMPEZA",
+            "BUCHA SIMPLES PRETA",
+            "CADERNO A4 80 FOLHA",
+            "CAFE GRAO",
+            "CAFE PO 500G",
+            "CAIXA CLIPES DE PAPEL",
+            "CAIXA DE COTONETES",
+            "CAIXA GRAMPO GRAMPEADOR 26/6",
+            "CANETA ESFEROGRAFICA AZUL",
+            "CARNAUBA EXPRESS VONIXX",
+            "CATALISADOR P/ TINTA FOSCO VINILICO 300 ML",
+            "CATALISADOR COLA FLOCAGEM KISAFIX KB03 750G",
+            "COLA ACRILICO FINA CA-60",
+            "COLA PU BASE AGUA P/ FLOCAGEM KISAFIX PU 14000 RO",
+            "COLA INSTANTANEA 793 20G TEKBOND",
+            "COLA MADEIRA BRANCA 500G",
+            "COLA MADEIRA SPRAY ADESIVO CONTATO",
+            "COLA PU PARABRISA TERESON BOND 180 3H CURA 600ML",
+            "COLA PU PARABRISA IMPACTA 24H CURA 400G",
+            "COLA QUENTE BASTAO",
+            "COPO PLASTICO DESCARTAVEL 180ML C/ 100UN",
+            "COPO PLASTICO DESCARTAVEL 50 ML C/ 100UN",
+            "DESENGRAXANTE MAXI RUBBER 900ML",
+            "DESINFETANTE",
+            "DETERGENTE 500ML",
+            "DETERGENTE CREMOL AUTOMOTIVO",
+            "DISCO CORTE",
+            "DISCO LIXA",
+            "ENVELOPE KRAFT X",
+            "ENVELOPE PLASTICO A4",
+            "ESPARADRAPO",
+            "ESTILETE",
+            "ESTOPA BRANCA",
+            "FITA CREPE",
+            "FITA CREPE AMARELA",
+            "FITA CREPE X",
+            "FITA DUPLA FACE VHB",
+            "FITA DUREX X",
+            "FITA ISOLANTE X",
+            "FITA ZEBRADA",
+            "FLANELA AMARELA 400MMX600MM",
+            "FLANELA GREEN 400MMX600MM",
+            "FLOCO NYLON",
+            "GALVANIZADOR A FRIO SPRAY",
+            "GAZE",
+            "GIZ",
+            "GRAFITE HB",
+            "GUARDANAPO DE PAPEL",
+            "LAMINA ESTILETE",
+            "LAMINA SILICONE SECAGEM",
+            "LAMINA VIDRO MASCARA SOLDA",
+            "LAPIS CARPINTEIRO",
+            "LAPIS GRAFITE",
+            "LAVA AUTO DESINCRUSTANTE VONIXX",
+            "LAVA AUTOS BUBBLE FOAM JACA",
+            "LIMPA VIDROS SPRAY FINISHER",
+            "LIMPADOR CONCENTRADO",
+            "LIXA A275 P400",
+            "LIXA AGUA 1200",
+            "LIXA CINTA X",
+            "LIXA DAGUA P150",
+            "LIXA SECO A275 P120",
+            "LIXA SECO A275 P80",
+            "LIXA SECO P800",
+            "LUVA LATEX TAMANHO G",
+            "LUVA LATEX TAMANHO M",
+            "LUVA LATEX TAMANHO P",
+            "LUVA MICROFIBRA",
+            "LUVA MULTITATO SS1003",
+            "LUVA RASPA TAMANHO G",
+            "LUVA RASPA TAMANHO M",
+            "LUVA RASPA TAMANHO P",
+            "LUVAS MECANICA POLIURETANO TATIL",
+            "LUVAS TIPO CIRURGICA",
+            "MARCA TEXTO MULTICOLOR",
+            "MASCARA FILTRO QUIMICO",
+            "MASCARA PURIFICADOR AR",
+            "MASSA PLASTICA 400G",
+            "MASSA POLIR NUMERO 2 900G",
+            "OCULOS DE PROTECAO INCOLOR C/ CA",
+            "PACOTE BISCOITOS VARIADOS",
+            "PACOTE PAPEL A4 C/ 500 FOLHAS",
+            "PANO DE CHAO",
+            "PAPEL HIGIENICO FOLHA DUPLA",
+            "PAPEL HIGIENICO FOLHA SIMPLES",
+            "PAPEL TOALHA FOLHA DUPLA",
+            "PAPEL TOALHA FOLHA SIMPLES",
+            "PASTA LIMPEZA MAOS",
+            "PERNEIRA RASPA",
+            "PILHA ALCALINA AA",
+            "PILHA ALCALINA AAA",
+            "PINCEL",
+            "PINCEL BRUSH EXTERNO 16",
+            "PINCEL BRUSH INTERNO 16",
+            "PINCA",
+            "PRETINHO PNEU",
+            "TINTA PRETO CADILAC",
+            "PROTEGEL PLUS SILICONE GEL PROTELIM",
+            "PROTETOR AURICULAR",
+            "PROTETOR AURICULAR PLUG C/ CORDAO 16DB C/ CA",
+            "PROTETOR DORSAL",
+            "QUEROSENE 900ML",
+            "RECIBO COMERCIAL",
+            "REJUVEX VONIXX REVITALIZADOR",
+            "REMOCOLA REMOVEDOR DE COLAS",
+            "REMOVEDOR COLA STRIKE VONIXX",
+            "SACHE ACUCAR",
+            "SACHE ADOCANTE",
+            "SACO CHAO XADRES",
+            "SACO DE LIXO",
+            "SELADOR PET",
+            "SELADORA MADEIRA 3600ML",
+            "SERINGA AGULHA",
+            "SERRA SABRE",
+            "SERRINHA /12\"",
+            "SIKA AKTIVATOR 100 1000ML",
+            "COLA PU SIKAFLEX 256",
+            "SILICONE ACETICO INCOLOR 280G",
+            "SILICONE GEL 3",
+            "SILICONE GEL",
+            "SOLUCAO IODO",
+            "SORO FISIOLOGICO",
+            "SOLVENTE SINTETICO PARA FLOCAGEM 900ML",
+            "THINNER",
+            "TINTA BRANCO MERCEDES BENZ",
+            "TINTA BRANCO PEUGEOT",
+            "TINTA BRANCO RENAULT",
+            "TINTA PRETO FOSCO VINILICO 600 ML",
+            "TINTA SPRAY BRANCO",
+            "TINTA SPRAY PRETO FOSCO",
+            "TOALHA MICROFIBRA 400MMX600MM ZACS",
+            "TOALHA SECAGEM TWIST 900MMX600MM",
+            "TINTA SINTETICO BASE SOLVENTE PRETO KL GENESIS PARA FLOCAGEM",
+            "VASELINA LIQUIDA",
+            "VELCRO FEMEA PRETO",
+            "VELCRO MACHO PRETO",
+            "SHAMPOO AUTOMOTIVO",
+            "COLA INSTANTANEA RETROVISOR REPARO 10 ML 50G TEKBOND",
+            "VERNIZ PU FOSCO LAZZUDUR VF001 SHERWIN-WILLIAMS ALTO SOLIDOS POLIURETANO 750",
+            "ENDURECEDOR LAZZUDUR P/ VERNIZ PU FOSCO SHERWIN-WILLIAMS ALTO SOLIDOS 150",
+            "TINTA CINZA RAL 7021 PU",
+            "TINTA BEGE RAL 1013 PU",
+            "SELADORA PLASTICA AUTOLUKS PROMOTOR DE ADERENCIA 500 ML",
+            "DILUENTE 454 PU/POLIESTER P/ PINTURA AUTOMOTIVA SHERWIN WILLIAMS 900 ML",
+            "CATALISADOR ENDURECEDOR PU LAZZUDUR 061 SHERWIN-WILLIAMS 225 ML",
+            "DISCO FLAP STANDART G60",
+            "SPRAY TINTA PRETO BRILHANTE 400ML"
+          ]
+        },
+        {
+          "key": "veiculo_modelo",
+          "label": "VEÍCULO/MODELO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "RENAULT"
+          ]
+        },
+        {
+          "key": "posicao_lado",
+          "label": "POSIÇÃO/LADO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": []
+        },
+        {
+          "key": "medida",
+          "label": "MEDIDA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "1KG",
+            "5L",
+            "1L",
+            "50L",
+            "0MM / 15KG",
+            "5MM",
+            "10MM",
+            "12MM",
+            "3MM",
+            "1MM",
+            "7MM",
+            "8MM",
+            "8MM / 330MM",
+            "15KG",
+            "14KG",
+            "11MM",
+            "115MM",
+            "250MM",
+            "240MM / 340MM",
+            "18MM",
+            "48MM / 50M",
+            "12MM / 50M",
+            "19MM / 20M",
+            "0,5MM",
+            "75MM / 610MM",
+            "25X16",
+            "2KG",
+            "100L",
+            "15L",
+            "200L",
+            "20L",
+            "30L",
+            "40L",
+            "60L",
+            "300MM",
+            "6KG",
+            "3,6KG",
+            "25MM",
+            "115X22"
+          ]
+        },
+        {
+          "key": "material_cor",
+          "label": "MATERIAL/COR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "BEGE",
+            "PRETA",
+            "AZUL",
+            "PU",
+            "BRANCA",
+            "AMARELA",
+            "NYLON",
+            "GRAFITE",
+            "VIDRO",
+            "PRETO",
+            "BRANCO",
+            "CINZA / PU",
+            "BEGE / PU"
+          ]
+        },
+        {
+          "key": "complemento_regra",
+          "label": "COMPLEMENTO/REGRA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": [
+            "033 PRATA 1KG",
+            "C-CLASS - TI.01.J04",
+            "C-CLASS - TI.01.J85"
+          ]
+        },
+        {
+          "key": "fornecedor_referencia",
+          "label": "FORNECEDOR/REFERÊNCIA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": []
+        }
+      ],
+      "conditional_rules": []
+    },
+    {
+      "key": "cat_34_veiculo_p_b",
+      "label": "34 - VEÍCULO P.B.",
+      "sheet_name": "34 - VEÍCULO P.B.",
+      "fields": [
+        {
+          "key": "prefixo",
+          "label": "PREFIXO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "JI CONFORT",
+            "JI URBAN"
+          ]
+        },
+        {
+          "key": "descritor_base",
+          "label": "DESCRITOR BASE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "517 SELADO PLUS",
+            "517 SELADO ESSENCIAL",
+            "517 VISTA ESSENCIAL",
+            "517 VISTA PLUS",
+            "517 VITRE REVESTIDA",
+            "E/J TA SELADO",
+            "E/J TA VISTA",
+            "417 SELADO ESSENCIAL",
+            "417 SELADO PLUS",
+            "417 VISTA ESSENCIAL",
+            "417 VISTA PLUS",
+            "417 VITRE REVESTIDA",
+            "B/J/D SELADO",
+            "B/J/D VISTA",
+            "B/J/D VITRE",
+            "E/J TA VITRE",
+            "E/S/ J TB SELADO",
+            "E/S/ J TB VISTA",
+            "E/S/ J TB VITRE",
+            "IVECO 50 VITRE ESSENCIAL",
+            "MASTER L1H1 SELADO",
+            "MASTER L2H2 SELADO ESSENCIAL",
+            "MASTER L2H2 SELADO PLUS",
+            "MASTER L2H2 VISTA ESSENCIAL",
+            "MASTER L2H2 VISTA PLUS",
+            "MASTER L3H2 SELADO ESSENCIAL",
+            "MASTER L3H2 SELADO PLUS",
+            "MASTER L3H2 VISTA ESSENCIAL",
+            "MASTER L3H2 VISTA PLUS",
+            "MASTER L3H2 VITRE ESSENCIAL",
+            "MASTER L3H2 VITRE PLUS",
+            "TRANSIT L3H2 VITRE",
+            "TRANSIT L3H3 SELADO",
+            "TRANSIT L3H3 VISTA",
+            "TRANSIT L4H3 VITRE",
+            "E/S/ J TB SELADO C/ VELUDO PRETO",
+            "E/S/ J TB VISTA C/ VELUDO PRETO",
+            "E/S/ J VITRE TB C/ VELUDO PRETO"
+          ]
+        },
+        {
+          "key": "veiculo_modelo",
+          "label": "VEÍCULO/MODELO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "E/J",
+            "B/J/D",
+            "IVECO",
+            "MASTER",
+            "TRANSIT"
+          ]
+        },
+        {
+          "key": "posicao_lado",
+          "label": "POSIÇÃO/LADO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "TETO"
+          ]
+        },
+        {
+          "key": "medida",
+          "label": "MEDIDA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "14 M",
+            "15 M",
+            "10 M"
+          ]
+        },
+        {
+          "key": "material_cor",
+          "label": "MATERIAL/COR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "PRETO"
+          ]
+        },
+        {
+          "key": "complemento_regra",
+          "label": "COMPLEMENTO/REGRA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": []
+        },
+        {
+          "key": "fornecedor_referencia",
+          "label": "FORNECEDOR/REFERÊNCIA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": []
+        }
+      ],
+      "conditional_rules": []
+    },
+    {
+      "key": "cat_38_itens_acessibilidade",
+      "label": "38 - ITENS ACESSIBILIDADE",
+      "sheet_name": "38 - ITENS ACESSIBILIDADE",
+      "fields": [
+        {
+          "key": "prefixo",
+          "label": "PREFIXO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "ACESSORIO",
+            "FATURAMENTO DIRETO",
+            "CJ",
+            "PC",
+            "SUPORTE"
+          ]
+        },
+        {
+          "key": "descritor_base",
+          "label": "DESCRITOR BASE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "ADESIVO DEMARCACAO PISO CADEIRANTE",
+            "ADESIVO IDENTIFICACAO ACESSIBILIDADE AZUL",
+            "ANTEPARO PLATAFORMA LIGADO",
+            "APOIO CABECA CADEIRA RODAS",
+            "BOX CADEIRANTE LIGADO",
+            "BOX CADEIRANTE PIVOTANTE LIGADO",
+            "CONTROLE EXTERNO ELEVADOR DPM II",
+            "DPM FOCA ORBIT VAN DISPOSITIVO DE POLTRONA MOVEL",
+            "DPM ELEVITTA DISPOSITIVO DE POLTRONA MOVEL COM GIRO",
+            "DPM ELEVITTA DISPOSITIVO DE POLTRONA MOVEL SEM GIRO GIRO",
+            "DPM FOCA ORBIT VAN E/S/ J DISPOSITIVO DE POLTRONA MOVEL",
+            "DPM FOCA ORBIT VAN L2H2 DISPOSITIVO DE POLTRONA MOVEL",
+            "RETRATOR FIXACAO CADEIRA DE RODAS",
+            "MANIVELA ACO DPM ELEVITA ACIONAMENTO EMERGENCIA",
+            "CONTROLE PTA FOCA C/ CABO ESPIRAL",
+            "ACO CONTROLE PTA FOCA",
+            "COLETE CERVICAL P/ CADEIRANTE DPM ELEVITA"
+          ]
+        },
+        {
+          "key": "veiculo_modelo",
+          "label": "VEÍCULO/MODELO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": []
+        },
+        {
+          "key": "posicao_lado",
+          "label": "POSIÇÃO/LADO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "LATERAL",
+            "DIANTEIRO",
+            "TRASEIRO"
+          ]
+        },
+        {
+          "key": "medida",
+          "label": "MEDIDA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "150X150 MM"
+          ]
+        },
+        {
+          "key": "material_cor",
+          "label": "MATERIAL/COR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "AZUL",
+            "ACO"
+          ]
+        },
+        {
+          "key": "complemento_regra",
+          "label": "COMPLEMENTO/REGRA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": [
+            "DPM ELEVITTA DISPOSITIVO DE POLTRONA MOVEL",
+            "DPM FOCA DISPOSITIVO DE POLTRONA MOVEL",
+            "PLATAFORMA ELEVATORIA ELETRO HIDRAULICA BIPARTIDA",
+            "PLATAFORMA ELEVATORIA ELETRO HIDRAULICA FECHADA",
+            "Q-8200-A1-L"
+          ]
+        },
+        {
+          "key": "fornecedor_referencia",
+          "label": "FORNECEDOR/REFERÊNCIA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": []
+        }
+      ],
+      "conditional_rules": []
+    },
+    {
+      "key": "cat_44_reforcos",
+      "label": "44 - REFORÇOS",
+      "sheet_name": "44 - REFORÇOS",
+      "fields": [
+        {
+          "key": "prefixo",
+          "label": "PREFIXO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "CJ",
+            "ARCO",
+            "REFORCO",
+            "CUPULA",
+            "PP",
+            "CP",
+            "SUPORTE"
+          ]
+        },
+        {
+          "key": "descritor_base",
+          "label": "DESCRITOR BASE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "REFORCO EM ACO ARQUEAMENTO E/J ALTO",
+            "1 TIARA ANTENA P/ ARCO EM ACO ARQUEAMENTO E/J ALTO",
+            "2 REFORCO EM ACO ARQUEAMENTO E/J ALTO",
+            "3 REFORCO EM ACO ARQUEAMENTO E/J ALTO",
+            "/ ARCO EM ACO ARQUEAMENTO E/J ALTO",
+            "FIBRA DE VIDRO PRFV TA E/J",
+            "REFORCO SUPORTE METALON",
+            "CHAPA ACO CARBONO SUPORTE FIXACAO E/S/ J",
+            "REFORCO MACANETA INTERNA E/S/ J",
+            "ACO PORTA PACOTE TERMO. RENAULT MASTER \"Y\"",
+            "ACO PORTA PACOTE TERMO. MB SPRINTER \"Y\"",
+            "\"U\" ACO GALVANIZADO FIXACAO E/S/ J"
+          ]
+        },
+        {
+          "key": "veiculo_modelo",
+          "label": "VEÍCULO/MODELO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "E/J",
+            "MASTER / RENAULT",
+            "SPRINTER"
+          ]
+        },
+        {
+          "key": "posicao_lado",
+          "label": "POSIÇÃO/LADO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "TETO",
+            "PORTA LATERAL"
+          ]
+        },
+        {
+          "key": "medida",
+          "label": "MEDIDA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "1 P",
+            "2 P",
+            "3 P",
+            "4 P",
+            "5 P",
+            "40X20",
+            "80X10",
+            "310X250 MM",
+            "400X250 MM"
+          ]
+        },
+        {
+          "key": "material_cor",
+          "label": "MATERIAL/COR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "ACO",
+            "PRFV / VIDRO"
+          ]
+        },
+        {
+          "key": "complemento_regra",
+          "label": "COMPLEMENTO/REGRA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": []
+        },
+        {
+          "key": "fornecedor_referencia",
+          "label": "FORNECEDOR/REFERÊNCIA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": []
+        }
+      ],
+      "conditional_rules": []
+    },
+    {
+      "key": "cat_52_acabamentos",
+      "label": "52 - ACABAMENTOS",
+      "sheet_name": "52 - ACABAMENTOS",
+      "fields": [
+        {
+          "key": "prefixo",
+          "label": "PREFIXO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "ACESSORIO",
+            "PP",
+            "ACABAMENTO DIFUSOR",
+            "CANTONEIRA",
+            "ACABAMENTO TELA",
+            "ACABAMENTO PLASTICO",
+            "ACABAMENTO TAMPA",
+            "ACABAMENTO PONTEIRA"
+          ]
+        },
+        {
+          "key": "descritor_base",
+          "label": "DESCRITOR BASE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "ACABAMENTO PLASTICO IMPRESSO TRILHO ALUMINIO PADRAO JI",
+            "ACABAMENTO PLASTICO INJETADO TRILHO RETRATOR PADRAO JI",
+            "ACABAMENTO PLASTICO PARAFUSO PHILIPS BEGE",
+            "ACABAMENTO PLASTICO PARAFUSO PHILIPS BRANCO",
+            "ACABAMENTO PLASTICO PARAFUSO PHILIPS CINZA CHUMBO",
+            "ACABAMENTO PLASTICO PARAFUSO PHILIPS CINZA LUNA",
+            "ACABAMENTO PLASTICO PARAFUSO PHILIPS CINZA PLATINA",
+            "ACABAMENTO PLASTICO PARAFUSO PHILIPS MARFIM",
+            "ACABAMENTO PLASTICO PARAFUSO PHILIPS MARROM",
+            "ACABAMENTO PLASTICO PARAFUSO PHILIPS PRETO",
+            "ACABAMENTO TUBO BRANCO EXTERNO 1 1/4",
+            "ACABAMENTO TUBO EXTERNO",
+            "ACABAMENTO TUBO INTERNO 1",
+            "ACABAMENTO TUBO INTERNO",
+            "CAPA PARAFUSO",
+            "TAMPA PARAFUSO",
+            "TAMPA VENTILACAO BRANCO",
+            "CANTONEIRA PVC PRETA RENAULT MASTER L2H2/L3H2",
+            "CANTONEIRA PVC PRETA SPRINTER",
+            "CANTONEIRA PVC PRETA B/J/D",
+            "CANTONEIRA PVC PRETA RENAULT B/J/D",
+            "ACABAMENTO GRELHA AR CONDICIONADO",
+            "AR CONDICIONADO 360 EVO3 CROMADA ACRILYS",
+            "CANTONEIRA PVC PRETA SOLEIRA PORTA MALA E/S/ J",
+            "ALUMINIO ORIGINAL PT SPRINTER",
+            "AR CONDICIONADO C/ COLAR PRETO G.P.",
+            "P/ GOL PRETO G.P.",
+            "3D JI PC L\" FIXACAO BOTAO DIGITAL A/C G.E. E/S/",
+            "3D JI PC 2 BASE FIXACAO BOTAO A/C G.E. E/S/",
+            "3D JI PC 3 MASCARA BOTAO A/C G.E. E/S/ J",
+            "PLASTICA PARAFUSO SEXT. PRETA TOPO RETA",
+            "PLASTICA PARAFUSO SEXT. PRETA TOPO REDONDO",
+            "PLASTICA INTERNA PRETA ACABA. TUBO REDONDO (INTERNA)",
+            "PLASTICA EXTERNA PRETA ACABA. TUBO REDONDO (INTERNA)",
+            "FLEXIVEL EXTERNA PRETA ACABA. TUBO REDONDO (INTERNA)",
+            "PLASTICA INTERNA C/ ALETAS PRETA ACABA. ACABA. TUBO REDONDO (INTERNA)",
+            "PLASTICA INTERNA PRETA TOPO CURVO ACABA. TUBO RETANGULAR (CXL INTERNA)",
+            "PLASTICA INTERNA PRETA TOPO RETO ACABA. TUBO RETANGULAR (CXL)",
+            "PLASTICA INTERNA PRETA TOPO RETO ACABA. TUBO QUADRADO (CXL)",
+            "PLASTICA INTERNA PRETA ACABA. TUBO SEXTAVADO",
+            "TAMPA EXTERNA PORTA PACOTE TERMO. GRAFITE",
+            "TAMPA INTERNA PORTA PACOTE TERMO. GRAFITE",
+            "TAMPA PORTA PACOTE JI BEGE",
+            "TAMPA PORTA PACOTE JI PRETO",
+            "SUPORTE AEREO CAMERA TERMO. GRAFITE",
+            "ACABAMENTO CANTONEIRA AMARELA PERFIL DEGRAU ESCADA",
+            "ACABAMENTO CANTONEIRA PVC PRETA PARAFUSO EMBUTIDO"
+          ]
+        },
+        {
+          "key": "veiculo_modelo",
+          "label": "VEÍCULO/MODELO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "MASTER / RENAULT",
+            "SPRINTER",
+            "B/J/D",
+            "B/J/D / RENAULT"
+          ]
+        },
+        {
+          "key": "posicao_lado",
+          "label": "POSIÇÃO/LADO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "PORTA LATERAL / CORREDICA",
+            "PORTA TRASEIRA",
+            "LATERAL",
+            "LE",
+            "LD",
+            "TRASEIRA"
+          ]
+        },
+        {
+          "key": "medida",
+          "label": "MEDIDA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "3,5MM",
+            "40X40",
+            "25X25",
+            "30X20",
+            "40X20",
+            "50X30",
+            "17MM",
+            "25MM",
+            "1 \"",
+            "M10",
+            "20 MM",
+            "23 MM",
+            "15 MM",
+            "30 MM",
+            "35 MM",
+            "19 MM",
+            "33X23 MM",
+            "45X24 MM",
+            "25X19 MM",
+            "34X14 MM",
+            "18X18 MM",
+            "18 MM",
+            "15X15 MM",
+            "750MM"
+          ]
+        },
+        {
+          "key": "material_cor",
+          "label": "MATERIAL/COR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "ALUMINIO",
+            "BEGE",
+            "BRANCO",
+            "CINZA / CHUMBO",
+            "CINZA / LUNA",
+            "CINZA / PLATINA",
+            "MARFIM",
+            "MARROM",
+            "PRETO",
+            "PRETA / PVC",
+            "PRETA",
+            "GRAFITE",
+            "AMARELA"
+          ]
+        },
+        {
+          "key": "complemento_regra",
+          "label": "COMPLEMENTO/REGRA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": []
+        },
+        {
+          "key": "fornecedor_referencia",
+          "label": "FORNECEDOR/REFERÊNCIA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": []
         }
       ],
       "conditional_rules": []

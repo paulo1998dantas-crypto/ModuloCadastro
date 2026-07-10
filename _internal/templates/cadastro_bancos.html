@@ -20,6 +20,7 @@
                 <a href="/cadastro/bancos?categoria={{ selected_category.key }}" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'cadastro' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Cadastro</a>
                 <a href="/opcoes?categoria={{ selected_category.key }}" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'opcoes' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Opções</a>
                 <a href="/planilha" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'planilha' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Planilha</a>
+                <a href="/ponte" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'ponte' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Ponte Local</a>
             </nav>
         </div>
     </header>
@@ -37,21 +38,59 @@
         </div>
         {% endif %}
 
+        {% set free_text_fields = selected_category.key != 'bancos' %}
         <form method="post" action="/cadastro/bancos" class="space-y-6">
+            <input id="draft-id" type="hidden" name="draft_id" value="{{ active_draft.draft_id if active_draft else '' }}">
             <section class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                     <label class="w-full max-w-xs space-y-1">
                         <span class="block text-xs font-bold uppercase text-slate-500">Categoria</span>
-                        <select name="categoria" onchange="window.location='/cadastro/bancos?categoria=' + encodeURIComponent(this.value)" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="category-select" name="categoria" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500">
                             {% for category in categories %}
                             <option value="{{ category.key }}" {% if category.key == selected_category.key %}selected{% endif %}>{{ category.label }}</option>
                             {% endfor %}
                         </select>
                     </label>
-                    <button type="submit" class="rounded-lg bg-blue-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-blue-700">
-                        Salvar cadastro
-                    </button>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="save-draft-button" type="button" class="rounded-lg bg-amber-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-amber-600">
+                            Salvar rascunho
+                        </button>
+                        <button id="delete-current-draft-button" type="button" class="hidden rounded-lg bg-rose-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-rose-700">
+                            Excluir rascunho
+                        </button>
+                        <button type="submit" class="rounded-lg bg-blue-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-blue-700">
+                            Salvar cadastro
+                        </button>
+                    </div>
                 </div>
+                <div id="draft-status" class="mt-3 hidden rounded-lg border p-3 text-sm font-bold"></div>
+                <div id="draft-return" class="mt-4 hidden rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm font-semibold text-blue-800">
+                    <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                        <span>Existe um cadastro em andamento em <span id="draft-return-label" class="font-black"></span>.</span>
+                        <button id="draft-return-button" type="button" class="rounded-lg bg-blue-600 px-4 py-2 text-xs font-black uppercase tracking-wide text-white transition hover:bg-blue-700">
+                            Voltar ao rascunho
+                        </button>
+                    </div>
+                </div>
+                {% if drafts %}
+                <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <div class="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Rascunhos salvos na planilha</div>
+                    <div class="grid gap-2">
+                        {% for draft in drafts %}
+                        <div class="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 text-sm md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <div class="font-black text-slate-800">{{ draft.category_label }} — {{ draft.descricao_primaria }}</div>
+                                <div class="text-xs font-semibold text-slate-500">{{ draft.saved_at }} · {{ draft.sheet }}</div>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <a href="/cadastro/bancos?categoria={{ draft.category_key }}&draft_id={{ draft.draft_id }}" class="rounded-lg bg-blue-600 px-3 py-2 text-xs font-black uppercase tracking-wide text-white transition hover:bg-blue-700">Retomar</a>
+                                <button type="button" data-delete-draft="{{ draft.draft_id }}" class="rounded-lg bg-rose-100 px-3 py-2 text-xs font-black uppercase tracking-wide text-rose-700 transition hover:bg-rose-200">Excluir</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
             </section>
 
             <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -64,7 +103,15 @@
                         {% for field in ordered_fields if field.scope == 'primaria' %}
                         <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-description-order="{{ field.description_order }}">
                             <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
-                            {% if field.selection_mode == 'multipla' %}
+                            {% if free_text_fields %}
+                            <input name="{{ field.key }}" list="options-{{ field.scope }}-{{ field.key }}" value="{{ field.selected_value or (field.selected_values|join(' | ')) }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Digite livremente ou escolha uma sugestão...">
+                            <datalist id="options-{{ field.scope }}-{{ field.key }}">
+                                {% for option in field.options %}
+                                <option value="{{ option }}"></option>
+                                {% endfor %}
+                            </datalist>
+                            <span class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Campo flexível: escreva manualmente ou use as sugestões para manter o padrão.</span>
+                            {% elif field.selection_mode == 'multipla' %}
                             <select name="{{ field.key }}" multiple size="6" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
                                 {% for option in field.options %}
                                 <option value="{{ option }}" {% if option in field.selected_values %}selected{% endif %}>{{ option }}</option>
@@ -101,7 +148,15 @@
                                 ORIENTADO A ESQ:
                             </div>
                             {% endif %}
-                            {% if field.selection_mode == 'multipla' %}
+                            {% if free_text_fields %}
+                            <input name="{{ field.key }}" list="options-{{ field.scope }}-{{ field.key }}" value="{{ field.selected_value or (field.selected_values|join(' | ')) }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Digite livremente ou escolha uma sugestão...">
+                            <datalist id="options-{{ field.scope }}-{{ field.key }}">
+                                {% for option in field.options %}
+                                <option value="{{ option }}"></option>
+                                {% endfor %}
+                            </datalist>
+                            <span class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Campo flexível: escreva manualmente ou use as sugestões para manter o padrão.</span>
+                            {% elif field.selection_mode == 'multipla' %}
                             <select name="{{ field.key }}" multiple size="6" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
                                 {% for option in field.options %}
                                 <option value="{{ option }}" {% if option in field.selected_values %}selected{% endif %}>{{ option }}</option>
@@ -124,10 +179,65 @@
                     </div>
                 </div>
             </section>
+
+            <section id="components-section" class="hidden rounded-lg border border-amber-200 bg-amber-50 p-5 shadow-sm">
+                <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                        <h2 class="text-sm font-black uppercase tracking-wide text-amber-800">Componentes do conjunto / produto em processo</h2>
+                        <p class="mt-1 text-sm font-semibold text-amber-700">
+                            ObrigatÃ³rio quando o prefixo for CJ ou PP. Digite cÃ³digo ou descriÃ§Ã£o, selecione o produto e informe a quantidade.
+                        </p>
+                    </div>
+                    <label class="w-full max-w-xs space-y-1">
+                        <span class="block text-xs font-bold uppercase text-amber-800">CÃ³digo do item pai (opcional)</span>
+                        <input id="bom-item-code" name="bom_item_codigo" type="text" class="w-full rounded-lg border border-amber-300 bg-white p-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500" placeholder="Gerado automaticamente se ficar em branco">
+                    </label>
+                </div>
+
+                <div class="overflow-visible rounded-lg border border-amber-200 bg-white">
+                    <div class="grid grid-cols-1 gap-2 border-b border-amber-100 bg-amber-100 p-3 text-xs font-black uppercase text-amber-900 md:grid-cols-[1fr_140px_44px]">
+                        <div>Produto</div>
+                        <div>Quantidade</div>
+                        <div></div>
+                    </div>
+                    <div id="component-rows" class="divide-y divide-amber-100">
+                        <div class="relative grid grid-cols-1 gap-2 p-3 md:grid-cols-[1fr_140px_44px]" data-component-row>
+                            <input type="hidden" name="component_codigo" data-component-code>
+                            <input type="hidden" name="component_descricao" data-component-description>
+                            <input type="hidden" name="component_unidade" data-component-unit>
+                            <div class="relative">
+                                <input name="component_search" data-product-search type="text" autocomplete="off" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-500" placeholder="Digite cÃ³digo ou descriÃ§Ã£o do componente">
+                                <div data-product-results class="absolute z-30 mt-1 hidden max-h-72 w-full overflow-auto rounded-lg border border-slate-200 bg-white shadow-xl"></div>
+                            </div>
+                            <input name="component_quantidade" data-component-quantity type="number" min="0.0001" step="0.0001" value="1" class="rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-500">
+                            <button type="button" data-remove-component class="rounded-lg bg-slate-100 px-3 py-2 text-sm font-black text-slate-600 transition hover:bg-rose-100 hover:text-rose-700">×</button>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="add-component-floating" type="button" class="fixed bottom-6 right-6 z-40 hidden h-14 w-14 rounded-full bg-amber-500 text-3xl font-black leading-none text-white shadow-xl transition hover:bg-amber-600" title="Adicionar componente">+</button>
+            </section>
         </form>
     </main>
     <script>
         const fieldBlocks = Array.from(document.querySelectorAll("[data-field-block]"));
+        const enforceRequiredVisibleFields = {{ 'true' if selected_category.key == 'bancos' else 'false' }};
+        const currentCategoryKey = {{ selected_category.key | tojson }};
+        const categoriesForDraft = {{ categories | tojson }};
+        const serverDraftGroups = {{ (active_draft.groups if active_draft and active_draft.groups else {}) | tojson }};
+        const savedSuccessfully = {{ 'true' if sucesso else 'false' }};
+        const categorySelect = document.getElementById("category-select");
+        const draftReturn = document.getElementById("draft-return");
+        const draftReturnLabel = document.getElementById("draft-return-label");
+        const draftReturnButton = document.getElementById("draft-return-button");
+        const draftIdInput = document.getElementById("draft-id");
+        const saveDraftButton = document.getElementById("save-draft-button");
+        const deleteCurrentDraftButton = document.getElementById("delete-current-draft-button");
+        const draftStatus = document.getElementById("draft-status");
+        const draftStoragePrefix = "moduloCadastro.rascunho.";
+        const lastDraftStorageKey = "moduloCadastro.ultimoRascunho";
+        let draftSaveTimer = null;
+        let isRestoringDraft = false;
 
         const normalizeText = (value) => {
             return (value || "")
@@ -153,23 +263,26 @@
 
         const getSelectedTokens = (block) => {
             const select = block.querySelector("select");
-            if (!select) {
-                return [];
+            if (select) {
+                if (select.multiple) {
+                    return Array.from(select.selectedOptions).map((option) => normalizeOptionValue(option.value));
+                }
+                return select.value ? [normalizeOptionValue(select.value)] : [];
             }
-            if (select.multiple) {
-                return Array.from(select.selectedOptions).map((option) => normalizeOptionValue(option.value));
-            }
-            return select.value ? [normalizeOptionValue(select.value)] : [];
+            const inputs = Array.from(block.querySelectorAll("input:not([type='hidden']), textarea"));
+            return inputs
+                .flatMap((input) => (input.value || "").split("|"))
+                .map((value) => normalizeOptionValue(value))
+                .filter(Boolean);
         };
 
         const getSelectedPrefixes = (block) => {
             const select = block.querySelector("select");
-            if (!select) {
-                return [];
-            }
-            const selectedOptions = select.multiple ? Array.from(select.selectedOptions) : (select.value ? [select.selectedOptions[0]] : []);
-            return selectedOptions
-                .map((option) => (option && option.value ? option.value : ""))
+            const values = select
+                ? (select.multiple ? Array.from(select.selectedOptions).map((option) => option.value || "") : (select.value ? [select.value] : []))
+                : Array.from(block.querySelectorAll("input:not([type='hidden']), textarea"))
+                    .flatMap((input) => (input.value || "").split("|"));
+            return values
                 .map((value) => {
                     const match = value.match(/^\s*(\d+)/);
                     return match ? match[1] : "";
@@ -195,7 +308,7 @@
                     }
                 }
                 control.disabled = !visible;
-                control.required = visible;
+                control.required = enforceRequiredVisibleFields && visible;
             });
         };
 
@@ -285,6 +398,451 @@
             secundaria: document.getElementById("secondary-field-grid"),
         };
         const originalFieldIndexes = new Map(fieldBlocks.map((block, index) => [block, index]));
+        const componentsSection = document.getElementById("components-section");
+        const componentRows = document.getElementById("component-rows");
+        const addComponentButton = document.getElementById("add-component-floating");
+        const bomItemCode = document.getElementById("bom-item-code");
+        const componentRowTemplate = componentRows ? componentRows.querySelector("[data-component-row]") : null;
+
+        const requiresComponents = () => {
+            const prefixBlock = findBlock(["PRE FIXO", "PRÉ FIXO", "PREFIXO"], "primaria");
+            if (!prefixBlock) {
+                return false;
+            }
+            return getSelectedTokens(prefixBlock).some((token) => token === "CJ" || token === "PP" || token.startsWith("CJ") || token.startsWith("PP"));
+        };
+
+        const componentInputs = () => {
+            if (!componentsSection) {
+                return [];
+            }
+            return Array.from(componentsSection.querySelectorAll("input, button"));
+        };
+
+        const setComponentsEnabled = (enabled) => {
+            if (!componentsSection) {
+                return;
+            }
+            componentsSection.classList.toggle("hidden", !enabled);
+            if (addComponentButton) {
+                addComponentButton.classList.toggle("hidden", !enabled);
+            }
+            componentInputs().forEach((control) => {
+                if (control === addComponentButton) {
+                    return;
+                }
+                control.disabled = !enabled;
+            });
+            if (bomItemCode) {
+                bomItemCode.required = false;
+            }
+        };
+
+        const clearComponentRow = (row) => {
+            row.querySelector("[data-component-code]").value = "";
+            row.querySelector("[data-component-description]").value = "";
+            row.querySelector("[data-component-unit]").value = "";
+            row.querySelector("[data-product-search]").value = "";
+            row.querySelector("[data-component-quantity]").value = "1";
+            const results = row.querySelector("[data-product-results]");
+            results.innerHTML = "";
+            results.classList.add("hidden");
+        };
+
+        const closeProductResults = (row) => {
+            const results = row.querySelector("[data-product-results]");
+            results.innerHTML = "";
+            results.classList.add("hidden");
+        };
+
+        const selectProduct = (row, product) => {
+            row.querySelector("[data-component-code]").value = product.codigo || "";
+            row.querySelector("[data-component-description]").value = product.descricao || "";
+            row.querySelector("[data-component-unit]").value = product.unidade || "pc";
+            row.querySelector("[data-product-search]").value = `${product.codigo || ""} - ${product.descricao || ""}`.trim();
+            closeProductResults(row);
+            scheduleDraftSave();
+        };
+
+        const renderProductResults = (row, products) => {
+            const results = row.querySelector("[data-product-results]");
+            results.innerHTML = "";
+            if (!products.length) {
+                results.innerHTML = '<div class="p-3 text-sm font-semibold text-slate-500">Nenhum produto encontrado.</div>';
+                results.classList.remove("hidden");
+                return;
+            }
+            products.forEach((product) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "block w-full border-b border-slate-100 px-3 py-2 text-left text-sm hover:bg-amber-50";
+                button.innerHTML = `
+                    <span class="block font-black text-slate-800">${product.codigo || ""}</span>
+                    <span class="block text-xs font-semibold text-slate-600">${product.descricao || ""}</span>
+                    <span class="block text-[11px] font-bold uppercase text-slate-400">${product.categoria || ""}</span>
+                `;
+                button.addEventListener("click", () => selectProduct(row, product));
+                results.appendChild(button);
+            });
+            results.classList.remove("hidden");
+        };
+
+        const bindComponentRow = (row) => {
+            const searchInput = row.querySelector("[data-product-search]");
+            const removeButton = row.querySelector("[data-remove-component]");
+            let searchTimer = null;
+
+            searchInput.addEventListener("input", () => {
+                row.querySelector("[data-component-code]").value = "";
+                row.querySelector("[data-component-description]").value = "";
+                row.querySelector("[data-component-unit]").value = "";
+                const query = searchInput.value.trim();
+                window.clearTimeout(searchTimer);
+                if (!query) {
+                    closeProductResults(row);
+                    return;
+                }
+                searchTimer = window.setTimeout(async () => {
+                    try {
+                        const response = await fetch(`/api/produtos?q=${encodeURIComponent(query)}`);
+                        const payload = await response.json();
+                        renderProductResults(row, payload.items || []);
+                    } catch (error) {
+                        renderProductResults(row, []);
+                    }
+                }, 180);
+            });
+
+            removeButton.addEventListener("click", () => {
+                const rows = componentRows ? Array.from(componentRows.querySelectorAll("[data-component-row]")) : [];
+                if (rows.length <= 1) {
+                    clearComponentRow(row);
+                    scheduleDraftSave();
+                    return;
+                }
+                row.remove();
+                scheduleDraftSave();
+            });
+        };
+
+        const addComponentRow = () => {
+            if (!componentRows || !componentRowTemplate) {
+                return;
+            }
+            const row = componentRowTemplate.cloneNode(true);
+            clearComponentRow(row);
+            bindComponentRow(row);
+            componentRows.appendChild(row);
+            row.querySelector("[data-product-search]").focus();
+            scheduleDraftSave();
+        };
+
+        const validateComponents = () => {
+            if (!componentsSection || componentsSection.classList.contains("hidden")) {
+                return true;
+            }
+            const rows = Array.from(componentRows.querySelectorAll("[data-component-row]"));
+            const filledRows = rows.filter((row) => {
+                return row.querySelector("[data-component-code]").value.trim()
+                    || row.querySelector("[data-product-search]").value.trim()
+                    || row.querySelector("[data-component-quantity]").value.trim();
+            });
+            if (!filledRows.length) {
+                alert("Inclua pelo menos um componente.");
+                rows[0].querySelector("[data-product-search]").focus();
+                return false;
+            }
+            for (const row of filledRows) {
+                const code = row.querySelector("[data-component-code]").value.trim();
+                const quantity = Number(row.querySelector("[data-component-quantity]").value);
+                if (!code) {
+                    alert("Selecione um produto válido na lista de componentes.");
+                    row.querySelector("[data-product-search]").focus();
+                    return false;
+                }
+                if (!quantity || quantity <= 0) {
+                    alert("Informe uma quantidade maior que zero para cada componente.");
+                    row.querySelector("[data-component-quantity]").focus();
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        const draftKey = (categoryKey = currentCategoryKey) => `${draftStoragePrefix}${categoryKey}`;
+
+        const hasMeaningfulDraftValue = (groups) => {
+            return Object.entries(groups).some(([name, values]) => {
+                if (name === "categoria" || name === "component_quantidade") {
+                    return false;
+                }
+                return values.some((value) => (value || "").trim());
+            });
+        };
+
+        const serializeDraft = () => {
+            const formElement = document.querySelector("form[action='/cadastro/bancos']");
+            if (!formElement) {
+                return null;
+            }
+            const groups = {};
+            const controls = Array.from(formElement.querySelectorAll("input, select, textarea"));
+            controls.forEach((control) => {
+                if (!control.name) {
+                    return;
+                }
+                if (control.type === "button" || control.type === "submit") {
+                    return;
+                }
+                if (control.tagName === "SELECT" && control.multiple) {
+                    groups[control.name] = Array.from(control.selectedOptions).map((option) => option.value);
+                    return;
+                }
+                if (control.type === "checkbox" || control.type === "radio") {
+                    if (!groups[control.name]) {
+                        groups[control.name] = [];
+                    }
+                    if (control.checked) {
+                        groups[control.name].push(control.value);
+                    }
+                    return;
+                }
+                if (!groups[control.name]) {
+                    groups[control.name] = [];
+                }
+                groups[control.name].push(control.value || "");
+            });
+            return {
+                category: currentCategoryKey,
+                savedAt: new Date().toISOString(),
+                groups,
+            };
+        };
+
+        const saveDraftNow = () => {
+            if (isRestoringDraft) {
+                return;
+            }
+            const draft = serializeDraft();
+            if (!draft) {
+                return;
+            }
+            if (!hasMeaningfulDraftValue(draft.groups)) {
+                localStorage.removeItem(draftKey());
+                return;
+            }
+            localStorage.setItem(draftKey(), JSON.stringify(draft));
+            if (currentCategoryKey !== "bancos") {
+                localStorage.setItem(lastDraftStorageKey, JSON.stringify({
+                    category: currentCategoryKey,
+                    savedAt: draft.savedAt,
+                }));
+            }
+        };
+
+        const scheduleDraftSave = () => {
+            window.clearTimeout(draftSaveTimer);
+            draftSaveTimer = window.setTimeout(saveDraftNow, 250);
+        };
+
+        const showDraftStatus = (message, kind = "success") => {
+            if (!draftStatus) {
+                return;
+            }
+            draftStatus.textContent = message;
+            draftStatus.classList.remove(
+                "hidden",
+                "border-emerald-200",
+                "bg-emerald-50",
+                "text-emerald-800",
+                "border-rose-200",
+                "bg-rose-50",
+                "text-rose-800",
+                "border-amber-200",
+                "bg-amber-50",
+                "text-amber-800",
+            );
+            if (kind === "error") {
+                draftStatus.classList.add("border-rose-200", "bg-rose-50", "text-rose-800");
+                return;
+            }
+            if (kind === "warning") {
+                draftStatus.classList.add("border-amber-200", "bg-amber-50", "text-amber-800");
+                return;
+            }
+            draftStatus.classList.add("border-emerald-200", "bg-emerald-50", "text-emerald-800");
+        };
+
+        const saveDraftToServer = async ({ silent = false } = {}) => {
+            const draft = serializeDraft();
+            if (!draft || !hasMeaningfulDraftValue(draft.groups)) {
+                if (!silent) {
+                    showDraftStatus("Nada para salvar como rascunho ainda.", "warning");
+                }
+                return true;
+            }
+
+            const formData = new FormData();
+            formData.append("category_key", currentCategoryKey);
+            formData.append("draft_payload", JSON.stringify(draft));
+            formData.append("draft_id", draftIdInput ? draftIdInput.value : "");
+
+            if (!silent) {
+                showDraftStatus("Salvando rascunho na planilha...", "warning");
+            }
+            try {
+                const response = await fetch("/rascunhos/salvar", {
+                    method: "POST",
+                    body: formData,
+                });
+                const payload = await response.json();
+                if (!response.ok || !payload.ok) {
+                    throw new Error(payload.error || "Não foi possível salvar o rascunho.");
+                }
+                if (draftIdInput) {
+                    draftIdInput.value = payload.draft.draft_id || "";
+                }
+                if (deleteCurrentDraftButton) {
+                    deleteCurrentDraftButton.classList.toggle("hidden", !payload.draft.draft_id);
+                }
+                saveDraftNow();
+                if (!silent) {
+                    showDraftStatus("Rascunho salvo na planilha do Gerador de Cadastros.", "success");
+                }
+                return true;
+            } catch (error) {
+                if (!silent) {
+                    showDraftStatus(error.message || "Erro ao salvar rascunho.", "error");
+                }
+                return false;
+            }
+        };
+
+        const deleteDraftById = async (draftId, { reload = true } = {}) => {
+            if (!draftId) {
+                showDraftStatus("Nenhum rascunho selecionado para excluir.", "warning");
+                return false;
+            }
+            const formData = new FormData();
+            formData.append("draft_id", draftId);
+            showDraftStatus("Excluindo rascunho...", "warning");
+            try {
+                const response = await fetch("/api/rascunhos/excluir", {
+                    method: "POST",
+                    body: formData,
+                });
+                const payload = await response.json();
+                if (!response.ok || !payload.ok) {
+                    throw new Error(payload.error || "Não foi possível excluir o rascunho.");
+                }
+                if (draftIdInput && draftIdInput.value === draftId) {
+                    draftIdInput.value = "";
+                    localStorage.removeItem(draftKey());
+                    if (deleteCurrentDraftButton) {
+                        deleteCurrentDraftButton.classList.add("hidden");
+                    }
+                }
+                showDraftStatus("Rascunho excluído.", "success");
+                if (reload) {
+                    window.location = `/cadastro/bancos?categoria=${encodeURIComponent(currentCategoryKey)}&sucesso=${encodeURIComponent("Rascunho excluído.")}`;
+                }
+                return true;
+            } catch (error) {
+                showDraftStatus(error.message || "Erro ao excluir rascunho.", "error");
+                return false;
+            }
+        };
+
+        const restoreComponentRowsForDraft = (groups) => {
+            if (!componentRows) {
+                return;
+            }
+            const count = Math.max(
+                1,
+                (groups.component_codigo || []).length,
+                (groups.component_descricao || []).length,
+                (groups.component_unidade || []).length,
+                (groups.component_search || []).length,
+                (groups.component_quantidade || []).length,
+            );
+            while (componentRows.querySelectorAll("[data-component-row]").length < count) {
+                addComponentRow();
+            }
+        };
+
+        const restoreDraft = () => {
+            const hasServerDraft = serverDraftGroups && Object.keys(serverDraftGroups).length;
+            const rawDraft = localStorage.getItem(draftKey());
+            if (!hasServerDraft && !rawDraft) {
+                return;
+            }
+            let draft = hasServerDraft ? { category: currentCategoryKey, groups: serverDraftGroups } : null;
+            if (!draft) {
+                try {
+                    draft = JSON.parse(rawDraft);
+                } catch (error) {
+                    localStorage.removeItem(draftKey());
+                    return;
+                }
+            }
+            if (!draft || !draft.groups) {
+                return;
+            }
+            isRestoringDraft = true;
+            restoreComponentRowsForDraft(draft.groups);
+            const formElement = document.querySelector("form[action='/cadastro/bancos']");
+            const counters = {};
+            Array.from(formElement.querySelectorAll("input, select, textarea")).forEach((control) => {
+                if (!control.name || control.name === "categoria") {
+                    return;
+                }
+                const values = draft.groups[control.name];
+                if (!values) {
+                    return;
+                }
+                if (control.tagName === "SELECT" && control.multiple) {
+                    Array.from(control.options).forEach((option) => {
+                        option.selected = values.includes(option.value);
+                    });
+                    return;
+                }
+                if (control.type === "checkbox" || control.type === "radio") {
+                    control.checked = values.includes(control.value);
+                    return;
+                }
+                const index = counters[control.name] || 0;
+                control.value = values[index] || "";
+                counters[control.name] = index + 1;
+            });
+            isRestoringDraft = false;
+        };
+
+        const showReturnToLastDraft = () => {
+            const raw = localStorage.getItem(lastDraftStorageKey);
+            if (!raw || !draftReturn || !draftReturnButton) {
+                return;
+            }
+            let lastDraft = null;
+            try {
+                lastDraft = JSON.parse(raw);
+            } catch (error) {
+                localStorage.removeItem(lastDraftStorageKey);
+                return;
+            }
+            if (!lastDraft || !lastDraft.category || lastDraft.category === currentCategoryKey) {
+                return;
+            }
+            if (!localStorage.getItem(draftKey(lastDraft.category))) {
+                return;
+            }
+            const category = categoriesForDraft.find((item) => item.key === lastDraft.category);
+            draftReturnLabel.textContent = category ? category.label : lastDraft.category;
+            draftReturn.classList.remove("hidden");
+            draftReturnButton.addEventListener("click", () => {
+                saveDraftNow();
+                window.location = `/cadastro/bancos?categoria=${encodeURIComponent(lastDraft.category)}`;
+            });
+        };
 
         const arrangeFieldsByScope = (effectiveScopes) => {
             ["primaria", "secundaria"].forEach((scope) => {
@@ -303,7 +861,7 @@
         };
 
         const updateConditionalFields = () => {
-            const visibility = new Map(fieldBlocks.map((block) => [block, true]));
+            const visibilityRules = new Map(fieldBlocks.map((block) => [block, { show: [], hide: [] }]));
             const effectiveScopes = new Map(fieldBlocks.map((block) => [block, block.dataset.fieldScope]));
 
             rules.forEach((rule) => {
@@ -330,30 +888,39 @@
                     return;
                 }
 
-                const shouldShow = rule.mode === "showWhen" ? matches : !matches;
-
                 rule.targets.forEach((target) => {
                     const targetBlock = findBlock(target.label, target.scope);
                     if (!targetBlock) {
                         return;
                     }
-                    visibility.set(targetBlock, visibility.get(targetBlock) && shouldShow);
+                    const targetRules = visibilityRules.get(targetBlock);
+                    if (action === "show" || rule.mode === "showWhen") {
+                        targetRules.show.push(matches);
+                    } else {
+                        targetRules.hide.push(matches);
+                    }
                 });
             });
 
             fieldBlocks.forEach((block) => {
-                const shouldShow = visibility.get(block) !== false;
+                const targetRules = visibilityRules.get(block);
+                const showOk = targetRules.show.length ? targetRules.show.some(Boolean) : true;
+                const hideHit = targetRules.hide.some(Boolean);
+                const shouldShow = showOk && !hideHit;
                 clearAndToggleBlock(block, shouldShow);
                 block.dataset.effectiveScope = effectiveScopes.get(block);
             });
             arrangeFieldsByScope(effectiveScopes);
+            setComponentsEnabled(requiresComponents());
         };
 
         fieldBlocks.forEach((block) => {
-            const select = block.querySelector("select");
-            if (select) {
+            block.querySelectorAll("select").forEach((select) => {
                 select.addEventListener("change", updateConditionalFields);
-            }
+            });
+            block.querySelectorAll("input:not([type='hidden']), textarea").forEach((input) => {
+                input.addEventListener("change", updateConditionalFields);
+            });
         });
 
         const isBlockFilled = (block) => {
@@ -384,8 +951,18 @@
 
         const form = document.querySelector("form[action='/cadastro/bancos']");
         if (form) {
+            form.addEventListener("input", scheduleDraftSave);
+            form.addEventListener("change", scheduleDraftSave);
             form.addEventListener("submit", (event) => {
+                saveDraftNow();
                 updateConditionalFields();
+                if (!validateComponents()) {
+                    event.preventDefault();
+                    return;
+                }
+                if (!enforceRequiredVisibleFields) {
+                    return;
+                }
                 const missing = fieldBlocks
                     .filter((block) => !block.classList.contains("hidden"))
                     .filter((block) => !isBlockFilled(block));
@@ -406,6 +983,60 @@
             });
         }
 
+        if (categorySelect) {
+            categorySelect.addEventListener("change", async () => {
+                saveDraftNow();
+                await saveDraftToServer({ silent: true });
+                window.location = `/cadastro/bancos?categoria=${encodeURIComponent(categorySelect.value)}`;
+            });
+        }
+
+        if (saveDraftButton) {
+            saveDraftButton.addEventListener("click", () => {
+                saveDraftToServer();
+            });
+        }
+
+        if (deleteCurrentDraftButton) {
+            deleteCurrentDraftButton.classList.toggle("hidden", !(draftIdInput && draftIdInput.value));
+            deleteCurrentDraftButton.addEventListener("click", () => {
+                if (!draftIdInput || !draftIdInput.value) {
+                    showDraftStatus("Nenhum rascunho selecionado para excluir.", "warning");
+                    return;
+                }
+                if (confirm("Excluir este rascunho?")) {
+                    deleteDraftById(draftIdInput.value);
+                }
+            });
+        }
+
+        document.querySelectorAll("[data-delete-draft]").forEach((button) => {
+            button.addEventListener("click", () => {
+                const draftId = button.dataset.deleteDraft || "";
+                if (draftId && confirm("Excluir este rascunho?")) {
+                    deleteDraftById(draftId);
+                }
+            });
+        });
+
+        if (componentRows) {
+            Array.from(componentRows.querySelectorAll("[data-component-row]")).forEach(bindComponentRow);
+        }
+        if (addComponentButton) {
+            addComponentButton.addEventListener("click", addComponentRow);
+        }
+        document.addEventListener("click", (event) => {
+            if (!componentRows || componentRows.contains(event.target)) {
+                return;
+            }
+            Array.from(componentRows.querySelectorAll("[data-component-row]")).forEach(closeProductResults);
+        });
+
+        if (savedSuccessfully) {
+            localStorage.removeItem(draftKey());
+        }
+        restoreDraft();
+        showReturnToLastDraft();
         updateConditionalFields();
     </script>
 </body>

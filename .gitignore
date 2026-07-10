@@ -12,6 +12,8 @@ spec_*/
 work_*/
 __pycache__/
 ModuloCadastro.exe_extracted/
+ModuloCadastro.exe.bak_*
+ModuloCadastro-main/
 _internal/*
 !_internal/templates/
 _internal/templates/*

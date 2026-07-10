@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: modulo-cadastro
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: CADASTRO_SAVE_MODE
+        value: bridge
+      - key: CADASTRO_DATA_DIR
+        value: /var/data
+      - key: CADASTRO_BRIDGE_TOKEN
+        sync: false
+    disk:
+      name: modulo-cadastro-data
+      mountPath: /var/data
+      sizeGB: 1

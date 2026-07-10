@@ -11,12 +11,19 @@ TEMPLATE_FILES = [
     TEMPLATE_DIR / "cadastro_bancos.html",
     TEMPLATE_DIR / "opcoes.html",
     TEMPLATE_DIR / "planilha.html",
+    TEMPLATE_DIR / "ponte.html",
+]
+DOWNLOAD_FILES = [
+    ROOT / "local_bridge.py",
+    ROOT / "iniciar_ponte_local.bat",
+    ROOT / "ponte_config.example.json",
 ]
 a = Analysis(
     ['desktop_launcher.py'],
     pathex=[],
     binaries=collect_dynamic_libs("pydantic_core"),
-    datas=[(str(path), "_internal/templates") for path in TEMPLATE_FILES if path.exists()],
+    datas=[(str(path), "_internal/templates") for path in TEMPLATE_FILES if path.exists()]
+    + [(str(path), ".") for path in DOWNLOAD_FILES if path.exists()],
     hiddenimports=["pydantic_core._pydantic_core"],
     hookspath=[],
     hooksconfig={},

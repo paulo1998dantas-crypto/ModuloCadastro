@@ -24,6 +24,7 @@ DEFAULT_CATEGORY_KEY = "bancos"
 DEFAULT_CATEGORY_LABEL = "Bancos"
 FIRST_DATA_ROW = 3
 REGISTRATION_SHEET_NAME = "_cadastro_app"
+DRAFT_SHEET_NAME = "_rascunhos_app"
 SELECTION_MODE_UNITARIA = "unitaria"
 SELECTION_MODE_MULTIPLA = "multipla"
 EXCEL_SUFFIXES = {".xlsx", ".xlsm"}
@@ -40,6 +41,7 @@ DESCRIPTION_SUFFIX_HEADER = "SUFIXO"
 _CATALOG_CACHE: dict[str, Any] | None = None
 _CATALOG_CACHE_MTIME: float | None = None
 _REGISTRATION_CACHE: dict[tuple[str, str, int], dict[str, Any]] = {}
+_PRODUCT_CATALOG_CACHE: tuple[Path, float, list[dict[str, str]]] | None = None
 
 DEFAULT_CONDITIONAL_RULES = [
     {
@@ -245,6 +247,7 @@ RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", PROJECT_DIR))
 CONFIG_PATH = PROJECT_DIR / "config.json"
 DATA_PATH = PROJECT_DIR / "cadastro_dados.json"
 BACKUP_DIR = PROJECT_DIR / "backups"
+BOM_OUTPUT_DIR = PROJECT_DIR / "outputs" / "bom"
 _template_env = os.environ.get("CADASTRO_BANCO_TEMPLATE", "").strip()
 DEFAULT_TEMPLATE_PATH = Path(_template_env).expanduser() if _template_env else PROJECT_DIR / "TEMPLATE ID BANCO.xlsx"
 
@@ -257,6 +260,13 @@ def clean_text(value: Any) -> str:
 
 def normalize_label(value: Any) -> str:
     text = re.sub(r"\([^)]*\)", "", clean_text(value))
+    text = unicodedata.normalize("NFKD", text.upper())
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    return re.sub(r"[^A-Z0-9]+", " ", text).strip()
+
+
+def normalize_option_label(value: Any) -> str:
+    text = clean_text(value)
     text = unicodedata.normalize("NFKD", text.upper())
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
     return re.sub(r"[^A-Z0-9]+", " ", text).strip()
@@ -279,11 +289,11 @@ def option_code(value: Any) -> str:
 
 
 def option_identity(value: Any) -> str:
-    return normalize_label(option_label(value))
+    return normalize_option_label(option_label(value))
 
 
 def rule_option_token(value: Any) -> str:
-    return normalize_label(option_label(value)).replace(" ", "")
+    return normalize_option_label(option_label(value)).replace(" ", "")
 
 
 def strip_accents(value: Any) -> str:
@@ -557,7 +567,7 @@ def _sanitize_fields(fields: list[dict[str, Any]] | None, include_defaults: bool
             value = normalize_option_text(option)
             if not value:
                 continue
-            option_key = option_identity(value)
+            option_key = f"{option_code(value)}|{option_identity(value)}" if option_code(value) else option_identity(value)
             if option_key in seen_options:
                 continue
             seen_options.add(option_key)
@@ -603,6 +613,9 @@ def _sanitize_conditional_rules(
         action = clean_text(rule.get("action")).lower()
         if action not in {"hide", "show", "set_primary", "set_secondary"}:
             action = "hide"
+        match_by = clean_text(rule.get("match_by")).lower()
+        if match_by not in {"option", "prefix"}:
+            match_by = "option"
         if action in {"set_primary", "set_secondary"} and (source_field is None or target_field is None):
             continue
         cleaned.append(
@@ -616,6 +629,7 @@ def _sanitize_conditional_rules(
                 "target_field_label": target_field["label"] if target_field else clean_text(rule.get("target_field_label")) or target_key,
                 "target_field_scope": target_field["scope"] if target_field else clean_text(rule.get("target_field_scope")) or "secundaria",
                 "action": action,
+                "match_by": match_by,
             }
         )
 
@@ -804,6 +818,18 @@ def delete_category(category_key_value: str) -> dict[str, str]:
 
 
 def active_workbook_path() -> Path:
+    env_workbook = clean_text(os.environ.get("CADASTRO_ACTIVE_WORKBOOK"))
+    if env_workbook:
+        path = Path(env_workbook)
+        if not path.is_absolute():
+            path = (PROJECT_DIR / path).resolve()
+        return path
+
+    data_dir = clean_text(os.environ.get("CADASTRO_DATA_DIR"))
+    save_mode = clean_text(os.environ.get("CADASTRO_SAVE_MODE")).lower()
+    if data_dir and save_mode in {"bridge", "ponte", "online"}:
+        return (Path(data_dir) / DEFAULT_NEW_WORKBOOK_NAME).resolve()
+
     _ensure_seed_file(CONFIG_PATH, "config.json")
     config = _read_config()
     raw = clean_text(config.get("active_workbook"))
@@ -1056,6 +1082,45 @@ def _next_available_row(ws) -> int:
     return max(FIRST_DATA_ROW, header_row + 1)
 
 
+def _numeric_sku_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    text = clean_text(value)
+    if re.fullmatch(r"\d+", text):
+        return text
+    if re.fullmatch(r"\d+\.0+", text):
+        return text.split(".", 1)[0]
+    return ""
+
+
+def _initial_sku_for_sheet(ws, category: dict[str, Any]) -> str:
+    candidates = [
+        category.get("label"),
+        category.get("sheet_name"),
+        ws.title,
+    ]
+    for value in candidates:
+        match = re.search(r"\d+", clean_text(value))
+        if match:
+            return f"{int(match.group(0)):02d}000001"
+    return "00000001"
+
+
+def _next_sequential_sku(ws, sku_column: int, category: dict[str, Any]) -> str:
+    last_code = ""
+    for row in range(FIRST_DATA_ROW, ws.max_row + 1):
+        code = _numeric_sku_text(ws.cell(row, sku_column).value)
+        if code:
+            last_code = code
+    if not last_code:
+        return _initial_sku_for_sheet(ws, category)
+    return str(int(last_code) + 1).zfill(len(last_code))
+
+
 def _expand_table_to_row(ws, row: int) -> None:
     table = _table_for_sheet(ws)
     if table is None:
@@ -1278,6 +1343,7 @@ def get_conditional_rules(category_key_value: str) -> list[dict[str, Any]]:
                 "target_field_label": rule["target_field_label"],
                 "target_field_scope": rule["target_field_scope"],
                 "action": rule["action"],
+                "match_by": rule.get("match_by", "option"),
                 "source_field": source_field,
                 "target_field": target_field,
             }
@@ -1315,7 +1381,7 @@ def get_conditional_rules_for_form(category_key_value: str) -> list[dict[str, An
                 "sourceScope": rule["source_field_scope"],
                 "action": rule["action"],
                 "mode": "showWhen" if rule["action"] == "show" else "hideWhen",
-                "matchBy": "option",
+                "matchBy": rule.get("match_by", "option"),
                 "values": source_values,
                 "targets": targets,
             }
@@ -1459,6 +1525,31 @@ def _registration_sheet(workbook):
     return ws
 
 
+def _draft_sheet(workbook):
+    headers = ["draft_id", "category_key", "category_label", "sheet", "saved_at", "descricao_primaria", "data_json"]
+    if DRAFT_SHEET_NAME not in workbook.sheetnames:
+        ws = workbook.create_sheet(DRAFT_SHEET_NAME)
+        ws.sheet_state = "hidden"
+        ws.append(headers)
+        return ws
+    ws = workbook[DRAFT_SHEET_NAME]
+    for column, header in enumerate(headers, start=1):
+        if clean_text(ws.cell(1, column).value) != header:
+            ws.cell(1, column).value = header
+    ws.sheet_state = "hidden"
+    return ws
+
+
+def _draft_row(ws, draft_id: str) -> int | None:
+    draft_id = clean_text(draft_id)
+    if not draft_id:
+        return None
+    for row in range(2, ws.max_row + 1):
+        if clean_text(ws.cell(row, 1).value) == draft_id:
+            return row
+    return None
+
+
 def _copy_row_style(ws, source_row: int, target_row: int) -> None:
     for column in range(1, ws.max_column + 1):
         source = ws.cell(source_row, column)
@@ -1522,7 +1613,7 @@ def _serialize_field_values(field: dict[str, Any], data: Any) -> list[str]:
     if field.get("selection_mode") != SELECTION_MODE_MULTIPLA:
         raw_values = raw_values[:1]
 
-    cleaned_values = [clean_text(value) for value in raw_values if clean_text(value)]
+    cleaned_values = [normalize_option_text(value) for value in raw_values if clean_text(value)]
     if not cleaned_values:
         return []
 
@@ -1543,10 +1634,31 @@ def _serialize_field_values(field: dict[str, Any], data: Any) -> list[str]:
             ordered.append(value)
             used.add(identity)
 
+    if field.get("key") == DISTANCIA_PE_KEY:
+        return _order_distancia_pe_values(ordered)
     return ordered
 
 
+def _distancia_pe_order(value: Any) -> tuple[int, int, str]:
+    label = normalize_option_label(option_label(value))
+    vao_order = {
+        "PRIMEIRO": 1,
+        "SEGUNDO": 2,
+        "TERCEIRO": 3,
+        "QUARTO": 4,
+    }
+    for word, order in vao_order.items():
+        if word in label and "VAO" in label:
+            return (0, order, label)
+    return (1, 999, label)
+
+
+def _order_distancia_pe_values(values: list[str]) -> list[str]:
+    return sorted(values, key=_distancia_pe_order)
+
+
 def _format_distancia_pe_value(values: list[str]) -> str:
+    values = _order_distancia_pe_values(values)
     joined = " | ".join(values).strip()
     if not joined:
         return ""
@@ -1565,12 +1677,16 @@ def _format_field_saved_value(field: dict[str, Any], values: list[str]) -> str:
 
 
 def _format_field_description(field: dict[str, Any], values: list[str]) -> str:
+    if field.get("key") == DISTANCIA_PE_KEY:
+        values = _order_distancia_pe_values(values)
+        label = ", ".join(option_label(value) for value in values)
+        if label:
+            prefix = DISTANCIA_PE_PREFIX
+            if normalize_label(label).startswith(normalize_label(prefix)):
+                return label
+            return f"{prefix} {label}".strip()
+        return label
     label = " / ".join(option_label(value) for value in values)
-    if field.get("key") == DISTANCIA_PE_KEY and label:
-        prefix = DISTANCIA_PE_PREFIX
-        if normalize_label(label).startswith(normalize_label(prefix)):
-            return label
-        return f"{prefix} {label}".strip()
     return label
 
 
@@ -1700,20 +1816,29 @@ def _rule_matches(field: dict[str, Any], data: Any, rule: dict[str, Any]) -> boo
 
 
 def _combined_conditional_rules(category_key_value: str) -> list[dict[str, Any]]:
-    rules: list[dict[str, Any]] = []
-    for rule in DEFAULT_CONDITIONAL_RULES:
+    rules_by_key: dict[str, dict[str, Any]] = {}
+
+    def add_rule(rule: dict[str, Any], default_match_by: str = "option") -> None:
         copied = deepcopy(rule)
         if not clean_text(copied.get("match_by")) and copied.get("source_field_key") == "pre_fixo":
             copied["match_by"] = "prefix"
-        rules.append(copied)
+        if not clean_text(copied.get("match_by")):
+            copied["match_by"] = default_match_by
+        key = clean_text(copied.get("key")) or "|".join(
+            [
+                clean_text(copied.get("source_field_key")),
+                clean_text(copied.get("target_field_key")),
+                clean_text(copied.get("action")),
+                "|".join(clean_text(value) for value in copied.get("source_values") or []),
+            ]
+        )
+        rules_by_key[key] = copied
+
+    for rule in DEFAULT_CONDITIONAL_RULES:
+        add_rule(rule)
     for rule in get_conditional_rules(category_key_value):
-        copied = deepcopy(rule)
-        # Rules created in the Options screen store the option label token
-        # (for example, BCOMOTORISTAORIGINAL), not its numeric prefix.  They
-        # must therefore use the same option matching used by the browser.
-        copied["match_by"] = "option"
-        rules.append(copied)
-    return rules
+        add_rule(rule, "option")
+    return list(rules_by_key.values())
 
 
 def _effective_field_scopes(
@@ -1741,7 +1866,8 @@ def _effective_field_scopes(
 
 def _visible_field_keys(fields: list[dict[str, Any]], category_key_value: str, data: Any) -> set[str]:
     field_map = {field["key"]: field for field in fields}
-    visibility: dict[str, bool] = {field["key"]: True for field in fields}
+    show_matches: dict[str, list[bool]] = {field["key"]: [] for field in fields}
+    hide_matches: dict[str, list[bool]] = {field["key"]: [] for field in fields}
 
     for rule in _combined_conditional_rules(category_key_value):
         action = clean_text(rule.get("action")).lower()
@@ -1754,12 +1880,20 @@ def _visible_field_keys(fields: list[dict[str, Any]], category_key_value: str, d
         if source_field is None or target_field is None:
             continue
 
-        should_show = _rule_matches(source_field, data, rule)
-        if action != "show":
-            should_show = not should_show
-        visibility[target_key] = visibility.get(target_key, True) and should_show
+        matches = _rule_matches(source_field, data, rule)
+        if action == "show":
+            show_matches[target_key].append(matches)
+        else:
+            hide_matches[target_key].append(matches)
 
-    return {field_key for field_key, is_visible in visibility.items() if is_visible}
+    visible: set[str] = set()
+    for field in fields:
+        field_key = field["key"]
+        show_ok = any(show_matches[field_key]) if show_matches[field_key] else True
+        hide_hit = any(hide_matches[field_key])
+        if show_ok and not hide_hit:
+            visible.add(field_key)
+    return visible
 
 
 def _validate_visible_field_requirements(
@@ -1779,6 +1913,167 @@ def _validate_visible_field_requirements(
     if missing_fields:
         labels = ", ".join(missing_fields)
         raise ValueError(f"Preencha os campos visÃ­veis antes de salvar: {labels}.")
+
+
+def _draft_payload_groups(payload_json: str | dict[str, Any]) -> dict[str, list[str]]:
+    if isinstance(payload_json, str):
+        raw = json.loads(payload_json) if clean_text(payload_json) else {}
+    else:
+        raw = payload_json or {}
+    groups = raw.get("groups") if isinstance(raw, dict) else {}
+    if not isinstance(groups, dict):
+        return {}
+    result: dict[str, list[str]] = {}
+    for key, values in groups.items():
+        clean_key = clean_text(key)
+        if not clean_key:
+            continue
+        if isinstance(values, list):
+            result[clean_key] = [clean_text(value) for value in values]
+        else:
+            result[clean_key] = [clean_text(values)]
+    return result
+
+
+def save_registration_draft(category_key_value: str, payload_json: str, draft_id: str = "") -> dict[str, Any]:
+    catalog = load_catalog()
+    category = _find_category(catalog, category_key_value)
+    fields = get_banco_fields(category["key"])
+    groups = _draft_payload_groups(payload_json)
+    if not groups:
+        raise ValueError("Rascunho vazio.")
+
+    descriptions = build_descriptions(fields, groups, category["key"])
+    workbook = ensure_workbook_exists()
+    workbook_source = _copy_to_temp(workbook)
+    wb = _load(workbook_source)
+    backup_path = None
+    try:
+        draft_id = clean_text(draft_id) or uuid.uuid4().hex[:12]
+        ws = _draft_sheet(wb)
+        row = _draft_row(ws, draft_id) or (ws.max_row + 1)
+        saved_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        data_json = json.dumps({"category": category["key"], "groups": groups}, ensure_ascii=False)
+        backup_path = _backup_workbook(workbook, "rascunho")
+        ws.cell(row, 1).value = draft_id
+        ws.cell(row, 2).value = category["key"]
+        ws.cell(row, 3).value = category["label"]
+        ws.cell(row, 4).value = _safe_sheet_title(category.get("sheet_name") or category["label"])
+        ws.cell(row, 5).value = saved_at
+        ws.cell(row, 6).value = descriptions.get("primaria") or "(sem descrição primária)"
+        ws.cell(row, 7).value = data_json
+        _save_workbook_preserving_package(wb, workbook)
+        return {
+            "draft_id": draft_id,
+            "category_key": category["key"],
+            "category_label": category["label"],
+            "saved_at": saved_at,
+            "descricao_primaria": descriptions.get("primaria") or "",
+            "path": str(workbook),
+            "backup": str(backup_path) if backup_path else "",
+        }
+    finally:
+        wb.close()
+        cleanup_path = getattr(wb, "_cadastro_cleanup_path", None)
+        if cleanup_path is not None:
+            try:
+                Path(cleanup_path).unlink(missing_ok=True)
+            except OSError:
+                pass
+        try:
+            workbook_source.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def list_registration_drafts() -> list[dict[str, Any]]:
+    workbook = ensure_workbook_exists()
+    wb = load_workbook(workbook, data_only=True, read_only=True)
+    drafts: list[dict[str, Any]] = []
+    try:
+        if DRAFT_SHEET_NAME not in wb.sheetnames:
+            return []
+        ws = wb[DRAFT_SHEET_NAME]
+        for row in range(2, ws.max_row + 1):
+            draft_id = clean_text(ws.cell(row, 1).value)
+            if not draft_id:
+                continue
+            drafts.append(
+                {
+                    "draft_id": draft_id,
+                    "category_key": clean_text(ws.cell(row, 2).value),
+                    "category_label": clean_text(ws.cell(row, 3).value),
+                    "sheet": clean_text(ws.cell(row, 4).value),
+                    "saved_at": clean_text(ws.cell(row, 5).value),
+                    "descricao_primaria": clean_text(ws.cell(row, 6).value),
+                }
+            )
+    finally:
+        wb.close()
+    return sorted(drafts, key=lambda item: item.get("saved_at", ""), reverse=True)
+
+
+def get_registration_draft(draft_id: str) -> dict[str, Any] | None:
+    workbook = ensure_workbook_exists()
+    wb = load_workbook(workbook, data_only=True, read_only=True)
+    try:
+        if DRAFT_SHEET_NAME not in wb.sheetnames:
+            return None
+        ws = wb[DRAFT_SHEET_NAME]
+        for row in range(2, ws.max_row + 1):
+            if clean_text(ws.cell(row, 1).value) != clean_text(draft_id):
+                continue
+            payload = json.loads(clean_text(ws.cell(row, 7).value) or "{}")
+            return {
+                "draft_id": clean_text(ws.cell(row, 1).value),
+                "category_key": clean_text(ws.cell(row, 2).value),
+                "category_label": clean_text(ws.cell(row, 3).value),
+                "saved_at": clean_text(ws.cell(row, 5).value),
+                "descricao_primaria": clean_text(ws.cell(row, 6).value),
+                "groups": _draft_payload_groups(payload),
+            }
+    finally:
+        wb.close()
+    return None
+
+
+def delete_registration_draft(draft_id: str) -> dict[str, Any]:
+    draft_id = clean_text(draft_id)
+    if not draft_id:
+        raise ValueError("Rascunho não informado.")
+    workbook = ensure_workbook_exists()
+    workbook_source = _copy_to_temp(workbook)
+    wb = _load(workbook_source)
+    backup_path = None
+    try:
+        if DRAFT_SHEET_NAME not in wb.sheetnames:
+            raise ValueError("Rascunho não encontrado.")
+        ws = wb[DRAFT_SHEET_NAME]
+        row = _draft_row(ws, draft_id)
+        if row is None:
+            raise ValueError("Rascunho não encontrado.")
+        category_label = clean_text(ws.cell(row, 3).value)
+        backup_path = _backup_workbook(workbook, "rascunho_excluido")
+        ws.delete_rows(row, 1)
+        _save_workbook_preserving_package(wb, workbook)
+        return {
+            "draft_id": draft_id,
+            "category_label": category_label,
+            "path": str(workbook),
+            "backup": str(backup_path) if backup_path else "",
+        }
+    finally:
+        wb.close()
+        cleanup_path = getattr(wb, "_cadastro_cleanup_path", None)
+        if cleanup_path is not None:
+            try:
+                Path(cleanup_path).unlink(missing_ok=True)
+            except OSError:
+                pass
+        try:
+            workbook_source.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def _row_values(ws, field_columns: dict[str, tuple[int | None, int | None]], row: int) -> dict[str, str]:
@@ -1852,14 +2147,236 @@ def _backup_workbook(workbook: Path, suffix: str) -> Path:
     return backup_path
 
 
+def _find_field_by_normalized_label(fields: list[dict[str, Any]], labels: set[str]) -> dict[str, Any] | None:
+    normalized_labels = {normalize_label(label) for label in labels}
+    for field in fields:
+        if normalize_label(field.get("label")) in normalized_labels:
+            return field
+    return None
+
+
+def _selected_option_labels(field: dict[str, Any], data: Any) -> list[str]:
+    return [option_label(value) for value in _serialize_field_values(field, data)]
+
+
+def requires_component_bom(fields: list[dict[str, Any]], data: Any) -> bool:
+    prefix_field = _find_field_by_normalized_label(fields, {"PREFIXO", "PRE FIXO", "PRÉ FIXO"})
+    if prefix_field is None:
+        return False
+
+    selected = [normalize_label(value).replace(" ", "") for value in _selected_option_labels(prefix_field, data)]
+    return any(value in {"CJ", "PP"} or value.startswith("CJ") or value.startswith("PP") for value in selected)
+
+
+def _form_getlist(data: Any, key: str) -> list[str]:
+    if hasattr(data, "getlist"):
+        return [clean_text(value) for value in data.getlist(key)]
+    value = data.get(key) if hasattr(data, "get") else None
+    if isinstance(value, list):
+        return [clean_text(item) for item in value]
+    if value is None:
+        return []
+    return [clean_text(value)]
+
+
+def parse_component_lines(data: Any) -> list[dict[str, Any]]:
+    codes = _form_getlist(data, "component_codigo")
+    descriptions = _form_getlist(data, "component_descricao")
+    units = _form_getlist(data, "component_unidade")
+    quantities = _form_getlist(data, "component_quantidade")
+    searches = _form_getlist(data, "component_search")
+    max_length = max(len(codes), len(descriptions), len(units), len(quantities), len(searches), 0)
+
+    components: list[dict[str, Any]] = []
+    incomplete_rows: list[int] = []
+    for index in range(max_length):
+        code = codes[index] if index < len(codes) else ""
+        description = descriptions[index] if index < len(descriptions) else ""
+        unit = units[index] if index < len(units) else ""
+        quantity_text = quantities[index] if index < len(quantities) else ""
+        search_text = searches[index] if index < len(searches) else ""
+
+        if not any([code, description, unit, quantity_text, search_text]):
+            continue
+        if not code:
+            incomplete_rows.append(index + 1)
+            continue
+        try:
+            quantity = float(quantity_text.replace(".", "").replace(",", ".") if "," in quantity_text else quantity_text)
+        except ValueError:
+            raise ValueError(f"Quantidade invÃ¡lida na linha de componente {index + 1}.")
+        if quantity <= 0:
+            raise ValueError(f"Quantidade deve ser maior que zero na linha de componente {index + 1}.")
+
+        components.append(
+            {
+                "codigo": code,
+                "descricao": description or search_text,
+                "unidade": unit or "pc",
+                "quantidade": quantity,
+            }
+        )
+
+    if incomplete_rows:
+        rows = ", ".join(str(row) for row in incomplete_rows)
+        raise ValueError(f"Selecione um produto vÃ¡lido nas linhas de componente: {rows}.")
+    return components
+
+
+def _safe_filename(value: str) -> str:
+    text = strip_accents(clean_text(value)).upper()
+    text = re.sub(r"[^A-Z0-9._ -]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return (text or "BOM")[:140]
+
+
+def _product_catalog_from_workbook(max_rows_per_sheet: int | None = None) -> list[dict[str, str]]:
+    global _PRODUCT_CATALOG_CACHE
+    workbook = ensure_workbook_exists()
+    workbook_mtime = workbook.stat().st_mtime
+    if max_rows_per_sheet is None and _PRODUCT_CATALOG_CACHE is not None:
+        cached_path, cached_mtime, cached_products = _PRODUCT_CATALOG_CACHE
+        if cached_path == workbook and cached_mtime == workbook_mtime:
+            return deepcopy(cached_products)
+
+    catalog = load_catalog()
+    category_by_sheet = {
+        _safe_sheet_title(category.get("sheet_name") or category.get("label")): category
+        for category in catalog.get("categories") or []
+    }
+    wb = load_workbook(workbook, data_only=True, read_only=False)
+    products: list[dict[str, str]] = []
+    seen_codes: set[str] = set()
+    try:
+        for ws in wb.worksheets:
+            if ws.title.startswith("_") or ws.title not in category_by_sheet:
+                continue
+            header_row = _detect_header_row(ws)
+            headers = {normalize_label(ws.cell(header_row, column).value): column for column in range(1, ws.max_column + 1)}
+            sku_col = headers.get("SKU") or 1
+            primary_col = headers.get(normalize_label(DESCRIPTION_PRIMARY_HEADER)) or headers.get("DESCRICAO PRIMARIA") or 2
+            secondary_col = headers.get(normalize_label(DESCRIPTION_SECONDARY_HEADER)) or headers.get("DESCRICAO SECUNDARIA") or 3
+            unit_col = (
+                headers.get("UN MEDI INTERNA")
+                or headers.get("UN INTERNA")
+                or headers.get("UNIDADE")
+                or headers.get("UN MEDIDA")
+            )
+            count = 0
+            for row in range(header_row + 1, ws.max_row + 1):
+                code = clean_text(ws.cell(row, sku_col).value)
+                primary = clean_text(ws.cell(row, primary_col).value)
+                secondary = clean_text(ws.cell(row, secondary_col).value)
+                if not code or not primary:
+                    continue
+                if code in seen_codes:
+                    continue
+                seen_codes.add(code)
+                products.append(
+                    {
+                        "codigo": code,
+                        "descricao": primary,
+                        "descricao_secundaria": secondary,
+                        "unidade": clean_text(ws.cell(row, unit_col).value) if unit_col else "pc",
+                        "categoria": ws.title,
+                    }
+                )
+                count += 1
+                if max_rows_per_sheet and count >= max_rows_per_sheet:
+                    break
+    finally:
+        wb.close()
+    if max_rows_per_sheet is None:
+        _PRODUCT_CATALOG_CACHE = (workbook, workbook_mtime, deepcopy(products))
+    return products
+
+
+def search_products(query: str, limit: int = 25) -> list[dict[str, str]]:
+    term = clean_text(query)
+    if len(term) < 1:
+        return []
+    normalized_term = normalize_label(term)
+    compact_term = normalized_term.replace(" ", "")
+    matches: list[tuple[int, dict[str, str]]] = []
+    for product in _product_catalog_from_workbook():
+        code = clean_text(product.get("codigo"))
+        description = clean_text(product.get("descricao"))
+        haystack = normalize_label(f"{code} {description} {product.get('categoria')}")
+        compact_haystack = haystack.replace(" ", "")
+        if compact_term not in compact_haystack:
+            continue
+        score = 0
+        if code.startswith(term):
+            score -= 30
+        if normalize_label(description).startswith(normalized_term):
+            score -= 15
+        score += len(description)
+        matches.append((score, product))
+    matches.sort(key=lambda item: (item[0], item[1]["codigo"]))
+    return [product for _, product in matches[:limit]]
+
+
+def generate_bom_workbook(
+    item_code: str,
+    item_description: str,
+    components: list[dict[str, Any]],
+) -> Path:
+    item_code = clean_text(item_code)
+    item_description = clean_text(item_description)
+    if not item_code:
+        raise ValueError("Informe o cÃ³digo do conjunto/PP para gerar a planilha BOM.")
+    if not components:
+        raise ValueError("Informe pelo menos um componente para gerar a planilha BOM.")
+
+    BOM_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_name = f"{stamp} - BOM - {item_code} - {_safe_filename(item_description)}.xlsx"
+    output_path = BOM_OUTPUT_DIR / file_name
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Sheet"
+    ws.append(["item_codigo", "componente_codigo", "descricao", "unidade", "quantidade", None, "ITEM_BLOCO", item_description])
+    for component in components:
+        quantity = component["quantidade"]
+        if float(quantity).is_integer():
+            quantity = int(quantity)
+        ws.append(
+            [
+                item_code,
+                component["codigo"],
+                component["descricao"],
+                component.get("unidade") or "pc",
+                quantity,
+                None,
+                None,
+                None,
+            ]
+        )
+
+    for column, width in {"A": 16, "B": 20, "C": 72, "D": 12, "E": 14, "G": 16, "H": 56}.items():
+        ws.column_dimensions[column].width = width
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+    for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=5):
+        for cell in row:
+            cell.alignment = Alignment(vertical="top", wrap_text=True)
+
+    wb.save(output_path)
+    wb.close()
+    return output_path
+
+
 def save_banco_registration(form_data: Any) -> dict[str, str]:
     category_key_value = clean_text(form_data.get("categoria"))
     category = selected_category(category_key_value)
     catalog = load_catalog()
     raw_category = _find_category(catalog, category["key"])
     fields = get_banco_fields(category["key"])
-    _validate_banco_dependencies(fields, form_data)
-    _validate_visible_field_requirements(fields, category["key"], form_data)
+    if category["key"] == DEFAULT_CATEGORY_KEY:
+        _validate_banco_dependencies(fields, form_data)
+        _validate_visible_field_requirements(fields, category["key"], form_data)
     workbook = ensure_workbook_exists()
     workbook_source = _copy_to_temp(workbook)
     wb = _load(workbook_source)
@@ -1890,6 +2407,10 @@ def save_banco_registration(form_data: Any) -> dict[str, str]:
         _expand_table_to_row(ws, row)
 
         descriptions = build_descriptions(fields, form_data, category["key"])
+        sku_column = _resolve_header_column(ws, "SKU", create_missing=True)
+        sku_value = _next_sequential_sku(ws, sku_column, raw_category)
+        if sku_column:
+            ws.cell(row, sku_column).value = sku_value
         if primary_column:
             ws.cell(row, primary_column).value = descriptions["primaria"]
         if secondary_column:
@@ -1918,6 +2439,8 @@ def save_banco_registration(form_data: Any) -> dict[str, str]:
 
         _save_workbook_preserving_package(wb, workbook)
         _REGISTRATION_CACHE.clear()
+        global _PRODUCT_CATALOG_CACHE
+        _PRODUCT_CATALOG_CACHE = None
         set_active_category(category["key"])
         return {
             "row": row,
@@ -1926,6 +2449,7 @@ def save_banco_registration(form_data: Any) -> dict[str, str]:
             "sheet": ws.title,
             "descricao_primaria": descriptions["primaria"],
             "descricao_secundaria": descriptions["secundaria"],
+            "sku": sku_value,
             "path": str(workbook),
             "backup": str(backup_path) if backup_path else "",
         }
