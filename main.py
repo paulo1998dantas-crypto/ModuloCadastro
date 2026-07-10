@@ -83,6 +83,29 @@ def _sync_active_workbook(category_key: str) -> None:
     return None
 
 
+def _workbook_display_path() -> str:
+    if bridge_store.save_via_bridge():
+        return "Modo online: cadastros serão gravados pela Ponte Local"
+    return excel_bancos.template_path()
+
+
+def _online_draft_payload(category_key: str, draft_payload: str, draft_id: str = "") -> dict:
+    category = excel_bancos.selected_category(category_key)
+    fields = excel_bancos.get_banco_fields(category["key"])
+    groups = excel_bancos._draft_payload_groups(draft_payload)
+    if not groups:
+        raise ValueError("Rascunho vazio.")
+    descriptions = excel_bancos.build_descriptions(fields, groups, category["key"])
+    return bridge_store.save_draft(
+        category["key"],
+        category["label"],
+        category.get("sheet_name") or category["label"],
+        descriptions.get("primaria") or "",
+        {"category": category["key"], "groups": groups},
+        draft_id,
+    )
+
+
 def _render_cadastro_page(
     request: Request,
     categoria: str = "",
@@ -92,7 +115,13 @@ def _render_cadastro_page(
     draft_id: str = "",
 ):
     active_draft = None
-    if draft_id and form_data is None:
+    online_mode = bridge_store.save_via_bridge()
+    if draft_id and form_data is None and online_mode:
+        active_draft = bridge_store.get_draft(draft_id)
+        if active_draft:
+            categoria = active_draft["category_key"]
+            form_data = active_draft["groups"]
+    elif draft_id and form_data is None:
         active_draft = excel_bancos.get_registration_draft(draft_id)
         if active_draft:
             categoria = active_draft["category_key"]
@@ -119,12 +148,12 @@ def _render_cadastro_page(
                 normalized_form,
             ),
             "conditional_rules": excel_bancos.get_conditional_rules_for_form(selected_category["key"]),
-            "workbook_path": excel_bancos.template_path(),
-            "save_via_bridge": bridge_store.save_via_bridge(),
+            "workbook_path": _workbook_display_path(),
+            "save_via_bridge": online_mode,
             "sucesso": sucesso,
             "erro": erro,
             "form_data": normalized_form,
-            "drafts": excel_bancos.list_registration_drafts(),
+            "drafts": bridge_store.list_drafts() if online_mode else excel_bancos.list_registration_drafts(),
             "active_draft": active_draft or ({"draft_id": draft_id} if draft_id else None),
             "active_page": "cadastro",
         },
@@ -143,7 +172,7 @@ def _render_opcoes_page(request: Request, categoria: str = "", sucesso: str = ""
             "fields": excel_bancos.get_banco_fields(selected_category["key"]),
             "ordered_fields": excel_bancos.get_banco_fields_for_display(selected_category["key"]),
             "conditional_rules": excel_bancos.get_conditional_rules(selected_category["key"]),
-            "workbook_path": excel_bancos.template_path(),
+            "workbook_path": _workbook_display_path(),
             "save_via_bridge": bridge_store.save_via_bridge(),
             "sucesso": sucesso,
             "erro": erro,
@@ -200,6 +229,11 @@ async def cadastro_bancos_post(request: Request):
             if not bridge_store.token_configured():
                 raise ValueError("Modo online ativo, mas CADASTRO_BRIDGE_TOKEN não foi configurado no Render.")
             job = bridge_store.enqueue_registration(form_data, category_key)
+            if draft_id:
+                try:
+                    bridge_store.delete_draft(draft_id)
+                except Exception:
+                    pass
             message = (
                 f"Cadastro enviado para a ponte local. Protocolo: {job['id']}. "
                 "Quando a ponte estiver aberta no PC da produção, ela gravará na planilha local."
@@ -243,7 +277,10 @@ async def rascunhos_salvar_post(
     draft_id: str = Form(""),
 ):
     try:
-        result = excel_bancos.save_registration_draft(category_key, draft_payload, draft_id)
+        if bridge_store.save_via_bridge():
+            result = _online_draft_payload(category_key, draft_payload, draft_id)
+        else:
+            result = excel_bancos.save_registration_draft(category_key, draft_payload, draft_id)
         return JSONResponse({"ok": True, "draft": result})
     except Exception as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
@@ -252,7 +289,10 @@ async def rascunhos_salvar_post(
 @app.post("/rascunhos/excluir")
 async def rascunhos_excluir_post(draft_id: str = Form(...), category_key: str = Form("")):
     try:
-        result = excel_bancos.delete_registration_draft(draft_id)
+        if bridge_store.save_via_bridge():
+            result = bridge_store.delete_draft(draft_id)
+        else:
+            result = excel_bancos.delete_registration_draft(draft_id)
         message = f"Rascunho excluído: {result.get('category_label') or draft_id}."
         return RedirectResponse(
             url=f"/cadastro/bancos?categoria={quote(category_key)}&sucesso={quote(message)}",
@@ -268,7 +308,10 @@ async def rascunhos_excluir_post(draft_id: str = Form(...), category_key: str = 
 @app.post("/api/rascunhos/excluir")
 async def api_rascunhos_excluir_post(draft_id: str = Form(...)):
     try:
-        result = excel_bancos.delete_registration_draft(draft_id)
+        if bridge_store.save_via_bridge():
+            result = bridge_store.delete_draft(draft_id)
+        else:
+            result = excel_bancos.delete_registration_draft(draft_id)
         return JSONResponse({"ok": True, "draft": result})
     except Exception as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)

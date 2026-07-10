@@ -21,7 +21,17 @@ def clean_text(value: Any) -> str:
 def data_dir() -> Path:
     raw = clean_text(os.environ.get("CADASTRO_DATA_DIR"))
     path = Path(raw) if raw else DEFAULT_DATA_DIR
-    return path.resolve()
+    path = path.resolve()
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        probe = path / ".write_test"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        return path
+    except OSError:
+        fallback = Path(os.environ.get("TMPDIR", "/tmp")) / "modulo-cadastro-data"
+        fallback.mkdir(parents=True, exist_ok=True)
+        return fallback.resolve()
 
 
 def store_path() -> Path:
@@ -70,6 +80,7 @@ def _empty_store() -> dict[str, Any]:
         },
         "products": [],
         "products_updated_at": "",
+        "drafts": [],
     }
 
 
@@ -86,6 +97,7 @@ def _read_store_unlocked() -> dict[str, Any]:
     base.setdefault("jobs", [])
     base.setdefault("bridge", _empty_store()["bridge"])
     base.setdefault("products", [])
+    base.setdefault("drafts", [])
     return base
 
 
@@ -160,6 +172,82 @@ def enqueue_registration(form_data: Any, category_key: str = "") -> dict[str, An
         data["jobs"].append(job)
         _write_store_unlocked(data)
     return deepcopy(job)
+
+
+def save_draft(
+    category_key: str,
+    category_label: str,
+    sheet: str,
+    descricao_primaria: str,
+    payload: dict[str, Any],
+    draft_id: str = "",
+) -> dict[str, Any]:
+    draft_id = clean_text(draft_id) or uuid.uuid4().hex[:12]
+    draft = {
+        "draft_id": draft_id,
+        "category_key": clean_text(category_key),
+        "category_label": clean_text(category_label),
+        "sheet": clean_text(sheet),
+        "saved_at": now_text(),
+        "descricao_primaria": clean_text(descricao_primaria) or "(sem descrição primária)",
+        "payload": payload or {},
+    }
+    with _LOCK:
+        data = _read_store_unlocked()
+        drafts = data.setdefault("drafts", [])
+        for index, existing in enumerate(drafts):
+            if existing.get("draft_id") == draft_id:
+                drafts[index] = draft
+                break
+        else:
+            drafts.append(draft)
+        _write_store_unlocked(data)
+    return deepcopy(draft)
+
+
+def list_drafts() -> list[dict[str, Any]]:
+    drafts = read_store().get("drafts") or []
+    visible = []
+    for draft in drafts:
+        item = deepcopy(draft)
+        item.pop("payload", None)
+        visible.append(item)
+    return sorted(visible, key=lambda item: item.get("saved_at", ""), reverse=True)
+
+
+def get_draft(draft_id: str) -> dict[str, Any] | None:
+    draft_id = clean_text(draft_id)
+    for draft in read_store().get("drafts") or []:
+        if draft.get("draft_id") != draft_id:
+            continue
+        payload = draft.get("payload") or {}
+        groups = payload.get("groups") if isinstance(payload, dict) else {}
+        return {
+            "draft_id": draft.get("draft_id", ""),
+            "category_key": draft.get("category_key", ""),
+            "category_label": draft.get("category_label", ""),
+            "saved_at": draft.get("saved_at", ""),
+            "descricao_primaria": draft.get("descricao_primaria", ""),
+            "groups": groups if isinstance(groups, dict) else {},
+        }
+    return None
+
+
+def delete_draft(draft_id: str) -> dict[str, Any]:
+    draft_id = clean_text(draft_id)
+    if not draft_id:
+        raise ValueError("Rascunho não informado.")
+    with _LOCK:
+        data = _read_store_unlocked()
+        drafts = data.setdefault("drafts", [])
+        for index, draft in enumerate(drafts):
+            if draft.get("draft_id") != draft_id:
+                continue
+            removed = drafts.pop(index)
+            _write_store_unlocked(data)
+            removed.pop("payload", None)
+            return deepcopy(removed)
+    raise ValueError("Rascunho não encontrado.")
 
 
 def next_job() -> dict[str, Any] | None:
