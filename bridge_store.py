@@ -101,6 +101,7 @@ def _empty_store() -> dict[str, Any]:
         "products_updated_at": "",
         "drafts": [],
         "config": {},
+        "auth": {},
     }
 
 
@@ -119,6 +120,7 @@ def _read_store_unlocked() -> dict[str, Any]:
     base.setdefault("products", [])
     base.setdefault("drafts", [])
     base.setdefault("config", {})
+    base.setdefault("auth", {})
     return base
 
 
@@ -371,6 +373,33 @@ def save_app_config(master_workbook_path: str, master_workbook_url: str) -> dict
         data["config"] = config
         _write_store_unlocked(data)
     return app_config()
+
+
+def auth_config() -> dict[str, str]:
+    auth = read_store().get("auth") or {}
+    return {
+        "username": clean_text(auth.get("username")),
+        "password_hash": clean_text(auth.get("password_hash")),
+        "updated_at": clean_text(auth.get("updated_at")),
+    }
+
+
+def save_auth_config(username: str, password_hash: str) -> dict[str, str]:
+    username = clean_text(username)
+    password_hash = clean_text(password_hash)
+    if not username:
+        raise ValueError("Informe o usuário administrador.")
+    if not password_hash:
+        raise ValueError("Informe a senha do administrador.")
+    with _LOCK:
+        data = _read_store_unlocked()
+        data["auth"] = {
+            "username": username,
+            "password_hash": password_hash,
+            "updated_at": now_text(),
+        }
+        _write_store_unlocked(data)
+    return auth_config()
 
 
 def products() -> list[dict[str, str]]:

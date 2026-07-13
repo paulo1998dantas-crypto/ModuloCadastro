@@ -1,4 +1,5 @@
 import os
+import secrets
 import socket
 import sys
 import base64
@@ -74,15 +75,120 @@ def _persistence_ok() -> bool:
     return bool(bridge_store.persistence_info().get("persistent"))
 
 
-def _auth_user() -> str:
-    return os.environ.get("CADASTRO_ADMIN_USER", "admin").strip() or "admin"
+PASSWORD_HASH_ALGORITHM = "pbkdf2_sha256"
+PASSWORD_HASH_ITERATIONS = 260000
 
 
-def _auth_password() -> str:
+def _env_auth_password() -> str:
     return (
         os.environ.get("CADASTRO_ADMIN_PASSWORD", "").strip()
         or os.environ.get("CADASTRO_BRIDGE_TOKEN", "").strip()
     )
+
+
+def _hash_password(password: str) -> str:
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        PASSWORD_HASH_ITERATIONS,
+    )
+    return "$".join(
+        [
+            PASSWORD_HASH_ALGORITHM,
+            str(PASSWORD_HASH_ITERATIONS),
+            _b64encode(salt),
+            _b64encode(digest),
+        ]
+    )
+
+
+def _verify_password_hash(password_hash: str, password: str) -> bool:
+    try:
+        algorithm, iterations_text, salt_text, digest_text = password_hash.split("$", 3)
+        if algorithm != PASSWORD_HASH_ALGORITHM:
+            return False
+        expected = _b64decode(digest_text)
+        digest = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode("utf-8"),
+            _b64decode(salt_text),
+            int(iterations_text),
+        )
+    except Exception:
+        return False
+    return hmac.compare_digest(digest, expected)
+
+
+def _auth_record() -> dict[str, str | bool]:
+    stored = bridge_store.auth_config()
+    if stored.get("username") and stored.get("password_hash"):
+        return {
+            "username": stored["username"],
+            "password_hash": stored["password_hash"],
+            "source": "store",
+            "configured": True,
+            "updated_at": stored.get("updated_at", ""),
+        }
+    env_password = _env_auth_password()
+    return {
+        "username": os.environ.get("CADASTRO_ADMIN_USER", "admin").strip() or "admin",
+        "password": env_password,
+        "source": "environment" if env_password else "missing",
+        "configured": bool(env_password),
+        "updated_at": "",
+    }
+
+
+def _auth_user() -> str:
+    return str(_auth_record().get("username") or "admin")
+
+
+def _auth_configured() -> bool:
+    return bool(_auth_record().get("configured"))
+
+
+def _verify_login(username: str, password: str) -> bool:
+    record = _auth_record()
+    if username != str(record.get("username") or ""):
+        return False
+    password_hash = str(record.get("password_hash") or "")
+    if password_hash:
+        return _verify_password_hash(password_hash, password)
+    expected_password = str(record.get("password") or "")
+    return bool(expected_password) and hmac.compare_digest(password, expected_password)
+
+
+def _auth_status() -> dict[str, str | bool]:
+    record = _auth_record()
+    source = str(record.get("source") or "missing")
+    labels = {
+        "store": "Arquivo persistente do app",
+        "environment": "Variável de ambiente do servidor",
+        "missing": "Não configurado",
+    }
+    return {
+        "username": str(record.get("username") or "admin"),
+        "configured": bool(record.get("configured")),
+        "source": source,
+        "source_label": labels.get(source, source),
+        "updated_at": str(record.get("updated_at") or ""),
+        "editable": True,
+    }
+
+
+def _save_admin_credentials(username: str, password: str, password_confirm: str) -> dict[str, str]:
+    username = excel_bancos.clean_text(username)
+    password = password.strip()
+    password_confirm = password_confirm.strip()
+    if not username:
+        raise ValueError("Informe o usuário administrador.")
+    if len(password) < 6:
+        raise ValueError("A senha precisa ter pelo menos 6 caracteres.")
+    if password != password_confirm:
+        raise ValueError("A confirmação da senha não confere.")
+    return bridge_store.save_auth_config(username, _hash_password(password))
 
 
 def _session_secret() -> bytes:
@@ -135,6 +241,7 @@ def _read_session(request: Request) -> str:
 def _is_public_path(path: str) -> bool:
     return (
         path in {"/login", "/healthz", "/favicon.ico"}
+        or (path.startswith("/admin/setup") and not _auth_configured())
         or path.startswith("/api/ponte/")
     )
 
@@ -301,16 +408,19 @@ async def home():
 
 
 @app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request, next: str = "/cadastro/bancos", erro: str = ""):
+async def login_page(request: Request, next: str = "/cadastro/bancos", erro: str = "", sucesso: str = ""):
+    auth_status = _auth_status()
     return templates.TemplateResponse(
         request=request,
         name="login.html",
         context={
             "request": request,
             "erro": erro,
+            "sucesso": sucesso,
             "next_url": next or "/cadastro/bancos",
-            "username": _auth_user(),
-            "auth_configured": bool(_auth_password()),
+            "username": auth_status["username"],
+            "auth_configured": auth_status["configured"],
+            "setup_available": not auth_status["configured"],
         },
     )
 
@@ -322,10 +432,10 @@ async def login_post(
     password: str = Form(...),
     next_url: str = Form("/cadastro/bancos"),
 ):
-    expected_password = _auth_password()
-    if not expected_password:
-        return RedirectResponse(url="/login?erro=Login não configurado.", status_code=303)
-    if username != _auth_user() or not hmac.compare_digest(password, expected_password):
+    auth_is_configured = _auth_configured()
+    if not auth_is_configured:
+        return RedirectResponse(url="/admin/setup", status_code=303)
+    if not _verify_login(username, password):
         return RedirectResponse(url=f"/login?erro={quote('Usuário ou senha inválidos.')}", status_code=303)
     response = RedirectResponse(url=next_url or "/cadastro/bancos", status_code=303)
     response.set_cookie(
@@ -344,6 +454,77 @@ async def logout():
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie(SESSION_COOKIE)
     return response
+
+
+@app.get("/admin/setup", response_class=HTMLResponse)
+async def admin_setup_page(request: Request, erro: str = ""):
+    if _auth_configured():
+        return RedirectResponse(url="/admin", status_code=303)
+    return templates.TemplateResponse(
+        request=request,
+        name="admin_setup.html",
+        context={
+            "request": request,
+            "erro": erro,
+            "username": _auth_user(),
+        },
+    )
+
+
+@app.post("/admin/setup")
+async def admin_setup_post(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    password_confirm: str = Form(...),
+):
+    if _auth_configured():
+        return RedirectResponse(url="/admin", status_code=303)
+    try:
+        _save_admin_credentials(username, password, password_confirm)
+        response = RedirectResponse(
+            url=f"/login?sucesso={quote('Administrador configurado. Entre com a nova senha.')}",
+            status_code=303,
+        )
+        response.delete_cookie(SESSION_COOKIE)
+        return response
+    except Exception as exc:
+        return RedirectResponse(url=f"/admin/setup?erro={quote(str(exc))}", status_code=303)
+
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_page(request: Request, sucesso: str = "", erro: str = ""):
+    return templates.TemplateResponse(
+        request=request,
+        name="admin.html",
+        context={
+            "request": request,
+            "auth_status": _auth_status(),
+            "save_via_bridge": bridge_store.save_via_bridge(),
+            "bridge_status": bridge_store.status(limit=5),
+            "sucesso": sucesso,
+            "erro": erro,
+            "active_page": "admin",
+        },
+    )
+
+
+@app.post("/admin/credenciais")
+async def admin_credentials_post(
+    username: str = Form(...),
+    password: str = Form(...),
+    password_confirm: str = Form(...),
+):
+    try:
+        _save_admin_credentials(username, password, password_confirm)
+        response = RedirectResponse(
+            url=f"/admin?sucesso={quote('Credenciais do administrador atualizadas. Entre novamente com a nova senha.')}",
+            status_code=303,
+        )
+        response.delete_cookie(SESSION_COOKIE)
+        return response
+    except Exception as exc:
+        return RedirectResponse(url=f"/admin?erro={quote(str(exc))}", status_code=303)
 
 
 @app.head("/")

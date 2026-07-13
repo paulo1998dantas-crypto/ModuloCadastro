@@ -73,3 +73,11 @@ python local_bridge.py
 - A busca de componentes online usa o catálogo sincronizado pela Ponte Local.
 - Se a Ponte Local estiver fechada, os cadastros ficam pendentes na fila online.
 - Para persistir a fila no Render, use o disco persistente definido no `render.yaml`.
+
+## Administrador e senha
+
+Depois de entrar no sistema, abra `/admin` ou clique em **Admin** no menu para visualizar o usuario atual e alterar usuario/senha.
+
+- Se ainda nao existir senha configurada, acesse `/admin/setup` para criar o primeiro acesso.
+- Se `CADASTRO_ADMIN_PASSWORD` ou `CADASTRO_BRIDGE_TOKEN` ja estiver configurado no Render, ele continua funcionando como acesso inicial.
+- Quando uma senha e salva pela tela Admin, ela passa a ter prioridade e fica gravada como hash no armazenamento persistente do app.

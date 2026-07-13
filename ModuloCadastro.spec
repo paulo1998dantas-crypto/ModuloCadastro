@@ -13,6 +13,8 @@ TEMPLATE_FILES = [
     TEMPLATE_DIR / "planilha.html",
     TEMPLATE_DIR / "ponte.html",
     TEMPLATE_DIR / "login.html",
+    TEMPLATE_DIR / "admin.html",
+    TEMPLATE_DIR / "admin_setup.html",
 ]
 DOWNLOAD_FILES = [
     ROOT / "local_bridge.py",

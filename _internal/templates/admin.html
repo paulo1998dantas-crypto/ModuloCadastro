@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Admin - Modulo de Cadastro</title>
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-900">
+    <main class="mx-auto max-w-6xl px-4 py-6">
+        <header class="mb-6 rounded-xl bg-slate-950 p-5 text-white shadow-lg">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <p class="text-xs font-black uppercase tracking-wide text-blue-300">Modulo de Cadastro</p>
+                    <h1 class="text-2xl font-black">Administracao</h1>
+                    <p class="mt-1 text-sm font-semibold text-slate-300">
+                        Gerencie o usuario e a senha usados para entrar no sistema.
+                    </p>
+                </div>
+                <nav class="flex flex-wrap gap-2">
+                    <a href="/cadastro/bancos" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'cadastro' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Cadastro</a>
+                    <a href="/opcoes" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'opcoes' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Opcoes</a>
+                    <a href="/planilha" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'planilha' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Planilha</a>
+                    <a href="/ponte" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'ponte' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Ponte Local</a>
+                    <a href="/admin" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'admin' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Admin</a>
+                    <a href="/logout" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Sair</a>
+                </nav>
+            </div>
+        </header>
+
+        {% if sucesso %}
+        <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{{ sucesso }}</div>
+        {% endif %}
+        {% if erro %}
+        <div class="mb-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-bold text-rose-700">{{ erro }}</div>
+        {% endif %}
+
+        <section class="grid grid-cols-1 gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+            <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 class="text-sm font-black uppercase tracking-wide text-slate-700">Acesso atual</h2>
+                <dl class="mt-4 space-y-3 text-sm">
+                    <div>
+                        <dt class="font-bold text-slate-500">Usuario</dt>
+                        <dd class="mt-1 break-all text-lg font-black text-slate-950">{{ auth_status.username }}</dd>
+                    </div>
+                    <div>
+                        <dt class="font-bold text-slate-500">Senha</dt>
+                        <dd class="mt-1 font-black text-slate-950">
+                            {% if auth_status.configured %}Configurada e protegida{% else %}Nao configurada{% endif %}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="font-bold text-slate-500">Origem</dt>
+                        <dd class="mt-1 font-black text-slate-950">{{ auth_status.source_label }}</dd>
+                    </div>
+                    {% if auth_status.updated_at %}
+                    <div>
+                        <dt class="font-bold text-slate-500">Ultima alteracao</dt>
+                        <dd class="mt-1 font-black text-slate-950">{{ auth_status.updated_at }}</dd>
+                    </div>
+                    {% endif %}
+                </dl>
+                <p class="mt-5 rounded-lg bg-slate-50 p-3 text-xs font-semibold text-slate-500">
+                    A senha atual nao e exibida em texto aberto. Ao salvar uma nova senha, ela passa a valer no login e fica gravada como hash no armazenamento persistente do app.
+                </p>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 class="text-sm font-black uppercase tracking-wide text-slate-700">Alterar usuario e senha</h2>
+                <form method="post" action="/admin/credenciais" class="mt-4 space-y-4">
+                    <label class="block space-y-1">
+                        <span class="text-xs font-black uppercase tracking-wide text-slate-500">Usuario administrador</span>
+                        <input name="username" value="{{ auth_status.username }}" class="w-full rounded-lg border border-slate-300 p-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500" autocomplete="username" required>
+                    </label>
+                    <label class="block space-y-1">
+                        <span class="text-xs font-black uppercase tracking-wide text-slate-500">Nova senha</span>
+                        <input id="admin-password" name="password" type="password" class="w-full rounded-lg border border-slate-300 p-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500" autocomplete="new-password" required minlength="6">
+                    </label>
+                    <label class="block space-y-1">
+                        <span class="text-xs font-black uppercase tracking-wide text-slate-500">Confirmar nova senha</span>
+                        <input id="admin-password-confirm" name="password_confirm" type="password" class="w-full rounded-lg border border-slate-300 p-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500" autocomplete="new-password" required minlength="6">
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-sm font-bold text-slate-600">
+                        <input id="show-passwords" type="checkbox" class="h-4 w-4 rounded border-slate-300">
+                        Mostrar senha digitada
+                    </label>
+                    <button type="submit" class="w-full rounded-lg bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700">
+                        Salvar novo acesso
+                    </button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const toggle = document.getElementById("show-passwords");
+        const fields = [
+            document.getElementById("admin-password"),
+            document.getElementById("admin-password-confirm"),
+        ];
+        toggle?.addEventListener("change", () => {
+            fields.forEach((field) => {
+                field.type = toggle.checked ? "text" : "password";
+            });
+        });
+    </script>
+</body>
+</html>
