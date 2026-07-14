@@ -1019,6 +1019,7 @@ async def cadastros_page(
     categoria: str = "",
     q: str = "",
     sem_unidade: str = "",
+    mostrar_inativos: str = "",
     sucesso: str = "",
     erro: str = "",
 ):
@@ -1038,16 +1039,24 @@ async def cadastros_page(
     unit_pending_count = 0
     if _supabase_mode():
         only_missing_unit = excel_bancos.clean_text(sem_unidade) == "1"
+        include_inactive = excel_bancos.clean_text(mostrar_inativos) == "1"
         items = supabase_store.list_registrations(
             selected_category["key"],
             query=q,
             filters=filters,
             missing_unit=only_missing_unit,
+            include_inactive=include_inactive,
             limit=1000,
         )
-        unit_pending_count = supabase_store.count_registrations_without_unit(selected_category["key"])
+        unit_pending_count = supabase_store.count_registrations_without_unit(
+            selected_category["key"],
+            include_inactive=include_inactive,
+        )
+        inactive_count = supabase_store.count_inactive_registrations(selected_category["key"])
     else:
         only_missing_unit = False
+        include_inactive = False
+        inactive_count = 0
     nav_category = excel_bancos.selected_category("")
     return templates.TemplateResponse(
         request=request,
@@ -1063,7 +1072,9 @@ async def cadastros_page(
             "q": q,
             "filters": filters,
             "sem_unidade": "1" if only_missing_unit else "",
+            "mostrar_inativos": "1" if include_inactive else "",
             "unit_pending_count": unit_pending_count,
+            "inactive_count": inactive_count,
             "workbook_path": _workbook_display_path(),
             "save_via_bridge": bridge_store.save_via_bridge(),
             "supabase_mode": _supabase_mode(),
@@ -1075,7 +1086,13 @@ async def cadastros_page(
 
 
 @app.get("/cadastros/exportar")
-async def cadastros_exportar(request: Request, categoria: str = "", q: str = "", sem_unidade: str = ""):
+async def cadastros_exportar(
+    request: Request,
+    categoria: str = "",
+    q: str = "",
+    sem_unidade: str = "",
+    mostrar_inativos: str = "",
+):
     if not _supabase_mode():
         raise HTTPException(status_code=400, detail="Exportação pela base está disponível no modo Supabase.")
     all_categories = supabase_store.all_categories_key(categoria)
@@ -1094,6 +1111,7 @@ async def cadastros_exportar(request: Request, categoria: str = "", q: str = "",
         query=q,
         filters=filters,
         missing_unit=excel_bancos.clean_text(sem_unidade) == "1",
+        include_inactive=excel_bancos.clean_text(mostrar_inativos) == "1",
     )
     return FileResponse(
         output,

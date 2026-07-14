@@ -57,10 +57,17 @@
                 </div>
 
                 <div class="flex flex-wrap items-center gap-3">
+                    <label class="inline-flex h-10 items-center gap-2 border border-slate-300 bg-white px-3 text-xs font-black uppercase text-slate-700">
+                        <input type="checkbox" name="mostrar_inativos" value="1" {% if mostrar_inativos %}checked{% endif %} onchange="this.form.submit()" class="h-4 w-4">
+                        Mostrar inativos
+                    </label>
                     <label class="inline-flex h-10 items-center gap-2 border border-amber-300 bg-amber-50 px-3 text-xs font-black uppercase text-amber-800">
                         <input type="checkbox" name="sem_unidade" value="1" {% if sem_unidade %}checked{% endif %} onchange="this.form.submit()" class="h-4 w-4">
                         Somente sem unidade
                     </label>
+                    {% if inactive_count %}
+                    <span class="inline-flex h-10 items-center border border-slate-300 bg-slate-100 px-3 text-xs font-black uppercase text-slate-700">{{ inactive_count }} cadastro(s) inativo(s)</span>
+                    {% endif %}
                     {% if unit_pending_count %}
                     <span class="inline-flex h-10 items-center border border-amber-300 bg-amber-100 px-3 text-xs font-black uppercase text-amber-900">{{ unit_pending_count }} cadastro(s) sem unidade</span>
                     {% endif %}
@@ -108,6 +115,7 @@
                             <th class="min-w-[360px] border border-slate-300 px-2 py-2">Descricao Primaria</th>
                             <th class="min-w-[520px] border border-slate-300 px-2 py-2">Descricao Secundaria</th>
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Unidade</th>
+                            <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Status</th>
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Sufixo</th>
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Car. Prim.</th>
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Car. Sec.</th>
@@ -120,7 +128,8 @@
                         {% for item in items %}
                         {% set values = item.field_values if item.field_values else {} %}
                         {% set missing_unit = not item.unidade %}
-                        <tr class="{% if missing_unit %}bg-amber-50 hover:bg-amber-100{% else %}odd:bg-white even:bg-slate-50 hover:bg-blue-50{% endif %}">
+                        {% set inactive = item.ativo is defined and not item.ativo %}
+                        <tr class="{% if inactive %}bg-slate-100 text-slate-500 hover:bg-slate-200{% elif missing_unit %}bg-amber-50 hover:bg-amber-100{% else %}odd:bg-white even:bg-slate-50 hover:bg-blue-50{% endif %}">
                             <td class="whitespace-nowrap border border-slate-200 px-2 py-1">
                                 <a href="/cadastros/{{ item.id }}/editar" class="inline-flex border border-blue-700 bg-blue-700 px-2 py-1 text-[11px] font-black uppercase text-white hover:bg-blue-600">Editar</a>
                             </td>
@@ -137,6 +146,13 @@
                                 {{ item.unidade }}
                                 {% endif %}
                             </td>
+                            <td class="whitespace-nowrap border border-slate-200 px-2 py-1">
+                                {% if inactive %}
+                                <span class="inline-flex border border-slate-400 bg-slate-200 px-2 py-0.5 text-[10px] font-black uppercase text-slate-700">Inativo</span>
+                                {% else %}
+                                <span class="inline-flex border border-emerald-500 bg-emerald-50 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-700">Ativo</span>
+                                {% endif %}
+                            </td>
                             <td class="border border-slate-200 px-2 py-1">{{ item.sufixo }}</td>
                             <td class="border border-slate-200 px-2 py-1 text-right font-mono">{{ item.caracteres_primario }}</td>
                             <td class="border border-slate-200 px-2 py-1 text-right font-mono">{{ item.caracteres_secundario }}</td>
@@ -147,7 +163,7 @@
                         {% endfor %}
                         {% if items|length == 0 %}
                         <tr>
-                            <td colspan="{{ 8 + fields|length + (1 if all_categories else 0) }}" class="border border-slate-200 p-8 text-center text-sm font-bold text-slate-500">
+                            <td colspan="{{ 9 + fields|length + (1 if all_categories else 0) }}" class="border border-slate-200 p-8 text-center text-sm font-bold text-slate-500">
                                 Nenhum cadastro encontrado.
                             </td>
                         </tr>

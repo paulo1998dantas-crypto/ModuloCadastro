@@ -45,6 +45,32 @@ def unidade_options() -> list[str]:
     return list(UNIT_OPTIONS)
 
 
+def status_to_active(value: Any, default: bool = True) -> bool:
+    text = clean_text(value).upper()
+    if not text:
+        return default
+    return text not in {
+        "0",
+        "FALSE",
+        "NAO",
+        "NÃO",
+        "NO",
+        "OFF",
+        "INATIVO",
+        "INATIVA",
+        "INATIVADO",
+        "INATIVADA",
+        "DESATIVADO",
+        "DESATIVADA",
+        "CANCELADO",
+        "CANCELADA",
+        "OBSOLETO",
+        "OBSOLETA",
+        "BLOQUEADO",
+        "BLOQUEADA",
+    }
+
+
 def save_mode() -> str:
     return clean_text(os.environ.get("CADASTRO_SAVE_MODE")).lower()
 
@@ -331,6 +357,7 @@ def save_registration(form_data: Any) -> dict[str, Any]:
     field_codes = _field_codes(fields, groups)
     sku = _next_sku(category, fields, form_data)
     unidade = normalize_unit(form_data.get("unidade"))
+    ativo = status_to_active(form_data.get("ativo"), default=True)
     payload = {
         "category_key": category["key"],
         "category_label": category["label"],
@@ -340,6 +367,7 @@ def save_registration(form_data: Any) -> dict[str, Any]:
         "descricao_secundaria": descriptions["secundaria"],
         "sufixo": descriptions.get("sufixo") or "",
         "unidade": unidade,
+        "ativo": ativo,
         "caracteres_primario": len(descriptions["primaria"]),
         "caracteres_secundario": len(descriptions["secundaria"]),
         "form_values": groups,
@@ -365,6 +393,7 @@ def save_registration(form_data: Any) -> dict[str, Any]:
         "descricao_primaria": descriptions["primaria"],
         "descricao_secundaria": descriptions["secundaria"],
         "unidade": unidade,
+        "ativo": ativo,
         "sku": sku,
         "path": display_target(),
     }
@@ -454,6 +483,7 @@ def list_registrations(
     query: str = "",
     filters: dict[str, str] | None = None,
     missing_unit: bool = False,
+    include_inactive: bool = False,
     limit: int = 250,
     offset: int = 0,
 ) -> list[dict[str, Any]]:
@@ -468,6 +498,8 @@ def list_registrations(
     ]
     if selected:
         params.append(("category_key", f"eq.{selected}"))
+    if not include_inactive:
+        params.append(("ativo", "is.true"))
     term = _search_text(query)
     if term:
         params.append(("search_text", f"ilike.*{term}*"))
@@ -502,13 +534,30 @@ def list_registrations(
     return rows
 
 
-def count_registrations_without_unit(category_key: str = "") -> int:
+def count_registrations_without_unit(category_key: str = "", include_inactive: bool = False) -> int:
     category_value = clean_text(category_key)
     all_categories = all_categories_key(category_value)
     selected = "" if all_categories else _category(category_value)["key"] if category_value else excel_bancos.selected_category("")["key"]
     params: list[tuple[str, str]] = [
         ("select", "id"),
         ("unidade", "eq."),
+        ("limit", "10000"),
+    ]
+    if selected:
+        params.append(("category_key", f"eq.{selected}"))
+    if not include_inactive:
+        params.append(("ativo", "is.true"))
+    rows = _request("GET", REGISTRATIONS_TABLE, params) or []
+    return len(rows)
+
+
+def count_inactive_registrations(category_key: str = "") -> int:
+    category_value = clean_text(category_key)
+    all_categories = all_categories_key(category_value)
+    selected = "" if all_categories else _category(category_value)["key"] if category_value else excel_bancos.selected_category("")["key"]
+    params: list[tuple[str, str]] = [
+        ("select", "id"),
+        ("ativo", "is.false"),
         ("limit", "10000"),
     ]
     if selected:
@@ -571,6 +620,7 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
     field_codes = _field_codes(fields, groups)
     sku = clean_text(current.get("sku"))
     unidade = normalize_unit(form_data.get("unidade"))
+    ativo = status_to_active(form_data.get("ativo"), default=False)
     payload = {
         "category_label": category["label"],
         "sheet": _sheet_name(category),
@@ -578,6 +628,7 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
         "descricao_secundaria": descriptions["secundaria"],
         "sufixo": descriptions.get("sufixo") or "",
         "unidade": unidade,
+        "ativo": ativo,
         "caracteres_primario": len(descriptions["primaria"]),
         "caracteres_secundario": len(descriptions["secundaria"]),
         "form_values": groups,
@@ -612,6 +663,7 @@ def search_products(query: str, limit: int = 25) -> list[dict[str, str]]:
         [
             ("select", "sku,descricao_primaria,category_label,unidade,search_text"),
             ("search_text", f"ilike.*{term}*"),
+            ("ativo", "is.true"),
             ("order", "sku.asc"),
             ("limit", str(limit)),
         ],
@@ -1191,6 +1243,7 @@ def export_registrations(
     query: str = "",
     filters: dict[str, str] | None = None,
     missing_unit: bool = False,
+    include_inactive: bool = False,
 ) -> Path:
     all_categories = all_categories_key(category_key)
     category = {"key": ALL_CATEGORIES_KEY, "label": "Todas as categorias"} if all_categories else _category(category_key)
@@ -1200,6 +1253,7 @@ def export_registrations(
         query=query,
         filters=filters,
         missing_unit=missing_unit,
+        include_inactive=include_inactive,
         limit=10000,
     )
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
@@ -1215,6 +1269,7 @@ def export_registrations(
         "DESCRIÇÃO PRIMÁRIA",
         "DESCRIÇÃO SECUNDÁRIA",
         "UNIDADE",
+        "STATUS",
         "SUFIXO",
         "CARACTERES PRIMARIO",
         "CARACTERES SECUNDARIO",
@@ -1232,6 +1287,7 @@ def export_registrations(
             row.get("descricao_primaria"),
             row.get("descricao_secundaria"),
             row.get("unidade"),
+            "ATIVO" if row.get("ativo", True) else "INATIVO",
             row.get("sufixo"),
             row.get("caracteres_primario"),
             row.get("caracteres_secundario"),
@@ -1247,7 +1303,7 @@ def export_registrations(
         cell.font = Font(bold=True)
         cell.fill = header_fill
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-    widths = {1: 24, 2: 14, 3: 48, 4: 72, 5: 14, 6: 18, 7: 18, 8: 22, 9: 72}
+    widths = {1: 24, 2: 14, 3: 48, 4: 72, 5: 14, 6: 16, 7: 18, 8: 18, 9: 22, 10: 72}
     for index in range(1, len(headers) + 1):
         ws.column_dimensions[ws.cell(1, index).column_letter].width = widths.get(index, 28)
     for row_cells in ws.iter_rows(min_row=2):

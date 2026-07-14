@@ -99,6 +99,7 @@ def import_workbook(workbook_path: Path, dry_run: bool = False) -> dict[str, int
                 or headers.get(excel_bancos.normalize_label("UNIDADE"))
                 or headers.get(excel_bancos.normalize_label("UN. MEDI. COMERCIAL"))
             )
+            status_col = headers.get(excel_bancos.normalize_label("STATUS"))
             if not sku_col:
                 continue
 
@@ -121,6 +122,7 @@ def import_workbook(workbook_path: Path, dry_run: bool = False) -> dict[str, int
                 primaria = _cell(ws, row, primary_col)
                 secundaria = _cell(ws, row, secondary_col)
                 unidade = supabase_store.normalize_unit(_cell(ws, row, unit_col))
+                ativo = supabase_store.status_to_active(_cell(ws, row, status_col), default=True)
                 payload = {
                     "category_key": category["key"],
                     "category_label": category["label"],
@@ -130,6 +132,7 @@ def import_workbook(workbook_path: Path, dry_run: bool = False) -> dict[str, int
                     "descricao_secundaria": secundaria,
                     "sufixo": _cell(ws, row, suffix_col),
                     "unidade": unidade,
+                    "ativo": ativo,
                     "caracteres_primario": len(primaria),
                     "caracteres_secundario": len(secundaria),
                     "form_values": {},
