@@ -320,23 +320,26 @@ def _full_description(row: dict[str, Any]) -> str:
     return clean_text(row.get("descricao_primaria"))
 
 
-def _primary_descriptions_by_sku(skus: list[Any]) -> dict[str, str]:
+def _catalog_data_by_sku(skus: list[Any]) -> dict[str, dict[str, str]]:
     codes = list(dict.fromkeys(clean_text(sku) for sku in skus if clean_text(sku)))
     if not codes:
         return {}
     rows = _request_all(
         REGISTRATIONS_TABLE,
         [
-            ("select", "sku,descricao_primaria"),
+            ("select", "sku,descricao_primaria,unidade"),
             ("sku", _in_filter(codes)),
             ("order", "sku.asc"),
         ],
         limit=max(len(codes), 1),
     )
     return {
-        clean_text(row.get("sku")): clean_text(row.get("descricao_primaria"))
+        clean_text(row.get("sku")): {
+            "descricao_primaria": clean_text(row.get("descricao_primaria")),
+            "unidade": normalize_unit(row.get("unidade")),
+        }
         for row in rows
-        if clean_text(row.get("sku")) and clean_text(row.get("descricao_primaria"))
+        if clean_text(row.get("sku"))
     }
 
 
@@ -736,7 +739,7 @@ def _registration_by_sku(sku: str) -> dict[str, Any] | None:
         "GET",
         REGISTRATIONS_TABLE,
         [
-            ("select", "id,category_key,category_label,sku,descricao_primaria,descricao_secundaria,sufixo"),
+            ("select", "id,category_key,category_label,sku,descricao_primaria,descricao_secundaria,sufixo,unidade"),
             ("sku", f"eq.{clean_text(sku)}"),
             ("limit", "1"),
         ],
@@ -828,6 +831,9 @@ def save_bom(
         raise SupabaseStoreError("Nao foi possivel criar o cabecalho da B.O.M.")
 
     _request("DELETE", BOM_COMPONENTS_TABLE, [("bom_id", f"eq.{bom_id}")])
+    component_catalog = _catalog_data_by_sku(
+        [component.get("codigo") or component.get("component_sku") for component in components]
+    )
     component_payloads = []
     for index, component in enumerate(components, start=1):
         component_sku = clean_text(component.get("codigo") or component.get("component_sku"))
@@ -843,8 +849,9 @@ def save_bom(
             raise SupabaseStoreError(f"Quantidade deve ser maior que zero no componente {component_sku}.")
         if quantity <= 0:
             quantity = 1.0
-        description = clean_text(component.get("descricao") or component.get("component_descricao"))
-        unit = clean_text(component.get("unidade") or component.get("unit")) or "pc"
+        catalog_item = component_catalog.get(component_sku) or {}
+        description = catalog_item.get("descricao_primaria") or clean_text(component.get("descricao") or component.get("component_descricao"))
+        unit = catalog_item.get("unidade") or normalize_unit(component.get("unidade") or component.get("unit")) or "pc"
         component_payloads.append(
             {
                 "bom_id": bom_id,
@@ -918,9 +925,9 @@ def _in_filter(values: list[Any]) -> str:
 def _enrich_bom(
     header: dict[str, Any],
     components: list[dict[str, Any]],
-    primary_descriptions: dict[str, str] | None = None,
+    catalog_data: dict[str, dict[str, str]] | None = None,
 ) -> dict[str, Any]:
-    primary_descriptions = primary_descriptions or {}
+    catalog_data = catalog_data or {}
     source = clean_text(header.get("source"))
     reasons = _review_reasons(source)
     enriched_components = []
@@ -931,11 +938,14 @@ def _enrich_bom(
             component_reasons.append("component_code")
         if float(component.get("quantidade") or 0) == 1 and "quantity_default" in reasons:
             component_reasons.append("quantity_default")
-        component_description = primary_descriptions.get(component_sku) or clean_text(component.get("component_descricao"))
+        component_catalog = catalog_data.get(component_sku) or {}
+        component_description = component_catalog.get("descricao_primaria") or clean_text(component.get("component_descricao"))
+        component_unit = component_catalog.get("unidade") or normalize_unit(component.get("unidade"))
         enriched_components.append(
             {
                 **component,
                 "component_descricao": component_description,
+                "unidade": component_unit,
                 "display_component_sku": _display_bom_code(component_sku),
                 "needs_review": bool(component_reasons),
                 "review_reasons": [_review_reason_label(reason) for reason in component_reasons],
@@ -949,7 +959,8 @@ def _enrich_bom(
         reasons.append("component_code")
     reason_labels = [_review_reason_label(reason) for reason in dict.fromkeys(reasons)]
     parent_sku = clean_text(header.get("parent_sku"))
-    parent_description = primary_descriptions.get(_base_parent_sku(parent_sku)) or clean_text(header.get("parent_descricao"))
+    parent_catalog = catalog_data.get(_base_parent_sku(parent_sku)) or {}
+    parent_description = parent_catalog.get("descricao_primaria") or clean_text(header.get("parent_descricao"))
     return {
         **header,
         "parent_descricao": parent_description,
@@ -1013,9 +1024,9 @@ def list_boms(
     for component_list in components_by_bom.values():
         for component in component_list:
             description_codes.append(component.get("component_sku"))
-    primary_descriptions = _primary_descriptions_by_sku(description_codes)
+    catalog_data = _catalog_data_by_sku(description_codes)
     return [
-        _enrich_bom(header, components_by_bom.get(clean_text(header.get("id")), []), primary_descriptions)
+        _enrich_bom(header, components_by_bom.get(clean_text(header.get("id")), []), catalog_data)
         for header in headers
     ]
 
@@ -1037,8 +1048,8 @@ def get_bom(bom_id: int | str) -> dict[str, Any]:
     ) or []
     description_codes = [_base_parent_sku(clean_text(rows[0].get("parent_sku")))]
     description_codes.extend(component.get("component_sku") for component in components)
-    primary_descriptions = _primary_descriptions_by_sku(description_codes)
-    return _enrich_bom(rows[0], components, primary_descriptions)
+    catalog_data = _catalog_data_by_sku(description_codes)
+    return _enrich_bom(rows[0], components, catalog_data)
 
 
 def update_bom(
@@ -1107,6 +1118,9 @@ def update_bom(
     header = rows[0] if rows else {**current, **header_payload}
 
     _request("DELETE", BOM_COMPONENTS_TABLE, [("bom_id", f"eq.{clean_text(bom_id)}")])
+    component_catalog = _catalog_data_by_sku(
+        [component.get("codigo") or component.get("component_sku") for component in components]
+    )
     component_payloads = []
     for index, component in enumerate(components, start=1):
         component_sku = clean_text(component.get("codigo") or component.get("component_sku"))
@@ -1116,8 +1130,9 @@ def update_bom(
             quantity = 1.0
         if quantity <= 0:
             quantity = 1.0
-        description = clean_text(component.get("descricao") or component.get("component_descricao"))
-        unit = clean_text(component.get("unidade") or component.get("unit")) or "pc"
+        catalog_item = component_catalog.get(component_sku) or {}
+        description = catalog_item.get("descricao_primaria") or clean_text(component.get("descricao") or component.get("component_descricao"))
+        unit = catalog_item.get("unidade") or normalize_unit(component.get("unidade") or component.get("unit")) or "pc"
         component_payloads.append(
             {
                 "bom_id": clean_text(bom_id),
