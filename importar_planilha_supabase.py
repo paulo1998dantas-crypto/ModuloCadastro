@@ -48,12 +48,28 @@ def _exists(category_key: str, sku: str) -> bool:
     return bool(rows)
 
 
-def _insert(payload: dict[str, Any]) -> None:
+def _existing_skus(category_key: str) -> set[str]:
+    rows = supabase_store._request(
+        "GET",
+        supabase_store.REGISTRATIONS_TABLE,
+        [
+            ("select", "sku"),
+            ("category_key", f"eq.{category_key}"),
+            ("limit", "10000"),
+        ],
+    )
+    return {clean_text(row.get("sku")) for row in rows or [] if clean_text(row.get("sku"))}
+
+
+def _insert_many(payloads: list[dict[str, Any]]) -> None:
+    if not payloads:
+        return
     supabase_store._request(
         "POST",
         supabase_store.REGISTRATIONS_TABLE,
-        payload=payload,
-        prefer="return=minimal",
+        query=[("on_conflict", "category_key,sku")],
+        payload=payloads,
+        prefer="resolution=ignore-duplicates,return=minimal",
     )
 
 
@@ -87,11 +103,13 @@ def import_workbook(workbook_path: Path, dry_run: bool = False) -> dict[str, int
                 for field in fields
             }
 
+            existing_skus = set() if dry_run else _existing_skus(category["key"])
+            batch: list[dict[str, Any]] = []
             for row in range(3, ws.max_row + 1):
                 sku = _cell(ws, row, sku_col)
                 if not sku:
                     continue
-                if not dry_run and _exists(category["key"], sku):
+                if not dry_run and sku in existing_skus:
                     skipped += 1
                     continue
                 field_values = {field["key"]: _cell(ws, row, field_columns.get(field["key"])) for field in fields}
@@ -119,8 +137,14 @@ def import_workbook(workbook_path: Path, dry_run: bool = False) -> dict[str, int
                     ),
                 }
                 if not dry_run:
-                    _insert(payload)
+                    batch.append(payload)
+                    existing_skus.add(sku)
+                    if len(batch) >= 100:
+                        _insert_many(batch)
+                        batch = []
                 inserted += 1
+            if not dry_run:
+                _insert_many(batch)
     finally:
         wb.close()
     return {"inserted": inserted, "skipped": skipped}
