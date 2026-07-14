@@ -58,6 +58,15 @@
                             {% endfor %}
                         </select>
                     </label>
+                    <label class="w-full max-w-[160px] space-y-1">
+                        <span class="block text-xs font-bold uppercase text-slate-500">Unidade</span>
+                        <input name="unidade" list="unit-options" value="{{ selected_unit or '' }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500" placeholder="pc" required>
+                        <datalist id="unit-options">
+                            {% for unit in unit_options %}
+                            <option value="{{ unit }}"></option>
+                            {% endfor %}
+                        </datalist>
+                    </label>
                     <div class="flex flex-wrap gap-2">
                         <button id="save-draft-button" type="button" class="rounded-lg bg-amber-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-amber-600">
                             Salvar rascunho

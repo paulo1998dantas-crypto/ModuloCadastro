@@ -10,6 +10,7 @@ create table if not exists public.cadastro_registros (
     descricao_primaria text not null default '',
     descricao_secundaria text not null default '',
     sufixo text not null default '',
+    unidade text not null default '',
     caracteres_primario integer not null default 0,
     caracteres_secundario integer not null default 0,
     form_values jsonb not null default '{}'::jsonb,
@@ -31,6 +32,9 @@ create table if not exists public.cadastro_rascunhos (
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
+
+alter table public.cadastro_registros
+    add column if not exists unidade text not null default '';
 
 create table if not exists public.cadastro_bom_cabecalhos (
     id bigserial primary key,

@@ -97,6 +97,7 @@
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">SKU</th>
                             <th class="min-w-[360px] border border-slate-300 px-2 py-2">Descricao Primaria</th>
                             <th class="min-w-[520px] border border-slate-300 px-2 py-2">Descricao Secundaria</th>
+                            <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Unidade</th>
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Sufixo</th>
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Car. Prim.</th>
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Car. Sec.</th>
@@ -118,6 +119,7 @@
                             <td class="whitespace-nowrap border border-slate-200 px-2 py-1 font-mono font-bold">{{ item.sku }}</td>
                             <td class="border border-slate-200 px-2 py-1 font-semibold">{{ item.descricao_primaria }}</td>
                             <td class="border border-slate-200 px-2 py-1">{{ item.descricao_secundaria }}</td>
+                            <td class="whitespace-nowrap border border-slate-200 px-2 py-1 font-mono font-bold">{{ item.unidade or '' }}</td>
                             <td class="border border-slate-200 px-2 py-1">{{ item.sufixo }}</td>
                             <td class="border border-slate-200 px-2 py-1 text-right font-mono">{{ item.caracteres_primario }}</td>
                             <td class="border border-slate-200 px-2 py-1 text-right font-mono">{{ item.caracteres_secundario }}</td>
@@ -128,7 +130,7 @@
                         {% endfor %}
                         {% if items|length == 0 %}
                         <tr>
-                            <td colspan="{{ 7 + fields|length + (1 if all_categories else 0) }}" class="border border-slate-200 p-8 text-center text-sm font-bold text-slate-500">
+                            <td colspan="{{ 8 + fields|length + (1 if all_categories else 0) }}" class="border border-slate-200 p-8 text-center text-sm font-bold text-slate-500">
                                 Nenhum cadastro encontrado.
                             </td>
                         </tr>

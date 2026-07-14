@@ -94,6 +94,11 @@ def import_workbook(workbook_path: Path, dry_run: bool = False) -> dict[str, int
             primary_col = headers.get(excel_bancos.normalize_label("DESCRIÇÃO PRIMÁRIA"))
             secondary_col = headers.get(excel_bancos.normalize_label("DESCRIÇÃO SECUNDÁRIA"))
             suffix_col = headers.get(excel_bancos.normalize_label("SUFIXO"))
+            unit_col = (
+                headers.get(excel_bancos.normalize_label("UN. MEDI. INTERNA"))
+                or headers.get(excel_bancos.normalize_label("UNIDADE"))
+                or headers.get(excel_bancos.normalize_label("UN. MEDI. COMERCIAL"))
+            )
             if not sku_col:
                 continue
 
@@ -115,6 +120,7 @@ def import_workbook(workbook_path: Path, dry_run: bool = False) -> dict[str, int
                 field_values = {field["key"]: _cell(ws, row, field_columns.get(field["key"])) for field in fields}
                 primaria = _cell(ws, row, primary_col)
                 secundaria = _cell(ws, row, secondary_col)
+                unidade = supabase_store.normalize_unit(_cell(ws, row, unit_col))
                 payload = {
                     "category_key": category["key"],
                     "category_label": category["label"],
@@ -123,6 +129,7 @@ def import_workbook(workbook_path: Path, dry_run: bool = False) -> dict[str, int
                     "descricao_primaria": primaria,
                     "descricao_secundaria": secundaria,
                     "sufixo": _cell(ws, row, suffix_col),
+                    "unidade": unidade,
                     "caracteres_primario": len(primaria),
                     "caracteres_secundario": len(secundaria),
                     "form_values": {},
@@ -133,6 +140,7 @@ def import_workbook(workbook_path: Path, dry_run: bool = False) -> dict[str, int
                         category["label"],
                         primaria,
                         secundaria,
+                        unidade,
                         " ".join(field_values.values()),
                     ),
                 }

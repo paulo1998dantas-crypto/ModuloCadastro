@@ -26,6 +26,7 @@ EXPORT_DIR = Path(tempfile.gettempdir()) / "modulo-cadastro-exports"
 ALL_CATEGORIES_KEY = "__all__"
 REVIEW_PARENT_PREFIX = "REVISAO-"
 DUPLICATE_PARENT_SEPARATOR = "__BOM__"
+UNIT_OPTIONS = ["pc", "un", "cj", "ch", "br", "m", "mm"]
 
 
 class SupabaseStoreError(RuntimeError):
@@ -34,6 +35,14 @@ class SupabaseStoreError(RuntimeError):
 
 def clean_text(value: Any) -> str:
     return "" if value is None else str(value).strip()
+
+
+def normalize_unit(value: Any) -> str:
+    return clean_text(value).lower()
+
+
+def unidade_options() -> list[str]:
+    return list(UNIT_OPTIONS)
 
 
 def save_mode() -> str:
@@ -321,6 +330,7 @@ def save_registration(form_data: Any) -> dict[str, Any]:
     field_values = _field_values(fields, groups)
     field_codes = _field_codes(fields, groups)
     sku = _next_sku(category, fields, form_data)
+    unidade = normalize_unit(form_data.get("unidade"))
     payload = {
         "category_key": category["key"],
         "category_label": category["label"],
@@ -329,6 +339,7 @@ def save_registration(form_data: Any) -> dict[str, Any]:
         "descricao_primaria": descriptions["primaria"],
         "descricao_secundaria": descriptions["secundaria"],
         "sufixo": descriptions.get("sufixo") or "",
+        "unidade": unidade,
         "caracteres_primario": len(descriptions["primaria"]),
         "caracteres_secundario": len(descriptions["secundaria"]),
         "form_values": groups,
@@ -339,6 +350,7 @@ def save_registration(form_data: Any) -> dict[str, Any]:
             category["label"],
             descriptions["primaria"],
             descriptions["secundaria"],
+            unidade,
             " ".join(field_values.values()),
         ),
     }
@@ -352,6 +364,7 @@ def save_registration(form_data: Any) -> dict[str, Any]:
         "sheet": _sheet_name(category),
         "descricao_primaria": descriptions["primaria"],
         "descricao_secundaria": descriptions["secundaria"],
+        "unidade": unidade,
         "sku": sku,
         "path": display_target(),
     }
@@ -539,12 +552,14 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
     field_values = _field_values(fields, groups)
     field_codes = _field_codes(fields, groups)
     sku = clean_text(current.get("sku"))
+    unidade = normalize_unit(form_data.get("unidade"))
     payload = {
         "category_label": category["label"],
         "sheet": _sheet_name(category),
         "descricao_primaria": descriptions["primaria"],
         "descricao_secundaria": descriptions["secundaria"],
         "sufixo": descriptions.get("sufixo") or "",
+        "unidade": unidade,
         "caracteres_primario": len(descriptions["primaria"]),
         "caracteres_secundario": len(descriptions["secundaria"]),
         "form_values": groups,
@@ -555,6 +570,7 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
             category["label"],
             descriptions["primaria"],
             descriptions["secundaria"],
+            unidade,
             " ".join(field_values.values()),
         ),
     }
@@ -576,7 +592,7 @@ def search_products(query: str, limit: int = 25) -> list[dict[str, str]]:
         "GET",
         REGISTRATIONS_TABLE,
         [
-            ("select", "sku,descricao_primaria,category_label,search_text"),
+            ("select", "sku,descricao_primaria,category_label,unidade,search_text"),
             ("search_text", f"ilike.*{term}*"),
             ("order", "sku.asc"),
             ("limit", str(limit)),
@@ -587,7 +603,7 @@ def search_products(query: str, limit: int = 25) -> list[dict[str, str]]:
             "codigo": clean_text(row.get("sku")),
             "descricao": clean_text(row.get("descricao_primaria")),
             "categoria": clean_text(row.get("category_label")),
-            "unidade": "pc",
+            "unidade": clean_text(row.get("unidade")) or "pc",
         }
         for row in rows
     ]
@@ -1169,6 +1185,7 @@ def export_registrations(category_key: str, query: str = "", filters: dict[str, 
         "SKU",
         "DESCRIÇÃO PRIMÁRIA",
         "DESCRIÇÃO SECUNDÁRIA",
+        "UNIDADE",
         "SUFIXO",
         "CARACTERES PRIMARIO",
         "CARACTERES SECUNDARIO",
@@ -1185,6 +1202,7 @@ def export_registrations(category_key: str, query: str = "", filters: dict[str, 
             row.get("sku"),
             row.get("descricao_primaria"),
             row.get("descricao_secundaria"),
+            row.get("unidade"),
             row.get("sufixo"),
             row.get("caracteres_primario"),
             row.get("caracteres_secundario"),
@@ -1200,7 +1218,7 @@ def export_registrations(category_key: str, query: str = "", filters: dict[str, 
         cell.font = Font(bold=True)
         cell.fill = header_fill
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-    widths = {1: 24, 2: 14, 3: 48, 4: 72, 5: 18, 6: 18, 7: 22, 8: 72}
+    widths = {1: 24, 2: 14, 3: 48, 4: 72, 5: 14, 6: 18, 7: 18, 8: 22, 9: 72}
     for index in range(1, len(headers) + 1):
         ws.column_dimensions[ws.cell(1, index).column_letter].width = widths.get(index, 28)
     for row_cells in ws.iter_rows(min_row=2):

@@ -365,6 +365,23 @@ def _normalize_form_data(fields, form_data):
     return values
 
 
+def _form_first_value(form_data, key: str) -> str:
+    if not form_data:
+        return ""
+    if isinstance(form_data, dict):
+        value = form_data.get(key)
+        if isinstance(value, list):
+            return excel_bancos.clean_text(value[0] if value else "")
+        return excel_bancos.clean_text(value)
+    if hasattr(form_data, "getlist"):
+        values = form_data.getlist(key)
+        if values:
+            return excel_bancos.clean_text(values[0])
+    if hasattr(form_data, "get"):
+        return excel_bancos.clean_text(form_data.get(key))
+    return ""
+
+
 def _sync_active_workbook(category_key: str) -> None:
     return None
 
@@ -449,6 +466,8 @@ def _render_cadastro_page(
             "workbook_path": _workbook_display_path(),
             "save_via_bridge": online_mode,
             "supabase_mode": supabase_mode,
+            "unit_options": supabase_store.unidade_options(),
+            "selected_unit": supabase_store.normalize_unit(_form_first_value(form_data, "unidade")),
             "sucesso": sucesso,
             "erro": erro,
             "form_data": normalized_form,
@@ -1214,6 +1233,7 @@ async def cadastro_editar_page(request: Request, registration_id: int, sucesso: 
                 "conditional_rules": excel_bancos.get_conditional_rules_for_form(category["key"]),
                 "workbook_path": _workbook_display_path(),
                 "supabase_mode": True,
+                "unit_options": supabase_store.unidade_options(),
                 "sucesso": sucesso,
                 "erro": erro,
                 "active_page": "cadastros",
