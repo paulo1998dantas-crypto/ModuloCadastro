@@ -179,6 +179,21 @@ def _request_all(table: str, params: list[tuple[str, str]], limit: int = 10000) 
     return rows
 
 
+def _is_missing_column_error(exc: Exception, column: str) -> bool:
+    text = str(exc).lower()
+    column = column.lower()
+    return column in text and (
+        "does not exist" in text
+        or "could not find" in text
+        or "schema cache" in text
+        or "pgrst204" in text
+    )
+
+
+def _without_filter(params: list[tuple[str, str]], key: str) -> list[tuple[str, str]]:
+    return [(param_key, value) for param_key, value in params if param_key != key]
+
+
 def _category(category_key: str) -> dict[str, Any]:
     catalog = excel_bancos.load_catalog()
     return excel_bancos._find_category(catalog, category_key)
@@ -509,25 +524,50 @@ def list_registrations(
         value = _safe_filter_value(value)
         if key and value:
             params.append((f"field_values->>{key}", f"ilike.*{value}*"))
+    fallback_without_active = False
     if requested_limit <= 1000:
-        return _request(
-            "GET",
-            REGISTRATIONS_TABLE,
-            [*params, ("limit", str(requested_limit)), ("offset", str(requested_offset))],
-        ) or []
+        try:
+            return _request(
+                "GET",
+                REGISTRATIONS_TABLE,
+                [*params, ("limit", str(requested_limit)), ("offset", str(requested_offset))],
+            ) or []
+        except SupabaseStoreError as exc:
+            if include_inactive or not _is_missing_column_error(exc, "ativo"):
+                raise
+            fallback_without_active = True
+            fallback_params = _without_filter(params, "ativo")
+            rows = _request(
+                "GET",
+                REGISTRATIONS_TABLE,
+                [*fallback_params, ("limit", str(requested_limit)), ("offset", str(requested_offset))],
+            ) or []
+            for row in rows:
+                row.setdefault("ativo", True)
+            return rows
 
     rows: list[dict[str, Any]] = []
     page_size = 1000
     while len(rows) < requested_limit:
-        batch = _request(
-            "GET",
-            REGISTRATIONS_TABLE,
-            [
-                *params,
-                ("limit", str(min(page_size, requested_limit - len(rows)))),
-                ("offset", str(requested_offset + len(rows))),
-            ],
-        ) or []
+        try:
+            batch = _request(
+                "GET",
+                REGISTRATIONS_TABLE,
+                [
+                    *params,
+                    ("limit", str(min(page_size, requested_limit - len(rows)))),
+                    ("offset", str(requested_offset + len(rows))),
+                ],
+            ) or []
+        except SupabaseStoreError as exc:
+            if include_inactive or fallback_without_active or not _is_missing_column_error(exc, "ativo"):
+                raise
+            fallback_without_active = True
+            params = _without_filter(params, "ativo")
+            continue
+        if fallback_without_active:
+            for row in batch:
+                row.setdefault("ativo", True)
         rows.extend(batch)
         if len(batch) < page_size:
             break
@@ -547,7 +587,12 @@ def count_registrations_without_unit(category_key: str = "", include_inactive: b
         params.append(("category_key", f"eq.{selected}"))
     if not include_inactive:
         params.append(("ativo", "is.true"))
-    rows = _request("GET", REGISTRATIONS_TABLE, params) or []
+    try:
+        rows = _request("GET", REGISTRATIONS_TABLE, params) or []
+    except SupabaseStoreError as exc:
+        if include_inactive or not _is_missing_column_error(exc, "ativo"):
+            raise
+        rows = _request("GET", REGISTRATIONS_TABLE, _without_filter(params, "ativo")) or []
     return len(rows)
 
 
@@ -562,7 +607,12 @@ def count_inactive_registrations(category_key: str = "") -> int:
     ]
     if selected:
         params.append(("category_key", f"eq.{selected}"))
-    rows = _request("GET", REGISTRATIONS_TABLE, params) or []
+    try:
+        rows = _request("GET", REGISTRATIONS_TABLE, params) or []
+    except SupabaseStoreError as exc:
+        if not _is_missing_column_error(exc, "ativo"):
+            raise
+        return 0
     return len(rows)
 
 
@@ -657,17 +707,19 @@ def search_products(query: str, limit: int = 25) -> list[dict[str, str]]:
     term = _search_text(query)
     if len(term) < 1:
         return []
-    rows = _request(
-        "GET",
-        REGISTRATIONS_TABLE,
-        [
-            ("select", "sku,descricao_primaria,category_label,unidade,search_text"),
-            ("search_text", f"ilike.*{term}*"),
-            ("ativo", "is.true"),
-            ("order", "sku.asc"),
-            ("limit", str(limit)),
-        ],
-    ) or []
+    params = [
+        ("select", "sku,descricao_primaria,category_label,unidade,search_text"),
+        ("search_text", f"ilike.*{term}*"),
+        ("ativo", "is.true"),
+        ("order", "sku.asc"),
+        ("limit", str(limit)),
+    ]
+    try:
+        rows = _request("GET", REGISTRATIONS_TABLE, params) or []
+    except SupabaseStoreError as exc:
+        if not _is_missing_column_error(exc, "ativo"):
+            raise
+        rows = _request("GET", REGISTRATIONS_TABLE, _without_filter(params, "ativo")) or []
     return [
         {
             "codigo": clean_text(row.get("sku")),
