@@ -319,7 +319,17 @@ def delete_draft(draft_id: str) -> dict[str, Any]:
     return existing
 
 
-def list_registrations(category_key: str = "", query: str = "", limit: int = 250, offset: int = 0) -> list[dict[str, Any]]:
+def _safe_filter_value(value: str) -> str:
+    return clean_text(value).replace("*", "").replace(",", " ")
+
+
+def list_registrations(
+    category_key: str = "",
+    query: str = "",
+    filters: dict[str, str] | None = None,
+    limit: int = 250,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
     selected = _category(category_key)["key"] if clean_text(category_key) else excel_bancos.selected_category("")["key"]
     params: list[tuple[str, str]] = [
         ("select", "*"),
@@ -331,7 +341,93 @@ def list_registrations(category_key: str = "", query: str = "", limit: int = 250
     term = _search_text(query)
     if term:
         params.append(("search_text", f"ilike.*{term}*"))
+    for key, value in (filters or {}).items():
+        value = _safe_filter_value(value)
+        if key and value:
+            params.append((f"field_values->>{key}", f"ilike.*{value}*"))
     return _request("GET", REGISTRATIONS_TABLE, params) or []
+
+
+def get_registration(registration_id: int | str) -> dict[str, Any] | None:
+    rows = _request(
+        "GET",
+        REGISTRATIONS_TABLE,
+        [
+            ("select", "*"),
+            ("id", f"eq.{clean_text(registration_id)}"),
+            ("limit", "1"),
+        ],
+    )
+    return rows[0] if rows else None
+
+
+def _groups_from_record(fields: list[dict[str, Any]], record: dict[str, Any]) -> dict[str, list[str]]:
+    form_values = record.get("form_values") if isinstance(record.get("form_values"), dict) else {}
+    field_values = record.get("field_values") if isinstance(record.get("field_values"), dict) else {}
+    groups: dict[str, list[str]] = {}
+    for field in fields:
+        raw = form_values.get(field["key"])
+        if isinstance(raw, list) and raw:
+            groups[field["key"]] = [clean_text(value) for value in raw if clean_text(value)]
+            continue
+        saved = clean_text(field_values.get(field["key"]))
+        if saved:
+            groups[field["key"]] = [value.strip() for value in saved.split("|") if value.strip()]
+    return groups
+
+
+def editable_registration(registration_id: int | str) -> dict[str, Any]:
+    record = get_registration(registration_id)
+    if not record:
+        raise SupabaseStoreError("Cadastro não encontrado.")
+    category = _category(clean_text(record.get("category_key")))
+    fields = excel_bancos.get_banco_fields(category["key"])
+    groups = _groups_from_record(fields, record)
+    return {"record": record, "category": category, "fields": fields, "groups": groups}
+
+
+def update_registration(registration_id: int | str, form_data: Any) -> dict[str, Any]:
+    current = get_registration(registration_id)
+    if not current:
+        raise SupabaseStoreError("Cadastro não encontrado.")
+    category = _category(clean_text(current.get("category_key")))
+    fields = excel_bancos.get_banco_fields(category["key"])
+    if category["key"] == excel_bancos.DEFAULT_CATEGORY_KEY:
+        excel_bancos._validate_banco_dependencies(fields, form_data)
+        excel_bancos._validate_visible_field_requirements(fields, category["key"], form_data)
+
+    descriptions = excel_bancos.build_descriptions(fields, form_data, category["key"])
+    groups = _field_groups(fields, form_data)
+    field_values = _field_values(fields, groups)
+    field_codes = _field_codes(fields, groups)
+    sku = clean_text(current.get("sku"))
+    payload = {
+        "category_label": category["label"],
+        "sheet": _sheet_name(category),
+        "descricao_primaria": descriptions["primaria"],
+        "descricao_secundaria": descriptions["secundaria"],
+        "sufixo": descriptions.get("sufixo") or "",
+        "caracteres_primario": len(descriptions["primaria"]),
+        "caracteres_secundario": len(descriptions["secundaria"]),
+        "form_values": groups,
+        "field_values": field_values,
+        "field_codes": field_codes,
+        "search_text": _search_text(
+            sku,
+            category["label"],
+            descriptions["primaria"],
+            descriptions["secundaria"],
+            " ".join(field_values.values()),
+        ),
+    }
+    rows = _request(
+        "PATCH",
+        REGISTRATIONS_TABLE,
+        [("id", f"eq.{clean_text(registration_id)}")],
+        payload=payload,
+        prefer="return=representation",
+    )
+    return rows[0] if rows else {**current, **payload}
 
 
 def search_products(query: str, limit: int = 25) -> list[dict[str, str]]:
@@ -359,10 +455,10 @@ def search_products(query: str, limit: int = 25) -> list[dict[str, str]]:
     ]
 
 
-def export_registrations(category_key: str, query: str = "") -> Path:
+def export_registrations(category_key: str, query: str = "", filters: dict[str, str] | None = None) -> Path:
     category = _category(category_key)
     fields = excel_bancos.get_banco_fields_for_display(category["key"])
-    rows = list_registrations(category["key"], query=query, limit=10000)
+    rows = list_registrations(category["key"], query=query, filters=filters, limit=10000)
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     output = EXPORT_DIR / f"cadastros_{category['key']}_{stamp}.xlsx"

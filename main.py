@@ -770,9 +770,14 @@ async def cadastros_page(
 ):
     selected_category = excel_bancos.selected_category(categoria)
     fields = excel_bancos.get_banco_fields_for_display(selected_category["key"])
+    filters = {
+        key[2:]: excel_bancos.clean_text(value)
+        for key, value in request.query_params.items()
+        if key.startswith("f_") and excel_bancos.clean_text(value)
+    }
     items = []
     if _supabase_mode():
-        items = supabase_store.list_registrations(selected_category["key"], query=q, limit=1000)
+        items = supabase_store.list_registrations(selected_category["key"], query=q, filters=filters, limit=1000)
     return templates.TemplateResponse(
         request=request,
         name="cadastros.html",
@@ -783,6 +788,7 @@ async def cadastros_page(
             "fields": fields,
             "items": items,
             "q": q,
+            "filters": filters,
             "workbook_path": _workbook_display_path(),
             "save_via_bridge": bridge_store.save_via_bridge(),
             "supabase_mode": _supabase_mode(),
@@ -794,16 +800,69 @@ async def cadastros_page(
 
 
 @app.get("/cadastros/exportar")
-async def cadastros_exportar(categoria: str = "", q: str = ""):
+async def cadastros_exportar(request: Request, categoria: str = "", q: str = ""):
     if not _supabase_mode():
         raise HTTPException(status_code=400, detail="Exportação pela base está disponível no modo Supabase.")
     selected_category = excel_bancos.selected_category(categoria)
-    output = supabase_store.export_registrations(selected_category["key"], query=q)
+    filters = {
+        key[2:]: excel_bancos.clean_text(value)
+        for key, value in request.query_params.items()
+        if key.startswith("f_") and excel_bancos.clean_text(value)
+    }
+    output = supabase_store.export_registrations(selected_category["key"], query=q, filters=filters)
     return FileResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         filename=output.name,
     )
+
+
+@app.get("/cadastros/{registration_id}/editar", response_class=HTMLResponse)
+async def cadastro_editar_page(request: Request, registration_id: int, sucesso: str = "", erro: str = ""):
+    if not _supabase_mode():
+        return RedirectResponse(url="/cadastros", status_code=303)
+    try:
+        editable = supabase_store.editable_registration(registration_id)
+        fields = editable["fields"]
+        groups = editable["groups"]
+        category = {"key": editable["category"]["key"], "label": editable["category"]["label"]}
+        return templates.TemplateResponse(
+            request=request,
+            name="editar_cadastro.html",
+            context={
+                "request": request,
+                "record": editable["record"],
+                "categories": excel_bancos.list_categories(),
+                "selected_category": category,
+                "fields": _enrich_fields(fields, groups),
+                "ordered_fields": _enrich_fields(excel_bancos.get_banco_fields_for_display(category["key"]), groups),
+                "conditional_rules": excel_bancos.get_conditional_rules_for_form(category["key"]),
+                "workbook_path": _workbook_display_path(),
+                "supabase_mode": True,
+                "sucesso": sucesso,
+                "erro": erro,
+                "active_page": "cadastros",
+            },
+        )
+    except Exception as exc:
+        return RedirectResponse(url=f"/cadastros?erro={quote(str(exc))}", status_code=303)
+
+
+@app.post("/cadastros/{registration_id}/editar", response_class=HTMLResponse)
+async def cadastro_editar_post(request: Request, registration_id: int):
+    form_data = await request.form()
+    try:
+        result = supabase_store.update_registration(registration_id, form_data)
+        message = f"Cadastro atualizado. SKU: {result.get('sku') or '-'}."
+        return RedirectResponse(
+            url=f"/cadastros?categoria={quote(result.get('category_key') or '')}&sucesso={quote(message)}",
+            status_code=303,
+        )
+    except Exception as exc:
+        return RedirectResponse(
+            url=f"/cadastros/{registration_id}/editar?erro={quote(str(exc))}",
+            status_code=303,
+        )
 
 
 @app.get("/ponte", response_class=HTMLResponse)
