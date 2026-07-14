@@ -6,11 +6,12 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from io import BytesIO
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
 import excel_bancos
@@ -18,6 +19,8 @@ import excel_bancos
 
 REGISTRATIONS_TABLE = "cadastro_registros"
 DRAFTS_TABLE = "cadastro_rascunhos"
+BOM_HEADERS_TABLE = "cadastro_bom_cabecalhos"
+BOM_COMPONENTS_TABLE = "cadastro_bom_componentes"
 EXPORT_DIR = Path(tempfile.gettempdir()) / "modulo-cadastro-exports"
 
 
@@ -46,7 +49,7 @@ def status() -> dict[str, Any]:
         "enabled": enabled(),
         "configured": configured(),
         "url": _supabase_url(),
-        "tables": [REGISTRATIONS_TABLE, DRAFTS_TABLE],
+        "tables": [REGISTRATIONS_TABLE, DRAFTS_TABLE, BOM_HEADERS_TABLE, BOM_COMPONENTS_TABLE],
     }
 
 
@@ -179,6 +182,18 @@ def _field_codes(fields: list[dict[str, Any]], groups: dict[str, list[str]]) -> 
 
 def _search_text(*parts: Any) -> str:
     return excel_bancos.normalize_label(" ".join(clean_text(part) for part in parts if clean_text(part)))
+
+
+def _full_description(row: dict[str, Any]) -> str:
+    return " ".join(
+        part
+        for part in [
+            clean_text(row.get("descricao_primaria")),
+            clean_text(row.get("descricao_secundaria")),
+            clean_text(row.get("sufixo")),
+        ]
+        if part
+    )
 
 
 def _duplicate_exists(category_key: str, primaria: str, secundaria: str) -> bool:
@@ -453,6 +468,285 @@ def search_products(query: str, limit: int = 25) -> list[dict[str, str]]:
         }
         for row in rows
     ]
+
+
+def _registration_by_sku(sku: str) -> dict[str, Any] | None:
+    rows = _request(
+        "GET",
+        REGISTRATIONS_TABLE,
+        [
+            ("select", "id,category_key,category_label,sku,descricao_primaria,descricao_secundaria,sufixo"),
+            ("sku", f"eq.{clean_text(sku)}"),
+            ("limit", "1"),
+        ],
+    )
+    return rows[0] if rows else None
+
+
+def _bom_header_by_parent(parent_sku: str) -> dict[str, Any] | None:
+    rows = _request(
+        "GET",
+        BOM_HEADERS_TABLE,
+        [
+            ("select", "*"),
+            ("parent_sku", f"eq.{clean_text(parent_sku)}"),
+            ("limit", "1"),
+        ],
+    )
+    return rows[0] if rows else None
+
+
+def save_bom(
+    parent_sku: str,
+    parent_description: str,
+    components: list[dict[str, Any]],
+    category_key: str = "",
+    category_label: str = "",
+    registration_id: int | str | None = None,
+    source: str = "cadastro",
+) -> dict[str, Any]:
+    parent_sku = clean_text(parent_sku)
+    if not parent_sku:
+        raise SupabaseStoreError("Informe o SKU do item pai da B.O.M.")
+    if not components:
+        raise SupabaseStoreError("Informe pelo menos um componente para a B.O.M.")
+
+    registration = _registration_by_sku(parent_sku)
+    if registration:
+        category_key = clean_text(registration.get("category_key")) or category_key
+        category_label = clean_text(registration.get("category_label")) or category_label
+        parent_description = _full_description(registration) or parent_description
+        registration_id = registration.get("id") or registration_id
+
+    parent_description = clean_text(parent_description) or parent_sku
+    payload = {
+        "parent_sku": parent_sku,
+        "parent_descricao": parent_description,
+        "parent_category_key": clean_text(category_key),
+        "parent_category_label": clean_text(category_label),
+        "registration_id": registration_id,
+        "source": clean_text(source) or "cadastro",
+        "search_text": _search_text(parent_sku, parent_description, category_label),
+    }
+
+    existing = _bom_header_by_parent(parent_sku)
+    if existing:
+        rows = _request(
+            "PATCH",
+            BOM_HEADERS_TABLE,
+            [("id", f"eq.{existing['id']}")],
+            payload=payload,
+            prefer="return=representation",
+        )
+    else:
+        rows = _request("POST", BOM_HEADERS_TABLE, payload=payload, prefer="return=representation")
+    header = rows[0] if rows else {**payload, "id": existing.get("id") if existing else None}
+    bom_id = header.get("id")
+    if not bom_id:
+        raise SupabaseStoreError("Nao foi possivel criar o cabecalho da B.O.M.")
+
+    _request("DELETE", BOM_COMPONENTS_TABLE, [("bom_id", f"eq.{bom_id}")])
+    component_payloads = []
+    for index, component in enumerate(components, start=1):
+        component_sku = clean_text(component.get("codigo") or component.get("component_sku"))
+        if not component_sku:
+            continue
+        try:
+            quantity = float(component.get("quantidade") or component.get("quantity") or 0)
+        except Exception as exc:
+            raise SupabaseStoreError(f"Quantidade invalida no componente {component_sku}.") from exc
+        if quantity <= 0:
+            raise SupabaseStoreError(f"Quantidade deve ser maior que zero no componente {component_sku}.")
+        description = clean_text(component.get("descricao") or component.get("component_descricao"))
+        unit = clean_text(component.get("unidade") or component.get("unit")) or "pc"
+        component_payloads.append(
+            {
+                "bom_id": bom_id,
+                "parent_sku": parent_sku,
+                "component_sku": component_sku,
+                "component_descricao": description,
+                "unidade": unit,
+                "quantidade": quantity,
+                "ordem": index,
+                "search_text": _search_text(parent_sku, parent_description, component_sku, description, unit),
+            }
+        )
+    if not component_payloads:
+        raise SupabaseStoreError("Informe pelo menos um componente valido para a B.O.M.")
+    _request("POST", BOM_COMPONENTS_TABLE, payload=component_payloads, prefer="return=minimal")
+    return {"bom": header, "components_count": len(component_payloads)}
+
+
+def _in_filter(values: list[Any]) -> str:
+    cleaned = [clean_text(value) for value in values if clean_text(value)]
+    return "in.(" + ",".join(cleaned) + ")"
+
+
+def list_boms(
+    category_key: str = "",
+    parent_query: str = "",
+    component_query: str = "",
+    limit: int = 500,
+) -> list[dict[str, Any]]:
+    bom_ids_filter: list[str] = []
+    component_term = _search_text(component_query)
+    if component_term:
+        component_matches = _request(
+            "GET",
+            BOM_COMPONENTS_TABLE,
+            [
+                ("select", "bom_id"),
+                ("search_text", f"ilike.*{component_term}*"),
+                ("limit", "5000"),
+            ],
+        ) or []
+        bom_ids_filter = list(dict.fromkeys(clean_text(row.get("bom_id")) for row in component_matches if row.get("bom_id")))
+        if not bom_ids_filter:
+            return []
+
+    params: list[tuple[str, str]] = [
+        ("select", "*"),
+        ("order", "parent_sku.asc"),
+        ("limit", str(max(1, min(limit, 5000)))),
+    ]
+    if clean_text(category_key):
+        params.append(("parent_category_key", f"eq.{clean_text(category_key)}"))
+    parent_term = _search_text(parent_query)
+    if parent_term:
+        params.append(("search_text", f"ilike.*{parent_term}*"))
+    if bom_ids_filter:
+        params.append(("id", _in_filter(bom_ids_filter)))
+    headers = _request("GET", BOM_HEADERS_TABLE, params) or []
+    bom_ids = [clean_text(row.get("id")) for row in headers if row.get("id")]
+    components_by_bom: dict[str, list[dict[str, Any]]] = {bom_id: [] for bom_id in bom_ids}
+    if bom_ids:
+        component_params: list[tuple[str, str]] = [
+            ("select", "*"),
+            ("bom_id", _in_filter(bom_ids)),
+            ("order", "parent_sku.asc,ordem.asc,component_sku.asc"),
+            ("limit", "10000"),
+        ]
+        if component_term:
+            component_params.append(("search_text", f"ilike.*{component_term}*"))
+        components = _request("GET", BOM_COMPONENTS_TABLE, component_params) or []
+        for component in components:
+            components_by_bom.setdefault(clean_text(component.get("bom_id")), []).append(component)
+    return [{**header, "components": components_by_bom.get(clean_text(header.get("id")), [])} for header in headers]
+
+
+def delete_bom(bom_id: int | str) -> dict[str, Any]:
+    bom_id = clean_text(bom_id)
+    rows = _request("GET", BOM_HEADERS_TABLE, [("select", "*"), ("id", f"eq.{bom_id}"), ("limit", "1")]) or []
+    if not rows:
+        raise SupabaseStoreError("B.O.M. nao encontrada.")
+    _request("DELETE", BOM_COMPONENTS_TABLE, [("bom_id", f"eq.{bom_id}")])
+    _request("DELETE", BOM_HEADERS_TABLE, [("id", f"eq.{bom_id}")])
+    return rows[0]
+
+
+def _normalize_header(value: Any) -> str:
+    return excel_bancos.normalize_label(value).replace(" ", "_").lower()
+
+
+def import_bom_workbook(content: bytes, filename: str = "") -> dict[str, Any]:
+    wb = load_workbook(BytesIO(content), data_only=True)
+    imported = 0
+    parents: dict[str, dict[str, Any]] = {}
+    try:
+        for ws in wb.worksheets:
+            header_row = None
+            header_map: dict[str, int] = {}
+            for row_index in range(1, min(ws.max_row, 10) + 1):
+                headers = {_normalize_header(ws.cell(row_index, col).value): col for col in range(1, ws.max_column + 1)}
+                if "item_codigo" in headers and "componente_codigo" in headers:
+                    header_row = row_index
+                    header_map = headers
+                    break
+            if not header_row:
+                continue
+            item_block_col = header_map.get("item_bloco")
+            parent_hint = clean_text(ws.cell(header_row, item_block_col + 1).value) if item_block_col else ""
+            for row_index in range(header_row + 1, ws.max_row + 1):
+                parent_sku = clean_text(ws.cell(row_index, header_map["item_codigo"]).value)
+                component_sku = clean_text(ws.cell(row_index, header_map["componente_codigo"]).value)
+                if not parent_sku or not component_sku:
+                    continue
+                description = clean_text(ws.cell(row_index, header_map.get("descricao", 3)).value)
+                unit = clean_text(ws.cell(row_index, header_map.get("unidade", 4)).value) or "pc"
+                quantity = ws.cell(row_index, header_map.get("quantidade", 5)).value
+                group = parents.setdefault(
+                    parent_sku,
+                    {
+                        "parent_description": parent_hint or parent_sku,
+                        "components": [],
+                    },
+                )
+                group["components"].append(
+                    {
+                        "codigo": component_sku,
+                        "descricao": description,
+                        "unidade": unit,
+                        "quantidade": quantity,
+                    }
+                )
+        for parent_sku, data in parents.items():
+            save_bom(parent_sku, data["parent_description"], data["components"], source=f"import:{filename or 'xlsx'}")
+            imported += 1
+    finally:
+        wb.close()
+    return {"parents": imported, "components": sum(len(item["components"]) for item in parents.values())}
+
+
+def export_boms(category_key: str = "", parent_query: str = "", component_query: str = "") -> Path:
+    rows = list_boms(category_key=category_key, parent_query=parent_query, component_query=component_query, limit=5000)
+    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    output = EXPORT_DIR / f"bom_{stamp}.xlsx"
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "BOM"
+    headers = [
+        "categoria",
+        "item_codigo",
+        "item_descricao",
+        "componente_codigo",
+        "descricao",
+        "unidade",
+        "quantidade",
+    ]
+    ws.append(headers)
+    for bom in rows:
+        for component in bom.get("components") or []:
+            quantity = component.get("quantidade")
+            try:
+                quantity = int(quantity) if float(quantity).is_integer() else float(quantity)
+            except Exception:
+                pass
+            ws.append(
+                [
+                    bom.get("parent_category_label"),
+                    bom.get("parent_sku"),
+                    bom.get("parent_descricao"),
+                    component.get("component_sku"),
+                    component.get("component_descricao"),
+                    component.get("unidade"),
+                    quantity,
+                ]
+            )
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill("solid", fgColor="E2E8F0")
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+    for column, width in {"A": 24, "B": 16, "C": 54, "D": 20, "E": 72, "F": 12, "G": 14}.items():
+        ws.column_dimensions[column].width = width
+    for row_cells in ws.iter_rows(min_row=2):
+        for cell in row_cells:
+            cell.alignment = Alignment(vertical="top", wrap_text=True)
+    ws.freeze_panes = "A2"
+    wb.save(output)
+    wb.close()
+    return output
 
 
 def export_registrations(category_key: str, query: str = "", filters: dict[str, str] | None = None) -> Path:

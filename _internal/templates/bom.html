@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>B.O.M.</title>
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-900">
+    <header class="bg-slate-950 text-white shadow-sm">
+        <div class="mx-auto flex max-w-[1800px] flex-col gap-4 px-6 py-4">
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wide text-yellow-400">Modulo de Cadastro</p>
+                    <h1 class="text-2xl font-black tracking-tight">Gestao de B.O.M.</h1>
+                </div>
+                <div class="max-w-3xl truncate text-xs text-slate-300">{{ workbook_path }}</div>
+            </div>
+            <nav class="flex flex-wrap gap-2">
+                <a href="/cadastros?categoria={{ selected_category.key }}" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Cadastros</a>
+                <a href="/cadastro/bancos?categoria={{ selected_category.key }}" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Cadastrar</a>
+                <a href="/bom" class="rounded-lg bg-white px-4 py-2 text-sm font-bold text-slate-950">B.O.M.</a>
+                <a href="/opcoes?categoria={{ selected_category.key }}" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Opcoes</a>
+                <a href="/logout" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Sair</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="mx-auto max-w-[1800px] p-4 md:p-6">
+        {% if sucesso %}
+        <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{{ sucesso }}</div>
+        {% endif %}
+        {% if erro %}
+        <div class="mb-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-bold text-rose-700">{{ erro }}</div>
+        {% endif %}
+
+        <section class="mb-4 grid grid-cols-1 gap-4 xl:grid-cols-[1fr_460px]">
+            <div class="border border-slate-300 bg-white p-3 shadow-sm">
+                <form id="filters-form" method="get" action="/bom" class="space-y-3">
+                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[260px_1fr_1fr_auto_auto] xl:items-end">
+                        <label class="space-y-1">
+                            <span class="block text-[11px] font-black uppercase text-slate-500">Categoria do item pai</span>
+                            <select name="categoria" class="h-10 w-full border border-slate-300 bg-white px-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">Todas</option>
+                                {% for category in categories %}
+                                <option value="{{ category.key }}" {% if category.key == selected_category.key and request.query_params.get('categoria') %}selected{% endif %}>{{ category.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label class="space-y-1">
+                            <span class="block text-[11px] font-black uppercase text-slate-500">Item pai</span>
+                            <input name="item_pai" value="{{ item_pai }}" class="h-10 w-full border border-slate-300 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Codigo ou descricao do pai">
+                        </label>
+                        <label class="space-y-1">
+                            <span class="block text-[11px] font-black uppercase text-slate-500">Item filho</span>
+                            <input name="item_filho" value="{{ item_filho }}" class="h-10 w-full border border-slate-300 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Codigo ou descricao do componente">
+                        </label>
+                        <button type="submit" class="h-10 border border-slate-900 bg-slate-900 px-5 text-sm font-black text-white hover:bg-slate-800">Buscar</button>
+                        <a href="/bom" class="flex h-10 items-center justify-center border border-slate-300 bg-white px-5 text-sm font-black text-slate-700 hover:bg-slate-50">Limpar</a>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <a id="export-link" href="/bom/exportar" class="inline-flex h-10 items-center justify-center border border-emerald-700 bg-emerald-700 px-5 text-sm font-black text-white hover:bg-emerald-600">Exportar Excel</a>
+                    </div>
+                </form>
+            </div>
+
+            <div class="border border-slate-300 bg-white p-3 shadow-sm">
+                <h2 class="mb-2 text-sm font-black uppercase text-slate-700">Importar B.O.M.</h2>
+                <form method="post" action="/bom/upload" enctype="multipart/form-data" class="space-y-3">
+                    <input type="file" name="arquivo_bom" accept=".xlsx,.xlsm" class="w-full border border-slate-300 bg-white p-2 text-sm" required>
+                    <button type="submit" class="h-10 border border-blue-700 bg-blue-700 px-5 text-sm font-black text-white hover:bg-blue-600">Enviar arquivo</button>
+                </form>
+            </div>
+        </section>
+
+        <section class="border border-slate-300 bg-white shadow-sm">
+            <div class="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black uppercase text-slate-600">
+                {{ items|length }} B.O.M.(s) exibida(s)
+            </div>
+            <div class="max-h-[72vh] overflow-auto">
+                <table class="min-w-full border-collapse text-left text-xs">
+                    <thead class="sticky top-0 z-10 bg-slate-200 text-[11px] uppercase text-slate-700">
+                        <tr>
+                            <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Acoes</th>
+                            <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Categoria</th>
+                            <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Item Pai</th>
+                            <th class="min-w-[360px] border border-slate-300 px-2 py-2">Descricao Pai</th>
+                            <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Item Filho</th>
+                            <th class="min-w-[420px] border border-slate-300 px-2 py-2">Descricao Filho</th>
+                            <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Un.</th>
+                            <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Qtd.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bom in items %}
+                            {% set components = bom.components if bom.components else [] %}
+                            {% for component in components %}
+                            <tr class="odd:bg-white even:bg-slate-50 hover:bg-blue-50">
+                                {% if loop.first %}
+                                <td class="border border-slate-200 px-2 py-1 align-top" rowspan="{{ components|length }}">
+                                    <form method="post" action="/bom/{{ bom.id }}/excluir" onsubmit="return confirm('Excluir esta B.O.M.?');">
+                                        <button type="submit" class="border border-rose-700 bg-rose-700 px-2 py-1 text-[11px] font-black uppercase text-white hover:bg-rose-600">Excluir</button>
+                                    </form>
+                                </td>
+                                <td class="border border-slate-200 px-2 py-1 align-top font-semibold" rowspan="{{ components|length }}">{{ bom.parent_category_label }}</td>
+                                <td class="whitespace-nowrap border border-slate-200 px-2 py-1 align-top font-mono font-bold" rowspan="{{ components|length }}">{{ bom.parent_sku }}</td>
+                                <td class="border border-slate-200 px-2 py-1 align-top font-semibold" rowspan="{{ components|length }}">{{ bom.parent_descricao }}</td>
+                                {% endif %}
+                                <td class="whitespace-nowrap border border-slate-200 px-2 py-1 font-mono font-bold">{{ component.component_sku }}</td>
+                                <td class="border border-slate-200 px-2 py-1">{{ component.component_descricao }}</td>
+                                <td class="border border-slate-200 px-2 py-1">{{ component.unidade }}</td>
+                                <td class="border border-slate-200 px-2 py-1 text-right font-mono">{{ component.quantidade }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% if components|length == 0 %}
+                            <tr class="odd:bg-white even:bg-slate-50">
+                                <td class="border border-slate-200 px-2 py-1">
+                                    <form method="post" action="/bom/{{ bom.id }}/excluir" onsubmit="return confirm('Excluir esta B.O.M.?');">
+                                        <button type="submit" class="border border-rose-700 bg-rose-700 px-2 py-1 text-[11px] font-black uppercase text-white hover:bg-rose-600">Excluir</button>
+                                    </form>
+                                </td>
+                                <td class="border border-slate-200 px-2 py-1">{{ bom.parent_category_label }}</td>
+                                <td class="border border-slate-200 px-2 py-1 font-mono font-bold">{{ bom.parent_sku }}</td>
+                                <td class="border border-slate-200 px-2 py-1">{{ bom.parent_descricao }}</td>
+                                <td colspan="4" class="border border-slate-200 px-2 py-1 text-slate-500">Sem componentes.</td>
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                        {% if items|length == 0 %}
+                        <tr>
+                            <td colspan="8" class="border border-slate-200 p-8 text-center text-sm font-bold text-slate-500">
+                                Nenhuma B.O.M. encontrada.
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+    <script>
+        const form = document.getElementById("filters-form");
+        const exportLink = document.getElementById("export-link");
+        if (form && exportLink) {
+            const syncExportLink = () => {
+                const params = new URLSearchParams(new FormData(form));
+                exportLink.href = `/bom/exportar?${params.toString()}`;
+            };
+            form.addEventListener("input", syncExportLink);
+            form.addEventListener("change", syncExportLink);
+            syncExportLink();
+        }
+    </script>
+</body>
+</html>

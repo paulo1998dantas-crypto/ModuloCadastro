@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import FastAPI, Form, Header, HTTPException, Request
+from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
@@ -605,17 +605,18 @@ async def cadastro_bancos_post(request: Request):
                     pass
             if needs_bom:
                 bom_item_code = result.get("sku") or bom_item_code
-                bom_path = excel_bancos.generate_bom_workbook(
+                supabase_store.save_bom(
                     bom_item_code,
                     result.get("descricao_primaria") or bom_item_code,
                     components,
+                    category_key=result.get("category_key") or category_key,
+                    category_label=result.get("category") or "",
+                    registration_id=result.get("id"),
+                    source="cadastro",
                 )
-                return FileResponse(
-                    bom_path,
-                    media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    filename=bom_path.name,
-                )
-            message = f"Cadastro salvo no Supabase. SKU: {result.get('sku') or '-'}."
+                message = f"Cadastro e B.O.M. salvos no Supabase. SKU: {result.get('sku') or '-'}."
+            else:
+                message = f"Cadastro salvo no Supabase. SKU: {result.get('sku') or '-'}."
             return RedirectResponse(
                 url=f"/cadastro/bancos?categoria={quote(result['category_key'])}&sucesso={quote(message)}",
                 status_code=303,
@@ -815,6 +816,85 @@ async def cadastros_exportar(request: Request, categoria: str = "", q: str = "")
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         filename=output.name,
     )
+
+
+@app.get("/bom", response_class=HTMLResponse)
+async def bom_page(
+    request: Request,
+    categoria: str = "",
+    item_pai: str = "",
+    item_filho: str = "",
+    sucesso: str = "",
+    erro: str = "",
+):
+    if not _supabase_mode():
+        return RedirectResponse(url="/cadastro/bancos", status_code=303)
+    selected_category = excel_bancos.selected_category(categoria)
+    items = supabase_store.list_boms(
+        category_key=selected_category["key"] if categoria else "",
+        parent_query=item_pai,
+        component_query=item_filho,
+        limit=1000,
+    )
+    return templates.TemplateResponse(
+        request=request,
+        name="bom.html",
+        context={
+            "request": request,
+            "categories": excel_bancos.list_categories(),
+            "selected_category": selected_category,
+            "items": items,
+            "item_pai": item_pai,
+            "item_filho": item_filho,
+            "workbook_path": _workbook_display_path(),
+            "supabase_mode": True,
+            "sucesso": sucesso,
+            "erro": erro,
+            "active_page": "bom",
+        },
+    )
+
+
+@app.post("/bom/upload")
+async def bom_upload(arquivo_bom: UploadFile = File(...)):
+    if not _supabase_mode():
+        raise HTTPException(status_code=400, detail="Upload de B.O.M. disponivel apenas no modo Supabase.")
+    try:
+        content = await arquivo_bom.read()
+        result = supabase_store.import_bom_workbook(content, arquivo_bom.filename or "")
+        message = f"B.O.M. importada: {result['parents']} item(ns) pai e {result['components']} componente(s)."
+        return RedirectResponse(url=f"/bom?sucesso={quote(message)}", status_code=303)
+    except Exception as exc:
+        return RedirectResponse(url=f"/bom?erro={quote(str(exc))}", status_code=303)
+
+
+@app.get("/bom/exportar")
+async def bom_exportar(categoria: str = "", item_pai: str = "", item_filho: str = ""):
+    if not _supabase_mode():
+        raise HTTPException(status_code=400, detail="Exportacao de B.O.M. disponivel apenas no modo Supabase.")
+    selected_category = excel_bancos.selected_category(categoria) if categoria else {"key": ""}
+    output = supabase_store.export_boms(
+        category_key=selected_category["key"] if categoria else "",
+        parent_query=item_pai,
+        component_query=item_filho,
+    )
+    return FileResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        filename=output.name,
+    )
+
+
+@app.post("/bom/{bom_id}/excluir")
+async def bom_excluir(bom_id: int):
+    if not _supabase_mode():
+        return RedirectResponse(url="/cadastro/bancos", status_code=303)
+    try:
+        result = supabase_store.delete_bom(bom_id)
+        message = f"B.O.M. excluida: {result.get('parent_sku') or bom_id}."
+        return RedirectResponse(url=f"/bom?sucesso={quote(message)}", status_code=303)
+    except Exception as exc:
+        return RedirectResponse(url=f"/bom?erro={quote(str(exc))}", status_code=303)
 
 
 @app.get("/cadastros/{registration_id}/editar", response_class=HTMLResponse)

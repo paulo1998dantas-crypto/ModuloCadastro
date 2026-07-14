@@ -20,6 +20,7 @@
             <nav class="flex flex-wrap gap-2">
                 {% if supabase_mode %}
                 <a href="/cadastros?categoria={{ selected_category.key }}" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'cadastros' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Cadastros</a>
+                <a href="/bom" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'bom' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">B.O.M.</a>
                 {% endif %}
                 <a href="/cadastro/bancos?categoria={{ selected_category.key }}" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'cadastro' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Cadastro</a>
                 <a href="/opcoes?categoria={{ selected_category.key }}" class="rounded-lg px-4 py-2 text-sm font-bold {% if active_page == 'opcoes' %}bg-white text-slate-950{% else %}bg-slate-800 text-slate-200 hover:bg-slate-700{% endif %}">Opções</a>
