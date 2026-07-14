@@ -1176,6 +1176,24 @@ async def bom_upload(arquivo_bom: UploadFile = File(...)):
         return RedirectResponse(url=f"/bom?erro={quote(str(exc))}", status_code=303)
 
 
+@app.post("/bom/copiar")
+async def bom_copiar(
+    source_parent_sku: str = Form(...),
+    target_parent_sku: str = Form(...),
+):
+    if not _supabase_mode():
+        raise HTTPException(status_code=400, detail="Copia de B.O.M. disponivel apenas no modo Supabase.")
+    try:
+        result = supabase_store.copy_bom(source_parent_sku, target_parent_sku)
+        message = (
+            f"B.O.M. copiada de {result['source_parent_sku']} para {result['target_parent_sku']}: "
+            f"{result['components_count']} componente(s)."
+        )
+        return RedirectResponse(url=f"/bom?item_pai={quote(result['target_parent_sku'])}&sucesso={quote(message)}", status_code=303)
+    except Exception as exc:
+        return RedirectResponse(url=f"/bom?erro={quote(str(exc))}", status_code=303)
+
+
 @app.get("/bom/exportar")
 async def bom_exportar(categoria: str = "", item_pai: str = "", item_filho: str = ""):
     if not _supabase_mode():

@@ -757,6 +757,23 @@ def _bom_header_by_parent(parent_sku: str) -> dict[str, Any] | None:
     return rows[0] if rows else None
 
 
+def _bom_by_parent(parent_sku: str) -> dict[str, Any] | None:
+    header = _bom_header_by_parent(parent_sku)
+    if not header:
+        return None
+    components = _request(
+        "GET",
+        BOM_COMPONENTS_TABLE,
+        [
+            ("select", "*"),
+            ("bom_id", f"eq.{header['id']}"),
+            ("order", "ordem.asc,component_sku.asc"),
+            ("limit", "10000"),
+        ],
+    ) or []
+    return {"header": header, "components": components}
+
+
 def save_bom(
     parent_sku: str,
     parent_description: str,
@@ -844,6 +861,53 @@ def save_bom(
         raise SupabaseStoreError("Informe pelo menos um componente valido para a B.O.M.")
     _request("POST", BOM_COMPONENTS_TABLE, payload=component_payloads, prefer="return=minimal")
     return {"bom": header, "components_count": len(component_payloads)}
+
+
+def copy_bom(source_parent_sku: str, target_parent_sku: str) -> dict[str, Any]:
+    source_parent_sku = clean_text(source_parent_sku)
+    target_parent_sku = clean_text(target_parent_sku)
+    if not source_parent_sku:
+        raise SupabaseStoreError("Informe o codigo do item pai de origem.")
+    if not target_parent_sku:
+        raise SupabaseStoreError("Informe o codigo do item pai de destino.")
+    if source_parent_sku == target_parent_sku:
+        raise SupabaseStoreError("Origem e destino devem ser codigos diferentes.")
+
+    source = _bom_by_parent(source_parent_sku)
+    if not source:
+        raise SupabaseStoreError("Origem nao possui B.O.M. cadastrada.")
+    target_registration = _registration_by_sku(target_parent_sku)
+    if not target_registration:
+        raise SupabaseStoreError("Destino nao encontrado nos cadastros.")
+
+    components = [
+        {
+            "codigo": component.get("component_sku"),
+            "descricao": component.get("component_descricao"),
+            "unidade": component.get("unidade") or "pc",
+            "quantidade": component.get("quantidade") or 1,
+        }
+        for component in source["components"]
+    ]
+    if not components:
+        raise SupabaseStoreError("Origem nao possui componentes para copiar.")
+
+    result = save_bom(
+        target_parent_sku,
+        _full_description(target_registration) or target_parent_sku,
+        components,
+        category_key=clean_text(target_registration.get("category_key")),
+        category_label=clean_text(target_registration.get("category_label")),
+        registration_id=target_registration.get("id"),
+        source=f"copia:{source_parent_sku}",
+        allow_incomplete=True,
+    )
+    return {
+        "source_parent_sku": source_parent_sku,
+        "target_parent_sku": target_parent_sku,
+        "components_count": result.get("components_count") or len(components),
+        "bom": result.get("bom") or {},
+    }
 
 
 def _in_filter(values: list[Any]) -> str:
