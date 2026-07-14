@@ -1002,8 +1002,13 @@ async def cadastros_page(
     sucesso: str = "",
     erro: str = "",
 ):
-    selected_category = excel_bancos.selected_category(categoria)
-    fields = excel_bancos.get_banco_fields_for_display(selected_category["key"])
+    all_categories = supabase_store.all_categories_key(categoria)
+    selected_category = (
+        {"key": supabase_store.ALL_CATEGORIES_KEY, "label": "Todas as categorias"}
+        if all_categories
+        else excel_bancos.selected_category(categoria)
+    )
+    fields = [] if all_categories else excel_bancos.get_banco_fields_for_display(selected_category["key"])
     filters = {
         key[2:]: excel_bancos.clean_text(value)
         for key, value in request.query_params.items()
@@ -1012,6 +1017,7 @@ async def cadastros_page(
     items = []
     if _supabase_mode():
         items = supabase_store.list_registrations(selected_category["key"], query=q, filters=filters, limit=1000)
+    nav_category = excel_bancos.selected_category("")
     return templates.TemplateResponse(
         request=request,
         name="cadastros.html",
@@ -1019,6 +1025,8 @@ async def cadastros_page(
             "request": request,
             "categories": excel_bancos.list_categories(),
             "selected_category": selected_category,
+            "nav_category_key": nav_category["key"],
+            "all_categories": all_categories,
             "fields": fields,
             "items": items,
             "q": q,
@@ -1037,7 +1045,12 @@ async def cadastros_page(
 async def cadastros_exportar(request: Request, categoria: str = "", q: str = ""):
     if not _supabase_mode():
         raise HTTPException(status_code=400, detail="Exportação pela base está disponível no modo Supabase.")
-    selected_category = excel_bancos.selected_category(categoria)
+    all_categories = supabase_store.all_categories_key(categoria)
+    selected_category = (
+        {"key": supabase_store.ALL_CATEGORIES_KEY, "label": "Todas as categorias"}
+        if all_categories
+        else excel_bancos.selected_category(categoria)
+    )
     filters = {
         key[2:]: excel_bancos.clean_text(value)
         for key, value in request.query_params.items()

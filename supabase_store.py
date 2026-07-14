@@ -22,6 +22,7 @@ DRAFTS_TABLE = "cadastro_rascunhos"
 BOM_HEADERS_TABLE = "cadastro_bom_cabecalhos"
 BOM_COMPONENTS_TABLE = "cadastro_bom_componentes"
 EXPORT_DIR = Path(tempfile.gettempdir()) / "modulo-cadastro-exports"
+ALL_CATEGORIES_KEY = "__all__"
 
 
 class SupabaseStoreError(RuntimeError):
@@ -338,6 +339,10 @@ def _safe_filter_value(value: str) -> str:
     return clean_text(value).replace("*", "").replace(",", " ")
 
 
+def all_categories_key(value: str) -> bool:
+    return clean_text(value).lower() in {ALL_CATEGORIES_KEY, "all", "todas", "todos", "*"}
+
+
 def list_registrations(
     category_key: str = "",
     query: str = "",
@@ -345,14 +350,17 @@ def list_registrations(
     limit: int = 250,
     offset: int = 0,
 ) -> list[dict[str, Any]]:
-    selected = _category(category_key)["key"] if clean_text(category_key) else excel_bancos.selected_category("")["key"]
+    category_value = clean_text(category_key)
+    all_categories = all_categories_key(category_value)
+    selected = "" if all_categories else _category(category_value)["key"] if category_value else excel_bancos.selected_category("")["key"]
+    requested_limit = max(1, min(limit, 10000))
+    requested_offset = max(0, offset)
     params: list[tuple[str, str]] = [
         ("select", "*"),
-        ("category_key", f"eq.{selected}"),
-        ("order", "sku.asc"),
-        ("limit", str(max(1, min(limit, 2000)))),
-        ("offset", str(max(0, offset))),
+        ("order", "category_label.asc,sku.asc" if all_categories else "sku.asc"),
     ]
+    if selected:
+        params.append(("category_key", f"eq.{selected}"))
     term = _search_text(query)
     if term:
         params.append(("search_text", f"ilike.*{term}*"))
@@ -360,7 +368,29 @@ def list_registrations(
         value = _safe_filter_value(value)
         if key and value:
             params.append((f"field_values->>{key}", f"ilike.*{value}*"))
-    return _request("GET", REGISTRATIONS_TABLE, params) or []
+    if requested_limit <= 1000:
+        return _request(
+            "GET",
+            REGISTRATIONS_TABLE,
+            [*params, ("limit", str(requested_limit)), ("offset", str(requested_offset))],
+        ) or []
+
+    rows: list[dict[str, Any]] = []
+    page_size = 1000
+    while len(rows) < requested_limit:
+        batch = _request(
+            "GET",
+            REGISTRATIONS_TABLE,
+            [
+                *params,
+                ("limit", str(min(page_size, requested_limit - len(rows)))),
+                ("offset", str(requested_offset + len(rows))),
+            ],
+        ) or []
+        rows.extend(batch)
+        if len(batch) < page_size:
+            break
+    return rows
 
 
 def get_registration(registration_id: int | str) -> dict[str, Any] | None:
@@ -820,17 +850,19 @@ def export_boms(category_key: str = "", parent_query: str = "", component_query:
 
 
 def export_registrations(category_key: str, query: str = "", filters: dict[str, str] | None = None) -> Path:
-    category = _category(category_key)
-    fields = excel_bancos.get_banco_fields_for_display(category["key"])
-    rows = list_registrations(category["key"], query=query, filters=filters, limit=10000)
+    all_categories = all_categories_key(category_key)
+    category = {"key": ALL_CATEGORIES_KEY, "label": "Todas as categorias"} if all_categories else _category(category_key)
+    fields = [] if all_categories else excel_bancos.get_banco_fields_for_display(category["key"])
+    rows = list_registrations(ALL_CATEGORIES_KEY if all_categories else category["key"], query=query, filters=filters, limit=10000)
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     output = EXPORT_DIR / f"cadastros_{category['key']}_{stamp}.xlsx"
 
     wb = Workbook()
     ws = wb.active
-    ws.title = _sheet_name(category)[:31]
+    ws.title = ("Todos Cadastros" if all_categories else _sheet_name(category))[:31]
     headers = [
+        "CATEGORIA",
         "SKU",
         "DESCRIÇÃO PRIMÁRIA",
         "DESCRIÇÃO SECUNDÁRIA",
@@ -838,28 +870,34 @@ def export_registrations(category_key: str, query: str = "", filters: dict[str, 
         "CARACTERES PRIMARIO",
         "CARACTERES SECUNDARIO",
     ]
-    headers.extend(excel_bancos.header_for_field(field["label"], field["scope"]) for field in fields)
+    if all_categories:
+        headers.append("CAMPOS")
+    else:
+        headers.extend(excel_bancos.header_for_field(field["label"], field["scope"]) for field in fields)
     ws.append(headers)
     for row in rows:
         values = row.get("field_values") if isinstance(row.get("field_values"), dict) else {}
-        ws.append(
-            [
-                row.get("sku"),
-                row.get("descricao_primaria"),
-                row.get("descricao_secundaria"),
-                row.get("sufixo"),
-                row.get("caracteres_primario"),
-                row.get("caracteres_secundario"),
-                *[values.get(field["key"], "") for field in fields],
-            ]
-        )
+        row_values = [
+            row.get("category_label"),
+            row.get("sku"),
+            row.get("descricao_primaria"),
+            row.get("descricao_secundaria"),
+            row.get("sufixo"),
+            row.get("caracteres_primario"),
+            row.get("caracteres_secundario"),
+        ]
+        if all_categories:
+            row_values.append(" | ".join(f"{key}: {value}" for key, value in values.items() if clean_text(value)))
+        else:
+            row_values.extend(values.get(field["key"], "") for field in fields)
+        ws.append(row_values)
 
     header_fill = PatternFill("solid", fgColor="E2E8F0")
     for cell in ws[1]:
         cell.font = Font(bold=True)
         cell.fill = header_fill
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-    widths = {1: 14, 2: 48, 3: 72, 4: 18, 5: 18, 6: 22}
+    widths = {1: 24, 2: 14, 3: 48, 4: 72, 5: 18, 6: 18, 7: 22, 8: 72}
     for index in range(1, len(headers) + 1):
         ws.column_dimensions[ws.cell(1, index).column_letter].width = widths.get(index, 28)
     for row_cells in ws.iter_rows(min_row=2):
