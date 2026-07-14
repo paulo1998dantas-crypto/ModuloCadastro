@@ -1018,6 +1018,7 @@ async def cadastros_page(
     request: Request,
     categoria: str = "",
     q: str = "",
+    sem_unidade: str = "",
     sucesso: str = "",
     erro: str = "",
 ):
@@ -1034,8 +1035,19 @@ async def cadastros_page(
         if key.startswith("f_") and excel_bancos.clean_text(value)
     }
     items = []
+    unit_pending_count = 0
     if _supabase_mode():
-        items = supabase_store.list_registrations(selected_category["key"], query=q, filters=filters, limit=1000)
+        only_missing_unit = excel_bancos.clean_text(sem_unidade) == "1"
+        items = supabase_store.list_registrations(
+            selected_category["key"],
+            query=q,
+            filters=filters,
+            missing_unit=only_missing_unit,
+            limit=1000,
+        )
+        unit_pending_count = supabase_store.count_registrations_without_unit(selected_category["key"])
+    else:
+        only_missing_unit = False
     nav_category = excel_bancos.selected_category("")
     return templates.TemplateResponse(
         request=request,
@@ -1050,6 +1062,8 @@ async def cadastros_page(
             "items": items,
             "q": q,
             "filters": filters,
+            "sem_unidade": "1" if only_missing_unit else "",
+            "unit_pending_count": unit_pending_count,
             "workbook_path": _workbook_display_path(),
             "save_via_bridge": bridge_store.save_via_bridge(),
             "supabase_mode": _supabase_mode(),
@@ -1061,7 +1075,7 @@ async def cadastros_page(
 
 
 @app.get("/cadastros/exportar")
-async def cadastros_exportar(request: Request, categoria: str = "", q: str = ""):
+async def cadastros_exportar(request: Request, categoria: str = "", q: str = "", sem_unidade: str = ""):
     if not _supabase_mode():
         raise HTTPException(status_code=400, detail="Exportação pela base está disponível no modo Supabase.")
     all_categories = supabase_store.all_categories_key(categoria)
@@ -1075,7 +1089,12 @@ async def cadastros_exportar(request: Request, categoria: str = "", q: str = "")
         for key, value in request.query_params.items()
         if key.startswith("f_") and excel_bancos.clean_text(value)
     }
-    output = supabase_store.export_registrations(selected_category["key"], query=q, filters=filters)
+    output = supabase_store.export_registrations(
+        selected_category["key"],
+        query=q,
+        filters=filters,
+        missing_unit=excel_bancos.clean_text(sem_unidade) == "1",
+    )
     return FileResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

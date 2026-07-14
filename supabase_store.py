@@ -453,6 +453,7 @@ def list_registrations(
     category_key: str = "",
     query: str = "",
     filters: dict[str, str] | None = None,
+    missing_unit: bool = False,
     limit: int = 250,
     offset: int = 0,
 ) -> list[dict[str, Any]]:
@@ -470,6 +471,8 @@ def list_registrations(
     term = _search_text(query)
     if term:
         params.append(("search_text", f"ilike.*{term}*"))
+    if missing_unit:
+        params.append(("unidade", "eq."))
     for key, value in (filters or {}).items():
         value = _safe_filter_value(value)
         if key and value:
@@ -497,6 +500,21 @@ def list_registrations(
         if len(batch) < page_size:
             break
     return rows
+
+
+def count_registrations_without_unit(category_key: str = "") -> int:
+    category_value = clean_text(category_key)
+    all_categories = all_categories_key(category_value)
+    selected = "" if all_categories else _category(category_value)["key"] if category_value else excel_bancos.selected_category("")["key"]
+    params: list[tuple[str, str]] = [
+        ("select", "id"),
+        ("unidade", "eq."),
+        ("limit", "10000"),
+    ]
+    if selected:
+        params.append(("category_key", f"eq.{selected}"))
+    rows = _request("GET", REGISTRATIONS_TABLE, params) or []
+    return len(rows)
 
 
 def get_registration(registration_id: int | str) -> dict[str, Any] | None:
@@ -1168,11 +1186,22 @@ def export_boms(category_key: str = "", parent_query: str = "", component_query:
     return output
 
 
-def export_registrations(category_key: str, query: str = "", filters: dict[str, str] | None = None) -> Path:
+def export_registrations(
+    category_key: str,
+    query: str = "",
+    filters: dict[str, str] | None = None,
+    missing_unit: bool = False,
+) -> Path:
     all_categories = all_categories_key(category_key)
     category = {"key": ALL_CATEGORIES_KEY, "label": "Todas as categorias"} if all_categories else _category(category_key)
     fields = [] if all_categories else excel_bancos.get_banco_fields_for_display(category["key"])
-    rows = list_registrations(ALL_CATEGORIES_KEY if all_categories else category["key"], query=query, filters=filters, limit=10000)
+    rows = list_registrations(
+        ALL_CATEGORIES_KEY if all_categories else category["key"],
+        query=query,
+        filters=filters,
+        missing_unit=missing_unit,
+        limit=10000,
+    )
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     output = EXPORT_DIR / f"cadastros_{category['key']}_{stamp}.xlsx"
