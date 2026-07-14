@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>B.O.M. {{ bom.parent_sku }}</title>
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-900">
+    <header class="bg-slate-950 text-white shadow-sm">
+        <div class="mx-auto flex max-w-[1600px] flex-col gap-4 px-6 py-4">
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wide text-yellow-400">Modulo de Cadastro</p>
+                    <h1 class="text-2xl font-black tracking-tight">B.O.M. {{ bom.parent_sku }}</h1>
+                </div>
+                <div class="max-w-3xl truncate text-xs text-slate-300">{{ workbook_path }}</div>
+            </div>
+            <nav class="flex flex-wrap gap-2">
+                <a href="/bom" class="rounded-lg bg-white px-4 py-2 text-sm font-bold text-slate-950">B.O.M.</a>
+                <a href="/cadastros?categoria={{ selected_category.key }}" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Cadastros</a>
+                <a href="/cadastro/bancos?categoria={{ selected_category.key }}" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Cadastrar</a>
+                <a href="/opcoes?categoria={{ selected_category.key }}" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Opcoes</a>
+                <a href="/logout" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Sair</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="mx-auto max-w-[1600px] p-4 md:p-6">
+        {% if sucesso %}
+        <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{{ sucesso }}</div>
+        {% endif %}
+        {% if erro %}
+        <div class="mb-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-bold text-rose-700">{{ erro }}</div>
+        {% endif %}
+
+        <form method="post" action="/bom/{{ bom.id }}" class="space-y-4">
+            <section class="grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr_260px]">
+                <div class="border border-slate-300 bg-white p-4">
+                    <div class="text-[11px] font-black uppercase text-slate-500">Item pai</div>
+                    <div class="mt-1 font-mono text-xl font-black">{{ bom.parent_sku }}</div>
+                </div>
+                <label class="border border-slate-300 bg-white p-4">
+                    <span class="block text-[11px] font-black uppercase text-slate-500">Descricao do item pai</span>
+                    <input name="parent_descricao" value="{{ bom.parent_descricao }}" class="mt-2 h-10 w-full border border-slate-300 bg-white px-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                </label>
+                <div class="border border-slate-300 bg-white p-4">
+                    <div class="text-[11px] font-black uppercase text-slate-500">Categoria</div>
+                    <div class="mt-1 text-sm font-black">{{ bom.parent_category_label or '-' }}</div>
+                </div>
+            </section>
+
+            <section class="border border-slate-300 bg-white shadow-sm">
+                <div class="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-3 py-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <h2 class="text-sm font-black uppercase text-slate-700">Componentes</h2>
+                        <p class="text-xs font-semibold text-slate-500">{{ bom.components|length }} linha(s)</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" id="add-component" class="h-10 border border-slate-800 bg-slate-800 px-4 text-sm font-black text-white hover:bg-slate-700">Adicionar componente</button>
+                        <button type="submit" class="h-10 border border-blue-700 bg-blue-700 px-5 text-sm font-black text-white hover:bg-blue-600">Salvar B.O.M.</button>
+                    </div>
+                </div>
+                <div class="overflow-auto">
+                    <table class="min-w-full border-collapse text-left text-xs">
+                        <thead class="bg-slate-200 text-[11px] uppercase text-slate-700">
+                            <tr>
+                                <th class="min-w-[260px] border border-slate-300 px-2 py-2">Buscar item</th>
+                                <th class="w-[150px] border border-slate-300 px-2 py-2">Codigo</th>
+                                <th class="min-w-[360px] border border-slate-300 px-2 py-2">Descricao</th>
+                                <th class="w-[90px] border border-slate-300 px-2 py-2">Un.</th>
+                                <th class="w-[110px] border border-slate-300 px-2 py-2">Qtd.</th>
+                                <th class="w-[80px] border border-slate-300 px-2 py-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="component-rows">
+                            {% set components = bom.components if bom.components else [{}] %}
+                            {% for component in components %}
+                            <tr data-component-row class="odd:bg-white even:bg-slate-50">
+                                <td class="relative border border-slate-200 px-2 py-2 align-top">
+                                    <input name="component_search" data-product-search autocomplete="off" value="{% if component.component_sku %}{{ component.component_sku }} - {{ component.component_descricao }}{% endif %}" class="h-9 w-full border border-slate-300 bg-white px-2 text-xs outline-none focus:ring-2 focus:ring-blue-500" placeholder="Buscar codigo ou descricao">
+                                    <div data-product-results class="absolute left-2 right-2 top-12 z-20 hidden max-h-64 overflow-auto border border-slate-300 bg-white shadow-lg"></div>
+                                </td>
+                                <td class="border border-slate-200 px-2 py-2 align-top">
+                                    <input name="component_codigo" data-component-code value="{{ component.component_sku or '' }}" class="h-9 w-full border border-slate-300 bg-white px-2 font-mono text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                                </td>
+                                <td class="border border-slate-200 px-2 py-2 align-top">
+                                    <input name="component_descricao" data-component-description value="{{ component.component_descricao or '' }}" class="h-9 w-full border border-slate-300 bg-white px-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                                </td>
+                                <td class="border border-slate-200 px-2 py-2 align-top">
+                                    <input name="component_unidade" data-component-unit value="{{ component.unidade or 'pc' }}" class="h-9 w-full border border-slate-300 bg-white px-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                                </td>
+                                <td class="border border-slate-200 px-2 py-2 align-top">
+                                    <input name="component_quantidade" data-component-quantity type="number" min="0.0001" step="0.0001" value="{{ component.quantidade or 1 }}" class="h-9 w-full border border-slate-300 bg-white px-2 text-right text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                                </td>
+                                <td class="border border-slate-200 px-2 py-2 align-top">
+                                    <button type="button" data-remove-component class="h-9 border border-rose-700 bg-rose-700 px-3 text-xs font-black text-white hover:bg-rose-600">Remover</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </form>
+
+        <div class="mt-4 flex flex-wrap gap-2">
+            <a href="/bom" class="inline-flex h-10 items-center justify-center border border-slate-300 bg-white px-5 text-sm font-black text-slate-700 hover:bg-slate-50">Voltar para lista</a>
+            <a href="/bom/exportar?item_pai={{ bom.parent_sku }}" class="inline-flex h-10 items-center justify-center border border-emerald-700 bg-emerald-700 px-5 text-sm font-black text-white hover:bg-emerald-600">Exportar esta B.O.M.</a>
+        </div>
+    </main>
+
+    <script>
+        const componentRows = document.getElementById("component-rows");
+        const addComponentButton = document.getElementById("add-component");
+        const templateRow = componentRows ? componentRows.querySelector("[data-component-row]") : null;
+
+        const closeProductResults = (row) => {
+            const results = row.querySelector("[data-product-results]");
+            results.innerHTML = "";
+            results.classList.add("hidden");
+        };
+
+        const selectProduct = (row, product) => {
+            row.querySelector("[data-component-code]").value = product.codigo || "";
+            row.querySelector("[data-component-description]").value = product.descricao || "";
+            row.querySelector("[data-component-unit]").value = product.unidade || "pc";
+            row.querySelector("[data-product-search]").value = `${product.codigo || ""} - ${product.descricao || ""}`.trim();
+            closeProductResults(row);
+        };
+
+        const renderProductResults = (row, products) => {
+            const results = row.querySelector("[data-product-results]");
+            results.innerHTML = "";
+            if (!products.length) {
+                results.innerHTML = '<div class="p-3 text-sm font-semibold text-slate-500">Nenhum produto encontrado.</div>';
+                results.classList.remove("hidden");
+                return;
+            }
+            products.forEach((product) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "block w-full border-b border-slate-100 px-3 py-2 text-left text-sm hover:bg-blue-50";
+                button.innerHTML = `
+                    <span class="block font-black text-slate-800">${product.codigo || ""}</span>
+                    <span class="block text-xs font-semibold text-slate-600">${product.descricao || ""}</span>
+                    <span class="block text-[11px] font-bold uppercase text-slate-400">${product.categoria || ""}</span>
+                `;
+                button.addEventListener("click", () => selectProduct(row, product));
+                results.appendChild(button);
+            });
+            results.classList.remove("hidden");
+        };
+
+        const clearRow = (row) => {
+            row.querySelector("[data-product-search]").value = "";
+            row.querySelector("[data-component-code]").value = "";
+            row.querySelector("[data-component-description]").value = "";
+            row.querySelector("[data-component-unit]").value = "pc";
+            row.querySelector("[data-component-quantity]").value = "1";
+            closeProductResults(row);
+        };
+
+        const bindRow = (row) => {
+            const searchInput = row.querySelector("[data-product-search]");
+            const removeButton = row.querySelector("[data-remove-component]");
+            let searchTimer = null;
+            searchInput.addEventListener("input", () => {
+                const query = searchInput.value.trim();
+                window.clearTimeout(searchTimer);
+                if (!query) {
+                    closeProductResults(row);
+                    return;
+                }
+                searchTimer = window.setTimeout(async () => {
+                    try {
+                        const response = await fetch(`/api/produtos?q=${encodeURIComponent(query)}`);
+                        const payload = await response.json();
+                        renderProductResults(row, payload.items || []);
+                    } catch (error) {
+                        renderProductResults(row, []);
+                    }
+                }, 180);
+            });
+            removeButton.addEventListener("click", () => {
+                const rows = Array.from(componentRows.querySelectorAll("[data-component-row]"));
+                if (rows.length <= 1) {
+                    clearRow(row);
+                    return;
+                }
+                row.remove();
+            });
+        };
+
+        if (componentRows) {
+            Array.from(componentRows.querySelectorAll("[data-component-row]")).forEach(bindRow);
+        }
+        if (addComponentButton && templateRow) {
+            addComponentButton.addEventListener("click", () => {
+                const row = templateRow.cloneNode(true);
+                clearRow(row);
+                componentRows.appendChild(row);
+                bindRow(row);
+                row.querySelector("[data-product-search]").focus();
+            });
+        }
+        document.addEventListener("click", (event) => {
+            if (!componentRows || componentRows.contains(event.target)) {
+                return;
+            }
+            Array.from(componentRows.querySelectorAll("[data-component-row]")).forEach(closeProductResults);
+        });
+    </script>
+</body>
+</html>

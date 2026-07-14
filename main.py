@@ -885,6 +885,48 @@ async def bom_exportar(categoria: str = "", item_pai: str = "", item_filho: str 
     )
 
 
+@app.get("/bom/{bom_id}", response_class=HTMLResponse)
+async def bom_detalhe_page(request: Request, bom_id: int, sucesso: str = "", erro: str = ""):
+    if not _supabase_mode():
+        return RedirectResponse(url="/cadastro/bancos", status_code=303)
+    try:
+        bom = supabase_store.get_bom(bom_id)
+        selected_category = excel_bancos.selected_category(excel_bancos.clean_text(bom.get("parent_category_key")))
+        return templates.TemplateResponse(
+            request=request,
+            name="bom_detalhe.html",
+            context={
+                "request": request,
+                "categories": excel_bancos.list_categories(),
+                "selected_category": selected_category,
+                "bom": bom,
+                "workbook_path": _workbook_display_path(),
+                "supabase_mode": True,
+                "sucesso": sucesso,
+                "erro": erro,
+                "active_page": "bom",
+            },
+        )
+    except Exception as exc:
+        return RedirectResponse(url=f"/bom?erro={quote(str(exc))}", status_code=303)
+
+
+@app.post("/bom/{bom_id}", response_class=HTMLResponse)
+async def bom_detalhe_post(request: Request, bom_id: int):
+    form_data = await request.form()
+    try:
+        components = excel_bancos.parse_component_lines(form_data)
+        result = supabase_store.update_bom(
+            bom_id,
+            excel_bancos.clean_text(form_data.get("parent_descricao")),
+            components,
+        )
+        message = f"B.O.M. atualizada: {result.get('parent_sku') or bom_id}."
+        return RedirectResponse(url=f"/bom/{bom_id}?sucesso={quote(message)}", status_code=303)
+    except Exception as exc:
+        return RedirectResponse(url=f"/bom/{bom_id}?erro={quote(str(exc))}", status_code=303)
+
+
 @app.post("/bom/{bom_id}/excluir")
 async def bom_excluir(bom_id: int):
     if not _supabase_mode():

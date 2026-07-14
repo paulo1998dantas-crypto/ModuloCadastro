@@ -634,6 +634,76 @@ def list_boms(
     return [{**header, "components": components_by_bom.get(clean_text(header.get("id")), [])} for header in headers]
 
 
+def get_bom(bom_id: int | str) -> dict[str, Any]:
+    bom_id = clean_text(bom_id)
+    rows = _request("GET", BOM_HEADERS_TABLE, [("select", "*"), ("id", f"eq.{bom_id}"), ("limit", "1")]) or []
+    if not rows:
+        raise SupabaseStoreError("B.O.M. nao encontrada.")
+    components = _request(
+        "GET",
+        BOM_COMPONENTS_TABLE,
+        [
+            ("select", "*"),
+            ("bom_id", f"eq.{bom_id}"),
+            ("order", "ordem.asc,component_sku.asc"),
+            ("limit", "10000"),
+        ],
+    ) or []
+    return {**rows[0], "components": components}
+
+
+def update_bom(bom_id: int | str, parent_description: str, components: list[dict[str, Any]]) -> dict[str, Any]:
+    current = get_bom(bom_id)
+    parent_sku = clean_text(current.get("parent_sku"))
+    parent_description = clean_text(parent_description) or clean_text(current.get("parent_descricao")) or parent_sku
+    if not components:
+        raise SupabaseStoreError("Informe pelo menos um componente para a B.O.M.")
+    header_payload = {
+        "parent_descricao": parent_description,
+        "source": "edicao",
+        "search_text": _search_text(parent_sku, parent_description, current.get("parent_category_label")),
+    }
+    rows = _request(
+        "PATCH",
+        BOM_HEADERS_TABLE,
+        [("id", f"eq.{clean_text(bom_id)}")],
+        payload=header_payload,
+        prefer="return=representation",
+    )
+    header = rows[0] if rows else {**current, **header_payload}
+
+    _request("DELETE", BOM_COMPONENTS_TABLE, [("bom_id", f"eq.{clean_text(bom_id)}")])
+    component_payloads = []
+    for index, component in enumerate(components, start=1):
+        component_sku = clean_text(component.get("codigo") or component.get("component_sku"))
+        if not component_sku:
+            continue
+        try:
+            quantity = float(component.get("quantidade") or component.get("quantity") or 0)
+        except Exception as exc:
+            raise SupabaseStoreError(f"Quantidade invalida no componente {component_sku}.") from exc
+        if quantity <= 0:
+            raise SupabaseStoreError(f"Quantidade deve ser maior que zero no componente {component_sku}.")
+        description = clean_text(component.get("descricao") or component.get("component_descricao"))
+        unit = clean_text(component.get("unidade") or component.get("unit")) or "pc"
+        component_payloads.append(
+            {
+                "bom_id": clean_text(bom_id),
+                "parent_sku": parent_sku,
+                "component_sku": component_sku,
+                "component_descricao": description,
+                "unidade": unit,
+                "quantidade": quantity,
+                "ordem": index,
+                "search_text": _search_text(parent_sku, parent_description, component_sku, description, unit),
+            }
+        )
+    if not component_payloads:
+        raise SupabaseStoreError("Informe pelo menos um componente valido para a B.O.M.")
+    _request("POST", BOM_COMPONENTS_TABLE, payload=component_payloads, prefer="return=minimal")
+    return {**header, "components": component_payloads}
+
+
 def delete_bom(bom_id: int | str) -> dict[str, Any]:
     bom_id = clean_text(bom_id)
     rows = _request("GET", BOM_HEADERS_TABLE, [("select", "*"), ("id", f"eq.{bom_id}"), ("limit", "1")]) or []

@@ -98,6 +98,7 @@
                             <tr class="odd:bg-white even:bg-slate-50 hover:bg-blue-50">
                                 {% if loop.first %}
                                 <td class="border border-slate-200 px-2 py-1 align-top" rowspan="{{ components|length }}">
+                                    <a href="/bom/{{ bom.id }}" class="mb-2 inline-flex border border-blue-700 bg-blue-700 px-2 py-1 text-[11px] font-black uppercase text-white hover:bg-blue-600">Abrir</a>
                                     <form method="post" action="/bom/{{ bom.id }}/excluir" onsubmit="return confirm('Excluir esta B.O.M.?');">
                                         <button type="submit" class="border border-rose-700 bg-rose-700 px-2 py-1 text-[11px] font-black uppercase text-white hover:bg-rose-600">Excluir</button>
                                     </form>
@@ -115,6 +116,7 @@
                             {% if components|length == 0 %}
                             <tr class="odd:bg-white even:bg-slate-50">
                                 <td class="border border-slate-200 px-2 py-1">
+                                    <a href="/bom/{{ bom.id }}" class="mb-2 inline-flex border border-blue-700 bg-blue-700 px-2 py-1 text-[11px] font-black uppercase text-white hover:bg-blue-600">Abrir</a>
                                     <form method="post" action="/bom/{{ bom.id }}/excluir" onsubmit="return confirm('Excluir esta B.O.M.?');">
                                         <button type="submit" class="border border-rose-700 bg-rose-700 px-2 py-1 text-[11px] font-black uppercase text-white hover:bg-rose-600">Excluir</button>
                                     </form>
