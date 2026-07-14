@@ -14,6 +14,8 @@ services:
         sync: false
       - key: CADASTRO_REQUIRE_LOGIN
         value: "1"
+      - key: CADASTRO_AUTH_MODE
+        value: shared
       - key: CADASTRO_REQUIRE_PERSISTENCE
         value: "0"
       - key: CADASTRO_ADMIN_USER

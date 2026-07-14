@@ -7,12 +7,16 @@ import hashlib
 import hmac
 import json
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+from werkzeug.security import check_password_hash
 
 import bridge_store
 import excel_bancos
@@ -89,6 +93,53 @@ def _env_auth_password() -> str:
     )
 
 
+def _shared_auth_enabled() -> bool:
+    return os.environ.get("CADASTRO_AUTH_MODE", "").strip().lower() in {
+        "shared",
+        "supabase_users",
+        "estoque",
+    }
+
+
+def _shared_auth_configured() -> bool:
+    return bool(supabase_store.configured())
+
+
+def _shared_user_lookup(username: str) -> dict[str, str | int | bool] | None:
+    username = excel_bancos.clean_text(username)
+    if not username or not _shared_auth_configured():
+        return None
+    query = urllib.parse.urlencode(
+        [
+            ("select", "id,username,password_hash,role,active"),
+            ("username", f"eq.{username}"),
+            ("limit", "1"),
+        ]
+    )
+    url = f"{supabase_store._supabase_url()}/rest/v1/users?{query}"
+    request = urllib.request.Request(url, headers=supabase_store._headers(), method="GET")
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            body = response.read().decode("utf-8")
+            rows = json.loads(body) if body else []
+            return rows[0] if rows else None
+    except Exception:
+        return None
+
+
+def _verify_shared_login(username: str, password: str) -> bool:
+    user = _shared_user_lookup(username)
+    if not user or not bool(user.get("active", True)):
+        return False
+    password_hash = str(user.get("password_hash") or "")
+    if not password_hash:
+        return False
+    try:
+        return check_password_hash(password_hash, password)
+    except Exception:
+        return False
+
+
 def _hash_password(password: str) -> str:
     salt = secrets.token_bytes(16)
     digest = hashlib.pbkdf2_hmac(
@@ -125,6 +176,13 @@ def _verify_password_hash(password_hash: str, password: str) -> bool:
 
 
 def _auth_record() -> dict[str, str | bool]:
+    if _shared_auth_enabled():
+        return {
+            "username": "",
+            "source": "shared",
+            "configured": _shared_auth_configured(),
+            "updated_at": "",
+        }
     stored = bridge_store.auth_config()
     if stored.get("username") and stored.get("password_hash"):
         return {
@@ -153,6 +211,8 @@ def _auth_configured() -> bool:
 
 
 def _verify_login(username: str, password: str) -> bool:
+    if _shared_auth_enabled():
+        return _verify_shared_login(username, password)
     record = _auth_record()
     if username != str(record.get("username") or ""):
         return False
@@ -169,15 +229,16 @@ def _auth_status() -> dict[str, str | bool]:
     labels = {
         "store": "Arquivo persistente do app",
         "environment": "Variável de ambiente do servidor",
+        "shared": "Tabela users compartilhada do ModuloEstoque",
         "missing": "Não configurado",
     }
     return {
-        "username": str(record.get("username") or "admin"),
+        "username": str(record.get("username") or ""),
         "configured": bool(record.get("configured")),
         "source": source,
         "source_label": labels.get(source, source),
         "updated_at": str(record.get("updated_at") or ""),
-        "editable": True,
+        "editable": not _shared_auth_enabled(),
     }
 
 
