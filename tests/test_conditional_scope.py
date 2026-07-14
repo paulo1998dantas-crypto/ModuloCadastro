@@ -182,5 +182,50 @@ class DistanciaPeTests(unittest.TestCase):
         )
 
 
+class PnCodeTests(unittest.TestCase):
+    def setUp(self):
+        self.prefix_field = {
+            "key": "prefixo",
+            "label": "PREFIXO",
+            "scope": "primaria",
+            "selection_mode": excel_bancos.SELECTION_MODE_UNITARIA,
+            "description_order": 1,
+            "options": ["CJ", "VIDRO", "PP", "JI CONFORT"],
+        }
+
+    def test_pn_prefix_uses_group_plus_category(self):
+        category = {"label": "12 - VIDROS", "sheet_name": "12 - VIDROS"}
+
+        self.assertEqual(excel_bancos.pn_code_prefix(category, [self.prefix_field], {"prefixo": "CJ"}), "3012")
+        self.assertEqual(excel_bancos.pn_code_prefix(category, [self.prefix_field], {"prefixo": "VIDRO"}), "1012")
+
+    def test_pn_prefix_supports_produto_processo_and_transformacao(self):
+        piso = {"label": "14 - PISO", "sheet_name": "14 - PISO"}
+        veiculo_pb = {"label": "34 - VEICULO P.B.", "sheet_name": "34 - VEICULO P.B."}
+
+        self.assertEqual(excel_bancos.pn_code_prefix(piso, [self.prefix_field], {"prefixo": "PP"}), "2014")
+        self.assertEqual(excel_bancos.pn_code_prefix(veiculo_pb, [self.prefix_field], {"prefixo": "JI CONFORT"}), "4034")
+
+    def test_next_sku_scans_only_same_group_category_prefix(self):
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.append(["SKU"])
+        worksheet.append(["SKU"])
+        worksheet.append(["30120001"])
+        worksheet.append(["10120001"])
+        worksheet.append(["30120002"])
+
+        category = {"label": "12 - VIDROS", "sheet_name": "12 - VIDROS"}
+
+        self.assertEqual(
+            excel_bancos._next_sequential_sku(worksheet, 1, category, [self.prefix_field], {"prefixo": "CJ"}),
+            "30120003",
+        )
+        self.assertEqual(
+            excel_bancos._next_sequential_sku(worksheet, 1, category, [self.prefix_field], {"prefixo": "VIDRO"}),
+            "10120002",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

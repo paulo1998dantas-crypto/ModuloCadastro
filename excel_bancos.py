@@ -1120,27 +1120,25 @@ def _numeric_sku_text(value: Any) -> str:
     return ""
 
 
-def _initial_sku_for_sheet(ws, category: dict[str, Any]) -> str:
-    candidates = [
-        category.get("label"),
-        category.get("sheet_name"),
-        ws.title,
-    ]
-    for value in candidates:
-        match = re.search(r"\d+", clean_text(value))
-        if match:
-            return f"{int(match.group(0)):02d}000001"
-    return "00000001"
+def _initial_sku_for_prefix(code_prefix: str) -> str:
+    return f"{code_prefix}0001"
 
 
-def _next_sequential_sku(ws, sku_column: int, category: dict[str, Any]) -> str:
+def _next_sequential_sku(
+    ws,
+    sku_column: int,
+    category: dict[str, Any],
+    fields: list[dict[str, Any]],
+    data: Any,
+) -> str:
+    code_prefix = pn_code_prefix(category, fields, data)
     last_code = ""
     for row in range(FIRST_DATA_ROW, ws.max_row + 1):
         code = _numeric_sku_text(ws.cell(row, sku_column).value)
-        if code:
+        if code and code.startswith(code_prefix):
             last_code = code
     if not last_code:
-        return _initial_sku_for_sheet(ws, category)
+        return _initial_sku_for_prefix(code_prefix)
     return str(int(last_code) + 1).zfill(len(last_code))
 
 
@@ -1660,6 +1658,123 @@ def _serialize_field_values(field: dict[str, Any], data: Any) -> list[str]:
     if field.get("key") == DISTANCIA_PE_KEY:
         return _order_distancia_pe_values(ordered)
     return ordered
+
+
+PN_GROUP_BY_PREFIX = {
+    "ABS": "10",
+    "ACABAMENTO DIFUSOR": "10",
+    "ACABAMENTO LATERAL": "10",
+    "ACABAMENTO PLASTICO": "10",
+    "ACABAMENTO PONTEIRA": "10",
+    "ACABAMENTO TAMPA": "10",
+    "ACABAMENTO TELA": "10",
+    "ACESSORIO": "10",
+    "ALCA": "10",
+    "APOIO BRACO": "10",
+    "ARCO": "10",
+    "ARGOLA": "10",
+    "BCO": "10",
+    "BCO CARONA": "10",
+    "BCO CARONA ORIGINAL": "10",
+    "BCO MOTORISTA": "10",
+    "BCO MOTORISTA ORIGINAL": "10",
+    "BOBINA": "10",
+    "BOTOEIRA": "10",
+    "CALCO": "10",
+    "CANTONEIRA": "10",
+    "CAPA": "10",
+    "CHICOTE": "10",
+    "CINTO": "10",
+    "CM": "10",
+    "COLUNA": "10",
+    "CONTROLADOR": "10",
+    "CP": "10",
+    "CUPULA": "10",
+    "DECODER": "10",
+    "DIAMOND": "10",
+    "ELETRICA": "10",
+    "ESTROBO": "10",
+    "EXAUSTOR": "10",
+    "FAROL": "10",
+    "FATURAMENTO DIRETO": "10",
+    "FX": "10",
+    "ILUMINACAO": "10",
+    "INVERSOR": "10",
+    "JANELA": "10",
+    "LANTERNA": "10",
+    "LED": "10",
+    "LUMINARIA": "10",
+    "LUZ": "10",
+    "MINI": "10",
+    "MODULO": "10",
+    "MP": "10",
+    "PC": "10",
+    "PE": "10",
+    "PEGA MAO": "10",
+    "PORTA": "10",
+    "POSTICO": "10",
+    "QUEBRA": "10",
+    "REFORCO": "10",
+    "SIRENE": "10",
+    "SUPORTE": "10",
+    "TAMPA": "10",
+    "TOMADA": "10",
+    "VIDRO": "10",
+    "PP": "20",
+    "TETO": "20",
+    "CHAPA": "30",
+    "CJ": "30",
+    "JI CONFORT": "40",
+    "JI URBAN": "40",
+    "CITROEN": "80",
+    "FIAT": "80",
+    "FORD": "80",
+    "IVECO": "80",
+    "MERCEDES BENZ SPRINTER": "80",
+    "PEUGEOT": "80",
+    "RENAULT": "80",
+}
+
+
+def pn_category_code(category: dict[str, Any]) -> str:
+    for value in (category.get("label"), category.get("sheet_name")):
+        match = re.search(r"\d+", clean_text(value))
+        if match:
+            return f"{int(match.group(0)):02d}"
+    return "00"
+
+
+def _selected_group_code(fields: list[dict[str, Any]], data: Any) -> str:
+    group_field = _find_field_by_normalized_label(fields, {"GRUPO"})
+    if group_field is None:
+        return ""
+    for value in _serialize_field_values(group_field, data):
+        match = re.match(r"^\s*(\d+)", clean_text(value))
+        if match:
+            return f"{int(match.group(1)):02d}"
+    return ""
+
+
+def pn_group_code(fields: list[dict[str, Any]], data: Any) -> str:
+    explicit_group = _selected_group_code(fields, data)
+    if explicit_group:
+        return explicit_group
+
+    prefix_field = _find_field_by_normalized_label(fields, {"PREFIXO", "PRE FIXO", "PRÉ FIXO"})
+    if prefix_field is None:
+        return "10"
+    for value in _selected_option_labels(prefix_field, data):
+        normalized = normalize_label(value)
+        if normalized in PN_GROUP_BY_PREFIX:
+            return PN_GROUP_BY_PREFIX[normalized]
+        for known_prefix, group_code in PN_GROUP_BY_PREFIX.items():
+            if normalized.startswith(f"{known_prefix} ") or normalized.startswith(known_prefix):
+                return group_code
+    return "10"
+
+
+def pn_code_prefix(category: dict[str, Any], fields: list[dict[str, Any]], data: Any) -> str:
+    return f"{pn_group_code(fields, data)}{pn_category_code(category)}"
 
 
 def _distancia_pe_order(value: Any) -> tuple[int, int, str]:
@@ -2431,7 +2546,7 @@ def save_banco_registration(form_data: Any) -> dict[str, str]:
 
         descriptions = build_descriptions(fields, form_data, category["key"])
         sku_column = _resolve_header_column(ws, "SKU", create_missing=True)
-        sku_value = _next_sequential_sku(ws, sku_column, raw_category)
+        sku_value = _next_sequential_sku(ws, sku_column, raw_category, fields, form_data)
         if sku_column:
             ws.cell(row, sku_column).value = sku_value
         if primary_column:

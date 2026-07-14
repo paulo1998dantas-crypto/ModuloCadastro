@@ -16,6 +16,7 @@ from fastapi.templating import Jinja2Templates
 
 import bridge_store
 import excel_bancos
+import supabase_store
 
 
 HOST = os.environ.get("HOST", "127.0.0.1")
@@ -72,6 +73,8 @@ def _persistence_required() -> bool:
 
 
 def _persistence_ok() -> bool:
+    if supabase_store.enabled():
+        return True
     return bool(bridge_store.persistence_info().get("persistent"))
 
 
@@ -304,7 +307,13 @@ def _sync_active_workbook(category_key: str) -> None:
     return None
 
 
+def _supabase_mode() -> bool:
+    return supabase_store.enabled()
+
+
 def _workbook_display_path() -> str:
+    if _supabase_mode():
+        return supabase_store.display_target()
     if bridge_store.save_via_bridge():
         return "Modo online: cadastros serão gravados pela Ponte Local"
     return excel_bancos.template_path()
@@ -337,7 +346,13 @@ def _render_cadastro_page(
 ):
     active_draft = None
     online_mode = bridge_store.save_via_bridge()
-    if draft_id and form_data is None and online_mode:
+    supabase_mode = _supabase_mode()
+    if draft_id and form_data is None and supabase_mode:
+        active_draft = supabase_store.get_draft(draft_id)
+        if active_draft:
+            categoria = active_draft["category_key"]
+            form_data = active_draft["groups"]
+    elif draft_id and form_data is None and online_mode:
         active_draft = bridge_store.get_draft(draft_id)
         if active_draft:
             categoria = active_draft["category_key"]
@@ -371,10 +386,17 @@ def _render_cadastro_page(
             "conditional_rules": excel_bancos.get_conditional_rules_for_form(selected_category["key"]),
             "workbook_path": _workbook_display_path(),
             "save_via_bridge": online_mode,
+            "supabase_mode": supabase_mode,
             "sucesso": sucesso,
             "erro": erro,
             "form_data": normalized_form,
-            "drafts": bridge_store.list_drafts() if online_mode else excel_bancos.list_registration_drafts(),
+            "drafts": (
+                supabase_store.list_drafts()
+                if supabase_mode
+                else bridge_store.list_drafts()
+                if online_mode
+                else excel_bancos.list_registration_drafts()
+            ),
             "active_draft": active_draft or ({"draft_id": draft_id} if draft_id else None),
             "active_page": "cadastro",
         },
@@ -395,6 +417,7 @@ def _render_opcoes_page(request: Request, categoria: str = "", sucesso: str = ""
             "conditional_rules": excel_bancos.get_conditional_rules(selected_category["key"]),
             "workbook_path": _workbook_display_path(),
             "save_via_bridge": bridge_store.save_via_bridge(),
+            "supabase_mode": _supabase_mode(),
             "sucesso": sucesso,
             "erro": erro,
             "active_page": "opcoes",
@@ -404,6 +427,8 @@ def _render_opcoes_page(request: Request, categoria: str = "", sucesso: str = ""
 
 @app.get("/", response_class=HTMLResponse)
 async def home():
+    if _supabase_mode():
+        return RedirectResponse(url="/cadastros", status_code=303)
     return RedirectResponse(url="/cadastro/bancos", status_code=303)
 
 
@@ -534,7 +559,12 @@ async def home_head():
 
 @app.get("/healthz")
 async def healthz():
-    return {"ok": True, "mode": bridge_store.save_mode(), "persistence": bridge_store.persistence_info()}
+    return {
+        "ok": True,
+        "mode": supabase_store.save_mode() or bridge_store.save_mode(),
+        "persistence": bridge_store.persistence_info(),
+        "supabase": supabase_store.status(),
+    }
 
 
 @app.head("/healthz")
@@ -565,6 +595,31 @@ async def cadastro_bancos_post(request: Request):
         bom_item_code = excel_bancos.clean_text(form_data.get("bom_item_codigo"))
         if needs_bom and not components:
             raise ValueError("Inclua pelo menos um componente para conjunto ou produto em processo.")
+
+        if _supabase_mode():
+            result = supabase_store.save_registration(form_data)
+            if draft_id:
+                try:
+                    supabase_store.delete_draft(draft_id)
+                except Exception:
+                    pass
+            if needs_bom:
+                bom_item_code = result.get("sku") or bom_item_code
+                bom_path = excel_bancos.generate_bom_workbook(
+                    bom_item_code,
+                    result.get("descricao_primaria") or bom_item_code,
+                    components,
+                )
+                return FileResponse(
+                    bom_path,
+                    media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    filename=bom_path.name,
+                )
+            message = f"Cadastro salvo no Supabase. SKU: {result.get('sku') or '-'}."
+            return RedirectResponse(
+                url=f"/cadastro/bancos?categoria={quote(result['category_key'])}&sucesso={quote(message)}",
+                status_code=303,
+            )
 
         if bridge_store.save_via_bridge():
             if not bridge_store.token_configured():
@@ -618,7 +673,9 @@ async def rascunhos_salvar_post(
     draft_id: str = Form(""),
 ):
     try:
-        if bridge_store.save_via_bridge():
+        if _supabase_mode():
+            result = supabase_store.save_draft(category_key, draft_payload, draft_id)
+        elif bridge_store.save_via_bridge():
             result = _online_draft_payload(category_key, draft_payload, draft_id)
         else:
             result = excel_bancos.save_registration_draft(category_key, draft_payload, draft_id)
@@ -630,7 +687,9 @@ async def rascunhos_salvar_post(
 @app.post("/rascunhos/excluir")
 async def rascunhos_excluir_post(draft_id: str = Form(...), category_key: str = Form("")):
     try:
-        if bridge_store.save_via_bridge():
+        if _supabase_mode():
+            result = supabase_store.delete_draft(draft_id)
+        elif bridge_store.save_via_bridge():
             result = bridge_store.delete_draft(draft_id)
         else:
             result = excel_bancos.delete_registration_draft(draft_id)
@@ -649,7 +708,9 @@ async def rascunhos_excluir_post(draft_id: str = Form(...), category_key: str = 
 @app.post("/api/rascunhos/excluir")
 async def api_rascunhos_excluir_post(draft_id: str = Form(...)):
     try:
-        if bridge_store.save_via_bridge():
+        if _supabase_mode():
+            result = supabase_store.delete_draft(draft_id)
+        elif bridge_store.save_via_bridge():
             result = bridge_store.delete_draft(draft_id)
         else:
             result = excel_bancos.delete_registration_draft(draft_id)
@@ -660,6 +721,8 @@ async def api_rascunhos_excluir_post(draft_id: str = Form(...)):
 
 @app.get("/api/produtos")
 async def api_produtos(q: str = ""):
+    if _supabase_mode():
+        return {"items": supabase_store.search_products(q)}
     if bridge_store.save_via_bridge():
         return {"items": _search_bridge_products(q)}
     return {"items": excel_bancos.search_products(q)}
@@ -691,12 +754,62 @@ def _search_bridge_products(query: str, limit: int = 25):
 
 
 def _require_bridge_token(authorization: str = "") -> None:
+    if _supabase_mode():
+        raise HTTPException(status_code=410, detail="Ponte local desativada no modo Supabase.")
     if not bridge_store.verify_token(authorization):
         raise HTTPException(status_code=401, detail="Token da ponte inválido ou ausente.")
 
 
+@app.get("/cadastros", response_class=HTMLResponse)
+async def cadastros_page(
+    request: Request,
+    categoria: str = "",
+    q: str = "",
+    sucesso: str = "",
+    erro: str = "",
+):
+    selected_category = excel_bancos.selected_category(categoria)
+    fields = excel_bancos.get_banco_fields_for_display(selected_category["key"])
+    items = []
+    if _supabase_mode():
+        items = supabase_store.list_registrations(selected_category["key"], query=q, limit=1000)
+    return templates.TemplateResponse(
+        request=request,
+        name="cadastros.html",
+        context={
+            "request": request,
+            "categories": excel_bancos.list_categories(),
+            "selected_category": selected_category,
+            "fields": fields,
+            "items": items,
+            "q": q,
+            "workbook_path": _workbook_display_path(),
+            "save_via_bridge": bridge_store.save_via_bridge(),
+            "supabase_mode": _supabase_mode(),
+            "sucesso": sucesso,
+            "erro": erro,
+            "active_page": "cadastros",
+        },
+    )
+
+
+@app.get("/cadastros/exportar")
+async def cadastros_exportar(categoria: str = "", q: str = ""):
+    if not _supabase_mode():
+        raise HTTPException(status_code=400, detail="Exportação pela base está disponível no modo Supabase.")
+    selected_category = excel_bancos.selected_category(categoria)
+    output = supabase_store.export_registrations(selected_category["key"], query=q)
+    return FileResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        filename=output.name,
+    )
+
+
 @app.get("/ponte", response_class=HTMLResponse)
 async def ponte_page(request: Request, sucesso: str = "", erro: str = ""):
+    if _supabase_mode():
+        return RedirectResponse(url="/cadastros", status_code=303)
     return templates.TemplateResponse(
         request=request,
         name="ponte.html",
@@ -713,6 +826,8 @@ async def ponte_page(request: Request, sucesso: str = "", erro: str = ""):
 
 @app.get("/ponte/download")
 async def ponte_download():
+    if _supabase_mode():
+        return RedirectResponse(url="/cadastros", status_code=303)
     return FileResponse(
         _resource_file("local_bridge.py"),
         media_type="text/x-python",
@@ -722,6 +837,8 @@ async def ponte_download():
 
 @app.get("/ponte/download-bat")
 async def ponte_download_bat():
+    if _supabase_mode():
+        return RedirectResponse(url="/cadastros", status_code=303)
     return FileResponse(
         _resource_file("iniciar_ponte_local.bat"),
         media_type="application/x-bat",
@@ -1053,6 +1170,8 @@ async def campos_excluir_post(category_key: str = Form(...), field_key: str = Fo
 
 @app.get("/planilha", response_class=HTMLResponse)
 async def planilha_page(request: Request, sucesso: str = "", erro: str = ""):
+    if _supabase_mode():
+        return RedirectResponse(url="/cadastros", status_code=303)
     return templates.TemplateResponse(
         request=request,
         name="planilha.html",
@@ -1081,6 +1200,8 @@ async def planilha_post(
     master_workbook_path: str = Form(""),
     master_workbook_url: str = Form(""),
 ):
+    if _supabase_mode():
+        return RedirectResponse(url="/cadastros", status_code=303)
     try:
         if bridge_store.save_via_bridge():
             config = bridge_store.save_app_config(master_workbook_path, master_workbook_url)
