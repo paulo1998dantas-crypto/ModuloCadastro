@@ -1,4 +1,5 @@
 import json
+import hashlib
 import os
 import re
 import tempfile
@@ -23,6 +24,8 @@ BOM_HEADERS_TABLE = "cadastro_bom_cabecalhos"
 BOM_COMPONENTS_TABLE = "cadastro_bom_componentes"
 EXPORT_DIR = Path(tempfile.gettempdir()) / "modulo-cadastro-exports"
 ALL_CATEGORIES_KEY = "__all__"
+REVIEW_PARENT_PREFIX = "REVISAO-"
+DUPLICATE_PARENT_SEPARATOR = "__BOM__"
 
 
 class SupabaseStoreError(RuntimeError):
@@ -122,6 +125,25 @@ def _request(
         raise SupabaseStoreError(f"Não foi possível conectar ao Supabase: {exc}") from exc
 
 
+def _request_all(table: str, params: list[tuple[str, str]], limit: int = 10000) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    page_size = 1000
+    while len(rows) < limit:
+        batch = _request(
+            "GET",
+            table,
+            [
+                *params,
+                ("limit", str(min(page_size, limit - len(rows)))),
+                ("offset", str(len(rows))),
+            ],
+        ) or []
+        rows.extend(batch)
+        if len(batch) < page_size:
+            break
+    return rows
+
+
 def _category(category_key: str) -> dict[str, Any]:
     catalog = excel_bancos.load_catalog()
     return excel_bancos._find_category(catalog, category_key)
@@ -183,6 +205,65 @@ def _field_codes(fields: list[dict[str, Any]], groups: dict[str, list[str]]) -> 
 
 def _search_text(*parts: Any) -> str:
     return excel_bancos.normalize_label(" ".join(clean_text(part) for part in parts if clean_text(part)))
+
+
+def _is_missing_bom_code(value: Any) -> bool:
+    text = clean_text(value)
+    normalized = excel_bancos.normalize_label(text)
+    return not text or text == "0" or normalized in {"N D", "ND", "N A"} or text.upper() == "#N/A"
+
+
+def _review_parent_key(seed: str) -> str:
+    digest = hashlib.sha1(clean_text(seed).encode("utf-8")).hexdigest()[:12].upper()
+    return f"{REVIEW_PARENT_PREFIX}{digest}"
+
+
+def _duplicate_parent_key(parent_sku: str, seed: str) -> str:
+    digest = hashlib.sha1(clean_text(seed).encode("utf-8")).hexdigest()[:10].upper()
+    return f"{clean_text(parent_sku)}{DUPLICATE_PARENT_SEPARATOR}{digest}"
+
+
+def _base_parent_sku(parent_sku: str) -> str:
+    text = clean_text(parent_sku)
+    if DUPLICATE_PARENT_SEPARATOR in text:
+        return text.split(DUPLICATE_PARENT_SEPARATOR, 1)[0]
+    return text
+
+
+def _source_with_review(source: str, reasons: list[str]) -> str:
+    base = clean_text(source) or "cadastro"
+    cleaned = list(dict.fromkeys(clean_text(reason) for reason in reasons if clean_text(reason)))
+    if not cleaned:
+        return base
+    return f"{base}|needs_review:{','.join(cleaned)}"
+
+
+def _review_reasons(source: str) -> list[str]:
+    marker = "needs_review:"
+    text = clean_text(source)
+    if marker not in text:
+        return []
+    return [part.strip() for part in text.split(marker, 1)[1].split("|", 1)[0].split(",") if part.strip()]
+
+
+def _review_reason_label(reason: str) -> str:
+    labels = {
+        "parent_code": "Item pai sem codigo",
+        "component_code": "Item filho sem codigo",
+        "quantity_default": "Quantidade ajustada para 1",
+        "empty_component": "Linha de componente incompleta",
+        "duplicate_parent": "Item pai duplicado no diretorio",
+    }
+    return labels.get(clean_text(reason), clean_text(reason))
+
+
+def _display_bom_code(value: Any) -> str:
+    text = clean_text(value)
+    if DUPLICATE_PARENT_SEPARATOR in text:
+        return _base_parent_sku(text)
+    if text.startswith(REVIEW_PARENT_PREFIX) or _is_missing_bom_code(text):
+        return ""
+    return text
 
 
 def _full_description(row: dict[str, Any]) -> str:
@@ -534,29 +615,33 @@ def save_bom(
     category_label: str = "",
     registration_id: int | str | None = None,
     source: str = "cadastro",
+    allow_incomplete: bool = False,
+    review_reasons: list[str] | None = None,
 ) -> dict[str, Any]:
     parent_sku = clean_text(parent_sku)
-    if not parent_sku:
+    if not parent_sku and not allow_incomplete:
         raise SupabaseStoreError("Informe o SKU do item pai da B.O.M.")
     if not components:
         raise SupabaseStoreError("Informe pelo menos um componente para a B.O.M.")
 
-    registration = _registration_by_sku(parent_sku)
+    base_parent_sku = _base_parent_sku(parent_sku)
+    registration = _registration_by_sku(base_parent_sku) if base_parent_sku else None
     if registration:
         category_key = clean_text(registration.get("category_key")) or category_key
         category_label = clean_text(registration.get("category_label")) or category_label
         parent_description = _full_description(registration) or parent_description
         registration_id = registration.get("id") or registration_id
 
-    parent_description = clean_text(parent_description) or parent_sku
+    parent_description = clean_text(parent_description) or parent_sku or "B.O.M. pendente de revisao"
+    source_value = _source_with_review(source, review_reasons or [])
     payload = {
         "parent_sku": parent_sku,
         "parent_descricao": parent_description,
         "parent_category_key": clean_text(category_key),
         "parent_category_label": clean_text(category_label),
         "registration_id": registration_id,
-        "source": clean_text(source) or "cadastro",
-        "search_text": _search_text(parent_sku, parent_description, category_label),
+        "source": source_value,
+        "search_text": _search_text(parent_sku, base_parent_sku, parent_description, category_label, source_value),
     }
 
     existing = _bom_header_by_parent(parent_sku)
@@ -579,14 +664,18 @@ def save_bom(
     component_payloads = []
     for index, component in enumerate(components, start=1):
         component_sku = clean_text(component.get("codigo") or component.get("component_sku"))
-        if not component_sku:
+        if not component_sku and not allow_incomplete:
             continue
         try:
-            quantity = float(component.get("quantidade") or component.get("quantity") or 0)
+            quantity = float(component.get("quantidade") or component.get("quantity") or (1 if allow_incomplete else 0))
         except Exception as exc:
-            raise SupabaseStoreError(f"Quantidade invalida no componente {component_sku}.") from exc
-        if quantity <= 0:
+            if not allow_incomplete:
+                raise SupabaseStoreError(f"Quantidade invalida no componente {component_sku}.") from exc
+            quantity = 1.0
+        if quantity <= 0 and not allow_incomplete:
             raise SupabaseStoreError(f"Quantidade deve ser maior que zero no componente {component_sku}.")
+        if quantity <= 0:
+            quantity = 1.0
         description = clean_text(component.get("descricao") or component.get("component_descricao"))
         unit = clean_text(component.get("unidade") or component.get("unit")) or "pc"
         component_payloads.append(
@@ -598,7 +687,7 @@ def save_bom(
                 "unidade": unit,
                 "quantidade": quantity,
                 "ordem": index,
-                "search_text": _search_text(parent_sku, parent_description, component_sku, description, unit),
+                "search_text": _search_text(parent_sku, base_parent_sku, parent_description, component_sku, description, unit, source_value),
             }
         )
     if not component_payloads:
@@ -610,6 +699,40 @@ def save_bom(
 def _in_filter(values: list[Any]) -> str:
     cleaned = [clean_text(value) for value in values if clean_text(value)]
     return "in.(" + ",".join(cleaned) + ")"
+
+
+def _enrich_bom(header: dict[str, Any], components: list[dict[str, Any]]) -> dict[str, Any]:
+    source = clean_text(header.get("source"))
+    reasons = _review_reasons(source)
+    enriched_components = []
+    for component in components:
+        component_reasons = []
+        if _is_missing_bom_code(component.get("component_sku")):
+            component_reasons.append("component_code")
+        if float(component.get("quantidade") or 0) == 1 and "quantity_default" in reasons:
+            component_reasons.append("quantity_default")
+        enriched_components.append(
+            {
+                **component,
+                "display_component_sku": _display_bom_code(component.get("component_sku")),
+                "needs_review": bool(component_reasons),
+                "review_reasons": [_review_reason_label(reason) for reason in component_reasons],
+            }
+        )
+    if header.get("parent_sku", "").startswith(REVIEW_PARENT_PREFIX) or _is_missing_bom_code(header.get("parent_sku")):
+        reasons.append("parent_code")
+    if DUPLICATE_PARENT_SEPARATOR in clean_text(header.get("parent_sku")):
+        reasons.append("duplicate_parent")
+    if any(component.get("needs_review") for component in enriched_components):
+        reasons.append("component_code")
+    reason_labels = [_review_reason_label(reason) for reason in dict.fromkeys(reasons)]
+    return {
+        **header,
+        "display_parent_sku": _display_bom_code(header.get("parent_sku")),
+        "needs_review": bool(reason_labels),
+        "review_reasons": reason_labels,
+        "components": enriched_components,
+    }
 
 
 def list_boms(
@@ -637,7 +760,6 @@ def list_boms(
     params: list[tuple[str, str]] = [
         ("select", "*"),
         ("order", "parent_sku.asc"),
-        ("limit", str(max(1, min(limit, 5000)))),
     ]
     if clean_text(category_key):
         params.append(("parent_category_key", f"eq.{clean_text(category_key)}"))
@@ -646,7 +768,7 @@ def list_boms(
         params.append(("search_text", f"ilike.*{parent_term}*"))
     if bom_ids_filter:
         params.append(("id", _in_filter(bom_ids_filter)))
-    headers = _request("GET", BOM_HEADERS_TABLE, params) or []
+    headers = _request_all(BOM_HEADERS_TABLE, params, limit=max(1, min(limit, 5000)))
     bom_ids = [clean_text(row.get("id")) for row in headers if row.get("id")]
     components_by_bom: dict[str, list[dict[str, Any]]] = {bom_id: [] for bom_id in bom_ids}
     if bom_ids:
@@ -654,14 +776,13 @@ def list_boms(
             ("select", "*"),
             ("bom_id", _in_filter(bom_ids)),
             ("order", "parent_sku.asc,ordem.asc,component_sku.asc"),
-            ("limit", "10000"),
         ]
         if component_term:
             component_params.append(("search_text", f"ilike.*{component_term}*"))
-        components = _request("GET", BOM_COMPONENTS_TABLE, component_params) or []
+        components = _request_all(BOM_COMPONENTS_TABLE, component_params, limit=10000)
         for component in components:
             components_by_bom.setdefault(clean_text(component.get("bom_id")), []).append(component)
-    return [{**header, "components": components_by_bom.get(clean_text(header.get("id")), [])} for header in headers]
+    return [_enrich_bom(header, components_by_bom.get(clean_text(header.get("id")), [])) for header in headers]
 
 
 def get_bom(bom_id: int | str) -> dict[str, Any]:
@@ -679,19 +800,64 @@ def get_bom(bom_id: int | str) -> dict[str, Any]:
             ("limit", "10000"),
         ],
     ) or []
-    return {**rows[0], "components": components}
+    return _enrich_bom(rows[0], components)
 
 
-def update_bom(bom_id: int | str, parent_description: str, components: list[dict[str, Any]]) -> dict[str, Any]:
+def update_bom(
+    bom_id: int | str,
+    parent_description: str,
+    components: list[dict[str, Any]],
+    parent_sku: str = "",
+) -> dict[str, Any]:
     current = get_bom(bom_id)
-    parent_sku = clean_text(current.get("parent_sku"))
-    parent_description = clean_text(parent_description) or clean_text(current.get("parent_descricao")) or parent_sku
+    current_parent_sku = clean_text(current.get("parent_sku"))
+    requested_parent_sku = clean_text(parent_sku)
+    if requested_parent_sku and requested_parent_sku == _display_bom_code(current_parent_sku):
+        effective_parent_sku = current_parent_sku
+    elif requested_parent_sku:
+        existing = _bom_header_by_parent(requested_parent_sku)
+        if existing and clean_text(existing.get("id")) != clean_text(bom_id):
+            raise SupabaseStoreError("Ja existe outra B.O.M. com esse item pai.")
+        effective_parent_sku = requested_parent_sku
+    else:
+        effective_parent_sku = current_parent_sku
+    parent_description = clean_text(parent_description) or clean_text(current.get("parent_descricao")) or effective_parent_sku
     if not components:
         raise SupabaseStoreError("Informe pelo menos um componente para a B.O.M.")
+    base_parent_sku = _base_parent_sku(effective_parent_sku)
+    registration = _registration_by_sku(base_parent_sku) if base_parent_sku else None
+    category_key = clean_text(current.get("parent_category_key"))
+    category_label = clean_text(current.get("parent_category_label"))
+    registration_id = current.get("registration_id")
+    if registration:
+        category_key = clean_text(registration.get("category_key")) or category_key
+        category_label = clean_text(registration.get("category_label")) or category_label
+        parent_description = _full_description(registration) or parent_description
+        registration_id = registration.get("id") or registration_id
+
+    review_reasons = []
+    if effective_parent_sku.startswith(REVIEW_PARENT_PREFIX) or _is_missing_bom_code(effective_parent_sku):
+        review_reasons.append("parent_code")
+    if DUPLICATE_PARENT_SEPARATOR in effective_parent_sku:
+        review_reasons.append("duplicate_parent")
+    for component in components:
+        if _is_missing_bom_code(component.get("codigo") or component.get("component_sku")):
+            review_reasons.append("component_code")
+        try:
+            quantity_check = float(component.get("quantidade") or component.get("quantity") or 0)
+        except Exception:
+            quantity_check = 0
+        if quantity_check <= 0:
+            review_reasons.append("quantity_default")
+    source = _source_with_review("edicao", review_reasons)
     header_payload = {
+        "parent_sku": effective_parent_sku,
         "parent_descricao": parent_description,
-        "source": "edicao",
-        "search_text": _search_text(parent_sku, parent_description, current.get("parent_category_label")),
+        "parent_category_key": category_key,
+        "parent_category_label": category_label,
+        "registration_id": registration_id,
+        "source": source,
+        "search_text": _search_text(effective_parent_sku, base_parent_sku, parent_description, category_label, source),
     }
     rows = _request(
         "PATCH",
@@ -706,26 +872,24 @@ def update_bom(bom_id: int | str, parent_description: str, components: list[dict
     component_payloads = []
     for index, component in enumerate(components, start=1):
         component_sku = clean_text(component.get("codigo") or component.get("component_sku"))
-        if not component_sku:
-            continue
         try:
-            quantity = float(component.get("quantidade") or component.get("quantity") or 0)
-        except Exception as exc:
-            raise SupabaseStoreError(f"Quantidade invalida no componente {component_sku}.") from exc
+            quantity = float(component.get("quantidade") or component.get("quantity") or 1)
+        except Exception:
+            quantity = 1.0
         if quantity <= 0:
-            raise SupabaseStoreError(f"Quantidade deve ser maior que zero no componente {component_sku}.")
+            quantity = 1.0
         description = clean_text(component.get("descricao") or component.get("component_descricao"))
         unit = clean_text(component.get("unidade") or component.get("unit")) or "pc"
         component_payloads.append(
             {
                 "bom_id": clean_text(bom_id),
-                "parent_sku": parent_sku,
+                "parent_sku": effective_parent_sku,
                 "component_sku": component_sku,
                 "component_descricao": description,
                 "unidade": unit,
                 "quantidade": quantity,
                 "ordem": index,
-                "search_text": _search_text(parent_sku, parent_description, component_sku, description, unit),
+                "search_text": _search_text(effective_parent_sku, base_parent_sku, parent_description, component_sku, description, unit, source),
             }
         )
     if not component_payloads:
@@ -748,9 +912,26 @@ def _normalize_header(value: Any) -> str:
     return excel_bancos.normalize_label(value).replace(" ", "_").lower()
 
 
-def import_bom_workbook(content: bytes, filename: str = "") -> dict[str, Any]:
+def _parse_quantity_for_import(value: Any) -> tuple[float, bool]:
+    text = clean_text(value)
+    if _is_missing_bom_code(text):
+        return 1.0, True
+    try:
+        parsed = float(text.replace(".", "").replace(",", ".") if "," in text else text)
+    except Exception:
+        return 1.0, True
+    if parsed <= 0:
+        return 1.0, True
+    return parsed, False
+
+
+def _bom_parent_description_from_filename(filename: str) -> str:
+    stem = Path(clean_text(filename)).stem
+    return re.sub(r"^\s*\d+[\.\-\s]+", "", stem).strip() or stem
+
+
+def _parse_bom_workbook(content: bytes, filename: str = "") -> dict[str, dict[str, Any]]:
     wb = load_workbook(BytesIO(content), data_only=True)
-    imported = 0
     parents: dict[str, dict[str, Any]] = {}
     try:
         for ws in wb.worksheets:
@@ -766,21 +947,43 @@ def import_bom_workbook(content: bytes, filename: str = "") -> dict[str, Any]:
                 continue
             item_block_col = header_map.get("item_bloco")
             parent_hint = clean_text(ws.cell(header_row, item_block_col + 1).value) if item_block_col else ""
+            review_parent_key = _review_parent_key(f"{filename}:{ws.title}")
             for row_index in range(header_row + 1, ws.max_row + 1):
-                parent_sku = clean_text(ws.cell(row_index, header_map["item_codigo"]).value)
-                component_sku = clean_text(ws.cell(row_index, header_map["componente_codigo"]).value)
-                if not parent_sku or not component_sku:
-                    continue
+                raw_parent_sku = clean_text(ws.cell(row_index, header_map["item_codigo"]).value)
+                raw_component_sku = clean_text(ws.cell(row_index, header_map["componente_codigo"]).value)
                 description = clean_text(ws.cell(row_index, header_map.get("descricao", 3)).value)
                 unit = clean_text(ws.cell(row_index, header_map.get("unidade", 4)).value) or "pc"
-                quantity = ws.cell(row_index, header_map.get("quantidade", 5)).value
+                quantity_value = ws.cell(row_index, header_map.get("quantidade", 5)).value
+                if not any([raw_parent_sku, raw_component_sku, description, clean_text(quantity_value)]):
+                    continue
+                reasons: list[str] = []
+                parent_missing = _is_missing_bom_code(raw_parent_sku)
+                component_missing = _is_missing_bom_code(raw_component_sku)
+                parent_sku = review_parent_key if parent_missing else raw_parent_sku
+                component_sku = "" if component_missing else raw_component_sku
+                if parent_missing:
+                    reasons.append("parent_code")
+                if component_missing:
+                    reasons.append("component_code")
+                quantity, quantity_defaulted = _parse_quantity_for_import(quantity_value)
+                if quantity_defaulted:
+                    reasons.append("quantity_default")
+                if component_missing and not description:
+                    reasons.append("empty_component")
                 group = parents.setdefault(
                     parent_sku,
                     {
-                        "parent_description": parent_hint or parent_sku,
+                        "parent_description": (
+                            parent_hint
+                            or (description if parent_missing else "")
+                            or _bom_parent_description_from_filename(filename)
+                            or parent_sku
+                        ),
                         "components": [],
+                        "review_reasons": [],
                     },
                 )
+                group["review_reasons"].extend(reasons)
                 group["components"].append(
                     {
                         "codigo": component_sku,
@@ -789,12 +992,76 @@ def import_bom_workbook(content: bytes, filename: str = "") -> dict[str, Any]:
                         "quantidade": quantity,
                     }
                 )
-        for parent_sku, data in parents.items():
-            save_bom(parent_sku, data["parent_description"], data["components"], source=f"import:{filename or 'xlsx'}")
-            imported += 1
     finally:
         wb.close()
-    return {"parents": imported, "components": sum(len(item["components"]) for item in parents.values())}
+    return parents
+
+
+def import_bom_workbook(content: bytes, filename: str = "") -> dict[str, Any]:
+    imported = 0
+    parents = _parse_bom_workbook(content, filename)
+    for parent_sku, data in parents.items():
+        reasons = list(dict.fromkeys(data.get("review_reasons") or []))
+        save_bom(
+            parent_sku,
+            data["parent_description"],
+            data["components"],
+            source=f"import:{filename or 'xlsx'}",
+            allow_incomplete=bool(reasons),
+            review_reasons=reasons,
+        )
+        imported += 1
+    return {
+        "parents": imported,
+        "components": sum(len(item["components"]) for item in parents.values()),
+        "review_parents": sum(1 for item in parents.values() if item.get("review_reasons")),
+    }
+
+
+def import_bom_directory(directory: str | Path) -> dict[str, Any]:
+    root = Path(directory)
+    if not root.exists():
+        raise SupabaseStoreError(f"Diretorio de B.O.M. nao encontrado: {root}")
+    files = sorted(path for path in root.rglob("*") if path.is_file() and path.suffix.lower() in {".xlsx", ".xlsm"} and not path.name.startswith("~$"))
+    parsed_entries: list[dict[str, Any]] = []
+    result = {"files": len(files), "parents": 0, "components": 0, "review_parents": 0, "duplicate_parents": 0, "errors": []}
+    for path in files:
+        relative = str(path.relative_to(root))
+        try:
+            parents = _parse_bom_workbook(path.read_bytes(), relative)
+            for parent_sku, data in parents.items():
+                parsed_entries.append({"file": relative, "parent_sku": parent_sku, "data": data})
+        except Exception as exc:
+            result["errors"].append({"file": relative, "error": str(exc)})
+
+    parent_counts: dict[str, int] = {}
+    for entry in parsed_entries:
+        parent_counts[entry["parent_sku"]] = parent_counts.get(entry["parent_sku"], 0) + 1
+    seen_parent: dict[str, int] = {}
+    for entry in parsed_entries:
+        original_parent_sku = entry["parent_sku"]
+        data = entry["data"]
+        reasons = list(dict.fromkeys(data.get("review_reasons") or []))
+        storage_parent_sku = original_parent_sku
+        if parent_counts.get(original_parent_sku, 0) > 1:
+            seen_parent[original_parent_sku] = seen_parent.get(original_parent_sku, 0) + 1
+            if seen_parent[original_parent_sku] > 1:
+                storage_parent_sku = _duplicate_parent_key(original_parent_sku, entry["file"])
+                result["duplicate_parents"] += 1
+            reasons.append("duplicate_parent")
+        save_bom(
+            storage_parent_sku,
+            data["parent_description"],
+            data["components"],
+            source=f"import:{entry['file']}",
+            allow_incomplete=bool(reasons),
+            review_reasons=reasons,
+        )
+        result["parents"] += 1
+        result["components"] += len(data["components"])
+        if reasons:
+            result["review_parents"] += 1
+    return result
 
 
 def export_boms(category_key: str = "", parent_query: str = "", component_query: str = "") -> Path:
@@ -826,9 +1093,9 @@ def export_boms(category_key: str = "", parent_query: str = "", component_query:
             ws.append(
                 [
                     bom.get("parent_category_label"),
-                    bom.get("parent_sku"),
+                    bom.get("display_parent_sku") if "display_parent_sku" in bom else _display_bom_code(bom.get("parent_sku")),
                     bom.get("parent_descricao"),
-                    component.get("component_sku"),
+                    component.get("display_component_sku") if "display_component_sku" in component else _display_bom_code(component.get("component_sku")),
                     component.get("component_descricao"),
                     component.get("unidade"),
                     quantity,

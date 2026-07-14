@@ -1070,6 +1070,7 @@ async def bom_page(
     categoria: str = "",
     item_pai: str = "",
     item_filho: str = "",
+    revisao: str = "",
     sucesso: str = "",
     erro: str = "",
 ):
@@ -1082,6 +1083,9 @@ async def bom_page(
         component_query=item_filho,
         limit=1000,
     )
+    review_count = sum(1 for item in items if item.get("needs_review"))
+    if revisao:
+        items = [item for item in items if item.get("needs_review")]
     return templates.TemplateResponse(
         request=request,
         name="bom.html",
@@ -1092,6 +1096,8 @@ async def bom_page(
             "items": items,
             "item_pai": item_pai,
             "item_filho": item_filho,
+            "revisao": revisao,
+            "review_count": review_count,
             "workbook_path": _workbook_display_path(),
             "supabase_mode": True,
             "sucesso": sucesso,
@@ -1108,7 +1114,7 @@ async def bom_upload(arquivo_bom: UploadFile = File(...)):
     try:
         content = await arquivo_bom.read()
         result = supabase_store.import_bom_workbook(content, arquivo_bom.filename or "")
-        message = f"B.O.M. importada: {result['parents']} item(ns) pai e {result['components']} componente(s)."
+        message = f"B.O.M. importada: {result['parents']} item(ns) pai, {result['components']} componente(s), {result.get('review_parents', 0)} para revisao."
         return RedirectResponse(url=f"/bom?sucesso={quote(message)}", status_code=303)
     except Exception as exc:
         return RedirectResponse(url=f"/bom?erro={quote(str(exc))}", status_code=303)
@@ -1161,11 +1167,12 @@ async def bom_detalhe_page(request: Request, bom_id: int, sucesso: str = "", err
 async def bom_detalhe_post(request: Request, bom_id: int):
     form_data = await request.form()
     try:
-        components = excel_bancos.parse_component_lines(form_data)
+        components = excel_bancos.parse_component_lines(form_data, allow_incomplete=True)
         result = supabase_store.update_bom(
             bom_id,
             excel_bancos.clean_text(form_data.get("parent_descricao")),
             components,
+            parent_sku=excel_bancos.clean_text(form_data.get("parent_sku")),
         )
         message = f"B.O.M. atualizada: {result.get('parent_sku') or bom_id}."
         return RedirectResponse(url=f"/bom/{bom_id}?sucesso={quote(message)}", status_code=303)

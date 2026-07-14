@@ -2317,7 +2317,7 @@ def _form_getlist(data: Any, key: str) -> list[str]:
     return [clean_text(value)]
 
 
-def parse_component_lines(data: Any) -> list[dict[str, Any]]:
+def parse_component_lines(data: Any, allow_incomplete: bool = False) -> list[dict[str, Any]]:
     codes = _form_getlist(data, "component_codigo")
     descriptions = _form_getlist(data, "component_descricao")
     units = _form_getlist(data, "component_unidade")
@@ -2336,13 +2336,18 @@ def parse_component_lines(data: Any) -> list[dict[str, Any]]:
 
         if not any([code, description, unit, quantity_text, search_text]):
             continue
-        if not code:
+        if not code and not allow_incomplete:
             incomplete_rows.append(index + 1)
             continue
         try:
-            quantity = float(quantity_text.replace(".", "").replace(",", ".") if "," in quantity_text else quantity_text)
+            if allow_incomplete and not clean_text(quantity_text):
+                quantity = 1.0
+            else:
+                quantity = float(quantity_text.replace(".", "").replace(",", ".") if "," in quantity_text else quantity_text)
         except ValueError:
-            raise ValueError(f"Quantidade invÃ¡lida na linha de componente {index + 1}.")
+            if not allow_incomplete:
+                raise ValueError(f"Quantidade invÃ¡lida na linha de componente {index + 1}.")
+            quantity = 1.0
         if quantity <= 0:
             raise ValueError(f"Quantidade deve ser maior que zero na linha de componente {index + 1}.")
 

@@ -59,7 +59,14 @@
                         <button type="submit" class="h-10 border border-slate-900 bg-slate-900 px-5 text-sm font-black text-white hover:bg-slate-800">Buscar</button>
                         <a href="/bom" class="flex h-10 items-center justify-center border border-slate-300 bg-white px-5 text-sm font-black text-slate-700 hover:bg-slate-50">Limpar</a>
                     </div>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <label class="inline-flex h-10 items-center gap-2 border border-amber-300 bg-amber-50 px-3 text-xs font-black uppercase text-amber-800">
+                            <input type="checkbox" name="revisao" value="1" {% if revisao %}checked{% endif %} onchange="this.form.submit()" class="h-4 w-4">
+                            Somente revisao
+                        </label>
+                        {% if review_count %}
+                        <span class="inline-flex h-10 items-center border border-amber-300 bg-amber-100 px-3 text-xs font-black uppercase text-amber-900">{{ review_count }} B.O.M.(s) para revisar</span>
+                        {% endif %}
                         <a id="export-link" href="/bom/exportar" class="inline-flex h-10 items-center justify-center border border-emerald-700 bg-emerald-700 px-5 text-sm font-black text-white hover:bg-emerald-600">Exportar Excel</a>
                     </div>
                 </form>
@@ -105,11 +112,24 @@
                                     </form>
                                 </td>
                                 <td class="border border-slate-200 px-2 py-1 align-top font-semibold" rowspan="{{ components|length }}">{{ bom.parent_category_label }}</td>
-                                <td class="whitespace-nowrap border border-slate-200 px-2 py-1 align-top font-mono font-bold" rowspan="{{ components|length }}">{{ bom.parent_sku }}</td>
-                                <td class="border border-slate-200 px-2 py-1 align-top font-semibold" rowspan="{{ components|length }}">{{ bom.parent_descricao }}</td>
+                                <td class="whitespace-nowrap border border-slate-200 px-2 py-1 align-top font-mono font-bold" rowspan="{{ components|length }}">{{ bom.display_parent_sku }}</td>
+                                <td class="border border-slate-200 px-2 py-1 align-top font-semibold" rowspan="{{ components|length }}">
+                                    {% if bom.needs_review %}
+                                    <div class="mb-1 inline-flex border border-amber-400 bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase text-amber-800">Revisar</div>
+                                    {% endif %}
+                                    <div>{{ bom.parent_descricao }}</div>
+                                    {% if bom.review_reasons %}
+                                    <div class="mt-1 text-[11px] font-bold text-amber-700">{{ bom.review_reasons|join(' · ') }}</div>
+                                    {% endif %}
+                                </td>
                                 {% endif %}
-                                <td class="whitespace-nowrap border border-slate-200 px-2 py-1 font-mono font-bold">{{ component.component_sku }}</td>
-                                <td class="border border-slate-200 px-2 py-1">{{ component.component_descricao }}</td>
+                                <td class="whitespace-nowrap border border-slate-200 px-2 py-1 font-mono font-bold">{{ component.display_component_sku }}</td>
+                                <td class="border border-slate-200 px-2 py-1">
+                                    {{ component.component_descricao }}
+                                    {% if component.needs_review %}
+                                    <div class="mt-1 text-[11px] font-bold text-amber-700">Revisar: {{ component.review_reasons|join(' · ') }}</div>
+                                    {% endif %}
+                                </td>
                                 <td class="border border-slate-200 px-2 py-1">{{ component.unidade }}</td>
                                 <td class="border border-slate-200 px-2 py-1 text-right font-mono">{{ component.quantidade }}</td>
                             </tr>
@@ -123,8 +143,13 @@
                                     </form>
                                 </td>
                                 <td class="border border-slate-200 px-2 py-1">{{ bom.parent_category_label }}</td>
-                                <td class="border border-slate-200 px-2 py-1 font-mono font-bold">{{ bom.parent_sku }}</td>
-                                <td class="border border-slate-200 px-2 py-1">{{ bom.parent_descricao }}</td>
+                                <td class="border border-slate-200 px-2 py-1 font-mono font-bold">{{ bom.display_parent_sku }}</td>
+                                <td class="border border-slate-200 px-2 py-1">
+                                    {% if bom.needs_review %}
+                                    <div class="mb-1 inline-flex border border-amber-400 bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase text-amber-800">Revisar</div>
+                                    {% endif %}
+                                    {{ bom.parent_descricao }}
+                                </td>
                                 <td colspan="4" class="border border-slate-200 px-2 py-1 text-slate-500">Sem componentes.</td>
                             </tr>
                             {% endif %}
