@@ -267,15 +267,27 @@ def _display_bom_code(value: Any) -> str:
 
 
 def _full_description(row: dict[str, Any]) -> str:
-    return " ".join(
-        part
-        for part in [
-            clean_text(row.get("descricao_primaria")),
-            clean_text(row.get("descricao_secundaria")),
-            clean_text(row.get("sufixo")),
-        ]
-        if part
+    return clean_text(row.get("descricao_primaria"))
+
+
+def _primary_descriptions_by_sku(skus: list[Any]) -> dict[str, str]:
+    codes = list(dict.fromkeys(clean_text(sku) for sku in skus if clean_text(sku)))
+    if not codes:
+        return {}
+    rows = _request_all(
+        REGISTRATIONS_TABLE,
+        [
+            ("select", "sku,descricao_primaria"),
+            ("sku", _in_filter(codes)),
+            ("order", "sku.asc"),
+        ],
+        limit=max(len(codes), 1),
     )
+    return {
+        clean_text(row.get("sku")): clean_text(row.get("descricao_primaria"))
+        for row in rows
+        if clean_text(row.get("sku")) and clean_text(row.get("descricao_primaria"))
+    }
 
 
 def _duplicate_exists(category_key: str, primaria: str, secundaria: str) -> bool:
@@ -701,20 +713,28 @@ def _in_filter(values: list[Any]) -> str:
     return "in.(" + ",".join(cleaned) + ")"
 
 
-def _enrich_bom(header: dict[str, Any], components: list[dict[str, Any]]) -> dict[str, Any]:
+def _enrich_bom(
+    header: dict[str, Any],
+    components: list[dict[str, Any]],
+    primary_descriptions: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    primary_descriptions = primary_descriptions or {}
     source = clean_text(header.get("source"))
     reasons = _review_reasons(source)
     enriched_components = []
     for component in components:
+        component_sku = clean_text(component.get("component_sku"))
         component_reasons = []
-        if _is_missing_bom_code(component.get("component_sku")):
+        if _is_missing_bom_code(component_sku):
             component_reasons.append("component_code")
         if float(component.get("quantidade") or 0) == 1 and "quantity_default" in reasons:
             component_reasons.append("quantity_default")
+        component_description = primary_descriptions.get(component_sku) or clean_text(component.get("component_descricao"))
         enriched_components.append(
             {
                 **component,
-                "display_component_sku": _display_bom_code(component.get("component_sku")),
+                "component_descricao": component_description,
+                "display_component_sku": _display_bom_code(component_sku),
                 "needs_review": bool(component_reasons),
                 "review_reasons": [_review_reason_label(reason) for reason in component_reasons],
             }
@@ -726,9 +746,12 @@ def _enrich_bom(header: dict[str, Any], components: list[dict[str, Any]]) -> dic
     if any(component.get("needs_review") for component in enriched_components):
         reasons.append("component_code")
     reason_labels = [_review_reason_label(reason) for reason in dict.fromkeys(reasons)]
+    parent_sku = clean_text(header.get("parent_sku"))
+    parent_description = primary_descriptions.get(_base_parent_sku(parent_sku)) or clean_text(header.get("parent_descricao"))
     return {
         **header,
-        "display_parent_sku": _display_bom_code(header.get("parent_sku")),
+        "parent_descricao": parent_description,
+        "display_parent_sku": _display_bom_code(parent_sku),
         "needs_review": bool(reason_labels),
         "review_reasons": reason_labels,
         "components": enriched_components,
@@ -782,7 +805,17 @@ def list_boms(
         components = _request_all(BOM_COMPONENTS_TABLE, component_params, limit=10000)
         for component in components:
             components_by_bom.setdefault(clean_text(component.get("bom_id")), []).append(component)
-    return [_enrich_bom(header, components_by_bom.get(clean_text(header.get("id")), [])) for header in headers]
+    description_codes: list[Any] = []
+    for header in headers:
+        description_codes.append(_base_parent_sku(clean_text(header.get("parent_sku"))))
+    for component_list in components_by_bom.values():
+        for component in component_list:
+            description_codes.append(component.get("component_sku"))
+    primary_descriptions = _primary_descriptions_by_sku(description_codes)
+    return [
+        _enrich_bom(header, components_by_bom.get(clean_text(header.get("id")), []), primary_descriptions)
+        for header in headers
+    ]
 
 
 def get_bom(bom_id: int | str) -> dict[str, Any]:
@@ -800,7 +833,10 @@ def get_bom(bom_id: int | str) -> dict[str, Any]:
             ("limit", "10000"),
         ],
     ) or []
-    return _enrich_bom(rows[0], components)
+    description_codes = [_base_parent_sku(clean_text(rows[0].get("parent_sku")))]
+    description_codes.extend(component.get("component_sku") for component in components)
+    primary_descriptions = _primary_descriptions_by_sku(description_codes)
+    return _enrich_bom(rows[0], components, primary_descriptions)
 
 
 def update_bom(
