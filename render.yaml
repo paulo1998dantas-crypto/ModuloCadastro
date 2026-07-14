@@ -18,9 +18,5 @@ services:
         value: shared
       - key: CADASTRO_REQUIRE_PERSISTENCE
         value: "0"
-      - key: CADASTRO_ADMIN_USER
-        value: admin
-      - key: CADASTRO_ADMIN_PASSWORD
-        sync: false
       - key: CADASTRO_SESSION_SECRET
         sync: false

@@ -21,6 +21,7 @@ from werkzeug.security import check_password_hash
 import bridge_store
 import excel_bancos
 import supabase_store
+import supabase_suprimentos
 
 
 HOST = os.environ.get("HOST", "127.0.0.1")
@@ -203,7 +204,7 @@ def _auth_record() -> dict[str, str | bool]:
 
 
 def _auth_user() -> str:
-    return str(_auth_record().get("username") or "admin")
+    return str(_auth_record().get("username") or "")
 
 
 def _auth_configured() -> bool:
@@ -305,7 +306,7 @@ def _read_session(request: Request) -> str:
 def _is_public_path(path: str) -> bool:
     return (
         path in {"/login", "/healthz", "/favicon.ico"}
-        or (path.startswith("/admin/setup") and not _auth_configured())
+        or (path.startswith("/admin/setup") and not _shared_auth_enabled() and not _auth_configured())
         or path.startswith("/api/ponte/")
     )
 
@@ -506,7 +507,7 @@ async def login_page(request: Request, next: str = "/cadastro/bancos", erro: str
             "next_url": next or "/cadastro/bancos",
             "username": auth_status["username"],
             "auth_configured": auth_status["configured"],
-            "setup_available": not auth_status["configured"],
+            "setup_available": (not auth_status["configured"]) and (not _shared_auth_enabled()),
         },
     )
 
@@ -520,6 +521,8 @@ async def login_post(
 ):
     auth_is_configured = _auth_configured()
     if not auth_is_configured:
+        if _shared_auth_enabled():
+            return RedirectResponse(url=f"/login?erro={quote('Login compartilhado não configurado.')}", status_code=303)
         return RedirectResponse(url="/admin/setup", status_code=303)
     if not _verify_login(username, password):
         return RedirectResponse(url=f"/login?erro={quote('Usuário ou senha inválidos.')}", status_code=303)
@@ -544,6 +547,8 @@ async def logout():
 
 @app.get("/admin/setup", response_class=HTMLResponse)
 async def admin_setup_page(request: Request, erro: str = ""):
+    if _shared_auth_enabled():
+        return RedirectResponse(url="/cadastros", status_code=303)
     if _auth_configured():
         return RedirectResponse(url="/admin", status_code=303)
     return templates.TemplateResponse(
@@ -564,6 +569,8 @@ async def admin_setup_post(
     password: str = Form(...),
     password_confirm: str = Form(...),
 ):
+    if _shared_auth_enabled():
+        return RedirectResponse(url="/cadastros", status_code=303)
     if _auth_configured():
         return RedirectResponse(url="/admin", status_code=303)
     try:
@@ -580,6 +587,8 @@ async def admin_setup_post(
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_page(request: Request, sucesso: str = "", erro: str = ""):
+    if _shared_auth_enabled():
+        return RedirectResponse(url="/cadastros", status_code=303)
     return templates.TemplateResponse(
         request=request,
         name="admin.html",
@@ -601,6 +610,8 @@ async def admin_credentials_post(
     password: str = Form(...),
     password_confirm: str = Form(...),
 ):
+    if _shared_auth_enabled():
+        return RedirectResponse(url="/cadastros", status_code=303)
     try:
         _save_admin_credentials(username, password, password_confirm)
         response = RedirectResponse(
@@ -611,6 +622,167 @@ async def admin_credentials_post(
         return response
     except Exception as exc:
         return RedirectResponse(url=f"/admin?erro={quote(str(exc))}", status_code=303)
+
+
+@app.get("/suprimentos", response_class=HTMLResponse)
+async def suprimentos_page(request: Request, sucesso: str = "", erro: str = ""):
+    try:
+        pessoas = supabase_suprimentos.listar_pessoas()
+        processos = supabase_suprimentos.listar_processos()
+        regras = supabase_suprimentos.listar_regras()
+        relacoes = supabase_suprimentos.listar_relacoes()
+    except Exception as exc:
+        pessoas, processos, regras, relacoes = [], {}, [], {}
+        erro = erro or str(exc)
+    return templates.TemplateResponse(
+        request=request,
+        name="suprimentos.html",
+        context={
+            "request": request,
+            "pessoas": pessoas,
+            "processos": processos,
+            "regras": regras,
+            "relacoes": relacoes,
+            "sucesso": sucesso,
+            "erro": erro,
+            "active_page": "suprimentos",
+        },
+    )
+
+
+@app.post("/suprimentos/pessoas")
+async def suprimentos_pessoas_post(
+    nome_fantasia: str = Form(""),
+    razao_social: str = Form(""),
+    cnpj_cpf: str = Form(""),
+    email: str = Form(""),
+    telefone: str = Form(""),
+    cidade: str = Form(""),
+    uf: str = Form(""),
+    cliente: str = Form(""),
+    fornecedor: str = Form(""),
+    colaborador: str = Form(""),
+    transportadora: str = Form(""),
+):
+    try:
+        count = supabase_suprimentos.salvar_pessoas(
+            [
+                {
+                    "nome_fantasia": nome_fantasia,
+                    "razao_social": razao_social,
+                    "cnpj_cpf": cnpj_cpf,
+                    "email": email,
+                    "telefone": telefone,
+                    "cidade": cidade,
+                    "uf": uf,
+                    "cliente": bool(cliente),
+                    "fornecedor": bool(fornecedor),
+                    "colaborador": bool(colaborador),
+                    "transportadora": bool(transportadora),
+                }
+            ]
+        )
+        return RedirectResponse(url=f"/suprimentos?sucesso={quote(f'{count} pessoa(s) salva(s).')}", status_code=303)
+    except Exception as exc:
+        return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
+
+
+@app.post("/suprimentos/pessoas/upload")
+async def suprimentos_pessoas_upload(arquivo_pessoas: UploadFile = File(...)):
+    try:
+        count = supabase_suprimentos.importar_pessoas_xlsx(await arquivo_pessoas.read())
+        return RedirectResponse(url=f"/suprimentos?sucesso={quote(f'{count} pessoa(s) importada(s).')}", status_code=303)
+    except Exception as exc:
+        return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
+
+
+@app.post("/suprimentos/processos/upload")
+async def suprimentos_processos_upload(arquivo_processos: list[UploadFile] = File(...)):
+    try:
+        total = 0
+        for arquivo in arquivo_processos:
+            total += supabase_suprimentos.importar_processos_xlsx(
+                await arquivo.read(),
+                arquivo.filename or "",
+            )
+        return RedirectResponse(url=f"/suprimentos?sucesso={quote(f'{total} processo(s)/atividade(s) importado(s).')}", status_code=303)
+    except Exception as exc:
+        return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
+
+
+@app.post("/suprimentos/regras")
+async def suprimentos_regras_post(
+    gatilho: str = Form(...),
+    opcoes: str = Form(...),
+    quantidade: str = Form("1"),
+    quantidade_editavel: str = Form(""),
+):
+    try:
+        regras = supabase_suprimentos.listar_regras()
+        next_id = max([int("".join(ch for ch in regra["id"] if ch.isdigit()) or 0) for regra in regras] or [0]) + 1
+        regras.append(
+            {
+                "id": f"regra-{next_id}",
+                "gatilho": gatilho,
+                "opcoes": [parte.strip() for parte in opcoes.replace("\n", ";").split(";") if parte.strip()],
+                "quantidade": float((quantidade or "1").replace(",", ".")),
+                "quantidade_editavel": bool(quantidade_editavel),
+            }
+        )
+        count = supabase_suprimentos.salvar_regras(regras)
+        return RedirectResponse(url=f"/suprimentos?sucesso={quote(f'{count} regra(s) salva(s).')}", status_code=303)
+    except Exception as exc:
+        return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
+
+
+@app.post("/suprimentos/regras/upload")
+async def suprimentos_regras_upload(arquivo_regras: UploadFile = File(...)):
+    try:
+        count = supabase_suprimentos.importar_regras_xlsx(await arquivo_regras.read())
+        return RedirectResponse(url=f"/suprimentos?sucesso={quote(f'{count} regra(s) persistida(s).')}", status_code=303)
+    except Exception as exc:
+        return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
+
+
+@app.post("/suprimentos/regras/excluir")
+async def suprimentos_regras_excluir(rule_id: str = Form(...)):
+    try:
+        regras = [regra for regra in supabase_suprimentos.listar_regras() if regra["id"] != rule_id]
+        supabase_suprimentos.salvar_regras(regras)
+        return RedirectResponse(url=f"/suprimentos?sucesso={quote('Regra excluída.')}", status_code=303)
+    except Exception as exc:
+        return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
+
+
+@app.post("/suprimentos/relacoes")
+async def suprimentos_relacoes_post(item_codigo: str = Form(...), processos: str = Form(...)):
+    try:
+        relacoes = supabase_suprimentos.listar_relacoes()
+        relacoes[item_codigo] = [parte.strip() for parte in processos.replace("\n", ";").split(";") if parte.strip()]
+        count = supabase_suprimentos.salvar_relacoes(relacoes)
+        return RedirectResponse(url=f"/suprimentos?sucesso={quote(f'{count} relação(ões) salva(s).')}", status_code=303)
+    except Exception as exc:
+        return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
+
+
+@app.post("/suprimentos/relacoes/upload")
+async def suprimentos_relacoes_upload(arquivo_relacoes: UploadFile = File(...)):
+    try:
+        count = supabase_suprimentos.importar_relacoes_xlsx(await arquivo_relacoes.read())
+        return RedirectResponse(url=f"/suprimentos?sucesso={quote(f'{count} relação(ões) persistida(s).')}", status_code=303)
+    except Exception as exc:
+        return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
+
+
+@app.post("/suprimentos/relacoes/excluir")
+async def suprimentos_relacoes_excluir(item_codigo: str = Form(...)):
+    try:
+        relacoes = supabase_suprimentos.listar_relacoes()
+        relacoes.pop(item_codigo, None)
+        supabase_suprimentos.salvar_relacoes(relacoes)
+        return RedirectResponse(url=f"/suprimentos?sucesso={quote('Relação excluída.')}", status_code=303)
+    except Exception as exc:
+        return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
 
 
 @app.head("/")

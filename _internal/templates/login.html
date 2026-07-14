@@ -28,7 +28,7 @@
 
             {% if not auth_configured %}
             <div class="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-800">
-                Configure CADASTRO_ADMIN_PASSWORD ou CADASTRO_BRIDGE_TOKEN no Render para habilitar login.
+                Configure SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY e CADASTRO_AUTH_MODE=shared no Render para usar o login centralizado.
                 {% if setup_available %}
                 <a href="/admin/setup" class="mt-2 block text-blue-700 underline">Criar acesso admin pelo app</a>
                 {% endif %}

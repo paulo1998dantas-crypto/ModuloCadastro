@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Suprimentos - Modulo de Cadastro</title>
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-950">
+    <header class="bg-slate-950 text-white">
+        <div class="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-6">
+            <div>
+                <p class="text-xs font-black uppercase tracking-wide text-amber-300">Modulo de Cadastro</p>
+                <h1 class="text-2xl font-black">Cadastros de Suprimentos</h1>
+            </div>
+            <nav class="flex flex-wrap gap-2">
+                <a href="/cadastros" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Cadastros</a>
+                <a href="/bom" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">B.O.M.</a>
+                <a href="/suprimentos" class="rounded-lg bg-white px-4 py-2 text-sm font-bold text-slate-950">Suprimentos</a>
+                <a href="/opcoes" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Opcoes</a>
+                <a href="/logout" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Sair</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="mx-auto max-w-7xl space-y-6 px-6 py-6">
+        {% if erro %}
+        <div class="border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-700">{{ erro }}</div>
+        {% endif %}
+        {% if sucesso %}
+        <div class="border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">{{ sucesso }}</div>
+        {% endif %}
+
+        <section class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 class="text-lg font-black">Cadastro Geral de Pessoa</h2>
+                <form method="post" action="/suprimentos/pessoas" class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <label class="text-xs font-black uppercase text-slate-500">Nome Fantasia
+                        <input name="nome_fantasia" required class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
+                    </label>
+                    <label class="text-xs font-black uppercase text-slate-500">Razao Social
+                        <input name="razao_social" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
+                    </label>
+                    <label class="text-xs font-black uppercase text-slate-500">CNPJ/CPF
+                        <input name="cnpj_cpf" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
+                    </label>
+                    <label class="text-xs font-black uppercase text-slate-500">Email
+                        <input name="email" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
+                    </label>
+                    <label class="text-xs font-black uppercase text-slate-500">Telefone
+                        <input name="telefone" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
+                    </label>
+                    <label class="text-xs font-black uppercase text-slate-500">Cidade
+                        <input name="cidade" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
+                    </label>
+                    <label class="text-xs font-black uppercase text-slate-500">UF
+                        <input name="uf" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
+                    </label>
+                    <div class="flex flex-wrap gap-4 pt-6 text-sm font-bold">
+                        <label><input type="checkbox" name="cliente" value="1"> Cliente</label>
+                        <label><input type="checkbox" name="fornecedor" value="1"> Fornecedor</label>
+                        <label><input type="checkbox" name="colaborador" value="1"> Colaborador</label>
+                        <label><input type="checkbox" name="transportadora" value="1"> Transportadora</label>
+                    </div>
+                    <div class="md:col-span-2">
+                        <button class="h-10 bg-blue-700 px-5 text-sm font-black text-white hover:bg-blue-600">Salvar Pessoa</button>
+                    </div>
+                </form>
+                <form method="post" action="/suprimentos/pessoas/upload" enctype="multipart/form-data" class="mt-5 border-t border-slate-200 pt-4">
+                    <label class="block text-xs font-black uppercase text-slate-500">Importar planilha de pessoas
+                        <input type="file" name="arquivo_pessoas" accept=".xlsx,.xlsm" required class="mt-2 w-full border border-slate-300 p-2 text-sm">
+                    </label>
+                    <button class="mt-3 h-10 bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800">Importar Pessoas</button>
+                </form>
+            </div>
+
+            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 class="text-lg font-black">Processos Padrao</h2>
+                <form method="post" action="/suprimentos/processos/upload" enctype="multipart/form-data" class="mt-4">
+                    <label class="block text-xs font-black uppercase text-slate-500">Importar processos XLSX
+                        <input type="file" name="arquivo_processos" accept=".xlsx,.xlsm" multiple required class="mt-2 w-full border border-slate-300 p-2 text-sm">
+                    </label>
+                    <button class="mt-3 h-10 bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800">Importar Processos</button>
+                </form>
+                <div class="mt-4 max-h-72 overflow-auto border border-slate-200">
+                    <table class="w-full border-collapse text-left text-xs">
+                        <thead class="bg-slate-50 text-slate-500">
+                            <tr><th class="border p-2">Conjunto</th><th class="border p-2">Processo</th><th class="border p-2">Atividades</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for conjunto, por_processo in processos.items() %}
+                                {% for processo, linhas in por_processo.items() %}
+                                <tr><td class="border p-2">{{ conjunto }}</td><td class="border p-2">{{ processo }}</td><td class="border p-2">{{ linhas|length }}</td></tr>
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 class="text-lg font-black">Parametros de Item Relacionado</h2>
+                <form method="post" action="/suprimentos/regras" class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <input name="gatilho" placeholder="Item gatilho" required class="h-10 border border-slate-300 px-3 text-sm">
+                    <input name="opcoes" placeholder="Opcoes separadas por ;" required class="h-10 border border-slate-300 px-3 text-sm">
+                    <input name="quantidade" type="number" step="0.01" value="1" class="h-10 border border-slate-300 px-3 text-sm">
+                    <label class="flex items-center gap-2 text-sm font-bold"><input name="quantidade_editavel" value="1" type="checkbox"> Quantidade editavel</label>
+                    <button class="h-10 bg-blue-700 px-5 text-sm font-black text-white hover:bg-blue-600">Salvar Regra</button>
+                </form>
+                <form method="post" action="/suprimentos/regras/upload" enctype="multipart/form-data" class="mt-4 border-t border-slate-200 pt-4">
+                    <input type="file" name="arquivo_regras" accept=".xlsx,.xlsm" required class="w-full border border-slate-300 p-2 text-sm">
+                    <button class="mt-3 h-10 bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800">Importar Regras</button>
+                </form>
+                <div class="mt-4 max-h-72 overflow-auto border border-slate-200">
+                    <table class="w-full border-collapse text-left text-xs">
+                        <thead class="bg-slate-50 text-slate-500"><tr><th class="border p-2">ID</th><th class="border p-2">Gatilho</th><th class="border p-2">Opcoes</th><th class="border p-2"></th></tr></thead>
+                        <tbody>
+                            {% for regra in regras %}
+                            <tr>
+                                <td class="border p-2">{{ regra.id }}</td>
+                                <td class="border p-2">{{ regra.gatilho }}</td>
+                                <td class="border p-2">{{ regra.opcoes|join('; ') }}</td>
+                                <td class="border p-2">
+                                    <form method="post" action="/suprimentos/regras/excluir" onsubmit="return confirm('Excluir regra?')">
+                                        <input type="hidden" name="rule_id" value="{{ regra.id }}">
+                                        <button class="text-rose-700 font-black">Excluir</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 class="text-lg font-black">Relacao Processo x Item</h2>
+                <form method="post" action="/suprimentos/relacoes" class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <input name="item_codigo" placeholder="Codigo do item" required class="h-10 border border-slate-300 px-3 text-sm">
+                    <input name="processos" placeholder="Processos separados por ;" required class="h-10 border border-slate-300 px-3 text-sm">
+                    <button class="h-10 bg-blue-700 px-5 text-sm font-black text-white hover:bg-blue-600">Salvar Relacao</button>
+                </form>
+                <form method="post" action="/suprimentos/relacoes/upload" enctype="multipart/form-data" class="mt-4 border-t border-slate-200 pt-4">
+                    <input type="file" name="arquivo_relacoes" accept=".xlsx,.xlsm" required class="w-full border border-slate-300 p-2 text-sm">
+                    <button class="mt-3 h-10 bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800">Importar Relacoes</button>
+                </form>
+                <div class="mt-4 max-h-72 overflow-auto border border-slate-200">
+                    <table class="w-full border-collapse text-left text-xs">
+                        <thead class="bg-slate-50 text-slate-500"><tr><th class="border p-2">Item</th><th class="border p-2">Processos</th><th class="border p-2"></th></tr></thead>
+                        <tbody>
+                            {% for codigo, processos_item in relacoes.items() %}
+                            <tr>
+                                <td class="border p-2">{{ codigo }}</td>
+                                <td class="border p-2">{{ processos_item|join('; ') }}</td>
+                                <td class="border p-2">
+                                    <form method="post" action="/suprimentos/relacoes/excluir" onsubmit="return confirm('Excluir relacao?')">
+                                        <input type="hidden" name="item_codigo" value="{{ codigo }}">
+                                        <button class="text-rose-700 font-black">Excluir</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 class="text-lg font-black">Pessoas cadastradas</h2>
+            <div class="mt-4 max-h-96 overflow-auto border border-slate-200">
+                <table class="w-full border-collapse text-left text-xs">
+                    <thead class="bg-slate-50 text-slate-500">
+                        <tr><th class="border p-2">Nome</th><th class="border p-2">Razao Social</th><th class="border p-2">CNPJ/CPF</th><th class="border p-2">Tipos</th><th class="border p-2">Cidade/UF</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for pessoa in pessoas %}
+                        <tr>
+                            <td class="border p-2 font-bold">{{ pessoa.nome_fantasia }}</td>
+                            <td class="border p-2">{{ pessoa.razao_social }}</td>
+                            <td class="border p-2">{{ pessoa.cnpj_cpf }}</td>
+                            <td class="border p-2">
+                                {% if pessoa.cliente %}Cliente {% endif %}
+                                {% if pessoa.fornecedor %}Fornecedor {% endif %}
+                                {% if pessoa.colaborador %}Colaborador {% endif %}
+                                {% if pessoa.transportadora %}Transportadora{% endif %}
+                            </td>
+                            <td class="border p-2">{{ pessoa.cidade }} {{ pessoa.uf }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
