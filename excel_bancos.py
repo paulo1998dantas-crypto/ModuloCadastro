@@ -5,6 +5,9 @@ import shutil
 import sys
 import tempfile
 import unicodedata
+import urllib.error
+import urllib.parse
+import urllib.request
 import zipfile
 import xml.etree.ElementTree as ET
 import uuid
@@ -39,6 +42,9 @@ ORDINAL_FEMININE = "\ufff1"
 DESCRIPTION_PRIMARY_HEADER = "DESCRICAO PRIMARIA"
 DESCRIPTION_SECONDARY_HEADER = "DESCRICAO SECUNDARIA"
 DESCRIPTION_SUFFIX_HEADER = "SUFIXO"
+CATALOG_TABLE = "cadastro_catalogo"
+CATALOG_KEY = "default"
+REMOTE_CATALOG_MTIME = -1.0
 _CATALOG_CACHE: dict[str, Any] | None = None
 _CATALOG_CACHE_MTIME: float | None = None
 _REGISTRATION_CACHE: dict[tuple[str, str, int], dict[str, Any]] = {}
@@ -636,8 +642,90 @@ PN_GROUP_DEFAULT_LABELS = {
     "20": "PRODUTO PROCESSO",
     "30": "CONJUNTO / KIT",
     "40": "TRANSFORMACAO",
+    "50": "MRO (MANUTENCAO, REPARO E OPERACOES)",
+    "60": "EMBALAGEM",
+    "70": "ATIVO FIXO",
     "80": "VEICULO",
+    "90": "PROTOTIPO",
 }
+
+
+def _catalog_supabase_url() -> str:
+    raw = clean_text(os.environ.get("SUPABASE_URL")) or clean_text(os.environ.get("CADASTRO_SUPABASE_URL"))
+    return raw.rstrip("/")
+
+
+def _catalog_service_key() -> str:
+    return clean_text(os.environ.get("SUPABASE_SERVICE_ROLE_KEY")) or clean_text(
+        os.environ.get("CADASTRO_SUPABASE_SERVICE_ROLE_KEY")
+    )
+
+
+def _catalog_supabase_enabled() -> bool:
+    mode = clean_text(os.environ.get("CADASTRO_SAVE_MODE")).lower()
+    return mode in {"supabase", "postgres", "database", "banco"} and bool(
+        _catalog_supabase_url() and _catalog_service_key()
+    )
+
+
+def _catalog_supabase_headers(prefer: str = "") -> dict[str, str]:
+    key = _catalog_service_key()
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+    }
+    if prefer:
+        headers["Prefer"] = prefer
+    return headers
+
+
+def _catalog_supabase_request(method: str, query: list[tuple[str, str]] | None = None, payload: Any = None, prefer: str = "") -> Any:
+    query_string = urllib.parse.urlencode(query or [])
+    url = f"{_catalog_supabase_url()}/rest/v1/{CATALOG_TABLE}"
+    if query_string:
+        url = f"{url}?{query_string}"
+    data = json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else None
+    request = urllib.request.Request(url, data=data, headers=_catalog_supabase_headers(prefer), method=method)
+    with urllib.request.urlopen(request, timeout=30) as response:
+        body = response.read().decode("utf-8")
+        return json.loads(body) if body else None
+
+
+def _load_supabase_catalog() -> tuple[bool, dict[str, Any] | None]:
+    if not _catalog_supabase_enabled():
+        return False, None
+    try:
+        rows = _catalog_supabase_request(
+            "GET",
+            [
+                ("select", "payload"),
+                ("config_key", f"eq.{CATALOG_KEY}"),
+                ("limit", "1"),
+            ],
+        ) or []
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError):
+        return False, None
+    if not rows:
+        return True, None
+    payload = rows[0].get("payload")
+    return True, payload if isinstance(payload, dict) else None
+
+
+def _save_supabase_catalog(catalog: dict[str, Any]) -> None:
+    if not _catalog_supabase_enabled():
+        return
+    try:
+        _catalog_supabase_request(
+            "POST",
+            payload=[{"config_key": CATALOG_KEY, "payload": catalog}],
+            prefer="resolution=merge-duplicates,return=minimal",
+        )
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Erro ao salvar catalogo no Supabase: {body}") from exc
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        raise RuntimeError(f"Nao foi possivel salvar catalogo no Supabase: {exc}") from exc
 
 
 def _pn_group_code(value: Any) -> str:
@@ -667,6 +755,8 @@ def _default_pn_groups() -> list[dict[str, Any]]:
     by_code: dict[str, list[str]] = {}
     for prefix, code in PN_GROUP_BY_PREFIX.items():
         by_code.setdefault(code, []).append(prefix)
+    for code in PN_GROUP_DEFAULT_LABELS:
+        by_code.setdefault(code, [])
     return [
         {
             "code": code,
@@ -872,6 +962,23 @@ def _sanitize_catalog(catalog: dict[str, Any]) -> dict[str, Any]:
 
 def load_catalog() -> dict[str, Any]:
     global _CATALOG_CACHE, _CATALOG_CACHE_MTIME
+    if _CATALOG_CACHE is not None and _CATALOG_CACHE_MTIME == REMOTE_CATALOG_MTIME:
+        return deepcopy(_CATALOG_CACHE)
+
+    remote_available, remote_catalog = _load_supabase_catalog()
+    if remote_available:
+        if remote_catalog is not None:
+            catalog = _sanitize_catalog(remote_catalog)
+        else:
+            _ensure_seed_file(DATA_PATH, "cadastro_dados.json")
+            raw_catalog = _read_json(DATA_PATH) if DATA_PATH.exists() else _default_catalog()
+            catalog = _sanitize_catalog(raw_catalog)
+            _save_supabase_catalog(catalog)
+        _write_json(DATA_PATH, catalog)
+        _CATALOG_CACHE = catalog
+        _CATALOG_CACHE_MTIME = REMOTE_CATALOG_MTIME
+        return deepcopy(catalog)
+
     _ensure_seed_file(DATA_PATH, "cadastro_dados.json")
     if not DATA_PATH.exists():
         catalog = _default_catalog()
@@ -896,9 +1003,10 @@ def load_catalog() -> dict[str, Any]:
 def save_catalog(catalog: dict[str, Any]) -> None:
     global _CATALOG_CACHE, _CATALOG_CACHE_MTIME
     sanitized = _sanitize_catalog(catalog)
+    _save_supabase_catalog(sanitized)
     _write_json(DATA_PATH, sanitized)
     _CATALOG_CACHE = sanitized
-    _CATALOG_CACHE_MTIME = DATA_PATH.stat().st_mtime
+    _CATALOG_CACHE_MTIME = REMOTE_CATALOG_MTIME if _catalog_supabase_enabled() else DATA_PATH.stat().st_mtime
 
 
 def list_categories() -> list[dict[str, Any]]:
