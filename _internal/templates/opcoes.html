@@ -88,6 +88,63 @@
             </div>
         </section>
 
+        <section class="mb-6 rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div class="border-b border-slate-200 p-5">
+                <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                    <div>
+                        <h2 class="text-sm font-black uppercase tracking-wide text-slate-700">Grupos de SKU</h2>
+                        <p class="mt-1 text-xs text-slate-500">O codigo final usa grupo + categoria + sequencial. Vincule aqui quais prefixos pertencem a cada grupo.</p>
+                    </div>
+                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase text-slate-600">{{ pn_groups|length }} grupos</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-6 p-5 xl:grid-cols-[0.8fr_1.2fr]">
+                <form method="post" action="/grupos/adicionar" class="grid grid-cols-1 gap-4 md:grid-cols-[120px_1fr]">
+                    <input type="hidden" name="category_key" value="{{ selected_category.key }}">
+                    <label class="space-y-1">
+                        <span class="block text-xs font-bold uppercase text-slate-500">Codigo</span>
+                        <input name="group_code" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: 50" required>
+                    </label>
+                    <label class="space-y-1">
+                        <span class="block text-xs font-bold uppercase text-slate-500">Nome do grupo</span>
+                        <input name="group_label" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: SERVICO" required>
+                    </label>
+                    <label class="space-y-1 md:col-span-2">
+                        <span class="block text-xs font-bold uppercase text-slate-500">Prefixos deste grupo</span>
+                        <textarea name="group_prefixes" rows="3" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: SERVICO, MAO DE OBRA, INSTALACAO"></textarea>
+                    </label>
+                    <div class="md:col-span-2">
+                        <button type="submit" class="rounded-lg bg-emerald-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-700">Criar grupo</button>
+                    </div>
+                </form>
+
+                <div class="space-y-3">
+                    {% for group in pn_groups %}
+                    <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <form method="post" action="/grupos/editar" class="grid grid-cols-1 gap-3 lg:grid-cols-[90px_1fr_1.5fr_auto] lg:items-end">
+                            <input type="hidden" name="category_key" value="{{ selected_category.key }}">
+                            <input type="hidden" name="group_code" value="{{ group.code }}">
+                            <label class="space-y-1">
+                                <span class="block text-xs font-bold uppercase text-slate-500">Codigo</span>
+                                <input value="{{ group.code }}" class="w-full rounded-lg border border-slate-200 bg-slate-100 p-2.5 text-sm font-bold text-slate-500" disabled>
+                            </label>
+                            <label class="space-y-1">
+                                <span class="block text-xs font-bold uppercase text-slate-500">Nome</span>
+                                <input name="group_label" value="{{ group.label }}" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" required>
+                            </label>
+                            <label class="space-y-1">
+                                <span class="block text-xs font-bold uppercase text-slate-500">Prefixos</span>
+                                <input name="group_prefixes" value="{{ group.prefixes_text }}" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                            </label>
+                            <button type="submit" class="rounded-lg bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700">Salvar</button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
         <section class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 class="mb-4 text-sm font-black uppercase tracking-wide text-slate-700">Criar campo em {{ selected_category.label }}</h2>

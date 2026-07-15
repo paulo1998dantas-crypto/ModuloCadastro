@@ -496,6 +496,7 @@ def _render_opcoes_page(request: Request, categoria: str = "", sucesso: str = ""
             "fields": excel_bancos.get_banco_fields(selected_category["key"]),
             "ordered_fields": excel_bancos.get_banco_fields_for_display(selected_category["key"]),
             "conditional_rules": excel_bancos.get_conditional_rules(selected_category["key"]),
+            "pn_groups": excel_bancos.list_pn_groups(),
             "workbook_path": _workbook_display_path(),
             "save_via_bridge": bridge_store.save_via_bridge(),
             "supabase_mode": _supabase_mode(),
@@ -1603,6 +1604,48 @@ async def categorias_excluir_post(category_key: str = Form(...)):
         active_category = excel_bancos.selected_category("")
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(active_category['key'])}&sucesso={quote(message)}",
+            status_code=303,
+        )
+    except Exception as exc:
+        return RedirectResponse(
+            url=f"/opcoes?categoria={quote(category_key)}&erro={quote(str(exc))}",
+            status_code=303,
+        )
+
+
+@app.post("/grupos/adicionar")
+async def grupos_adicionar_post(
+    category_key: str = Form(""),
+    group_code: str = Form(...),
+    group_label: str = Form(...),
+    group_prefixes: str = Form(""),
+):
+    try:
+        result = excel_bancos.add_pn_group(group_code, group_label, group_prefixes)
+        message = f"Grupo criado: {result['code']} - {result['label']}."
+        return RedirectResponse(
+            url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote(message)}",
+            status_code=303,
+        )
+    except Exception as exc:
+        return RedirectResponse(
+            url=f"/opcoes?categoria={quote(category_key)}&erro={quote(str(exc))}",
+            status_code=303,
+        )
+
+
+@app.post("/grupos/editar")
+async def grupos_editar_post(
+    category_key: str = Form(""),
+    group_code: str = Form(...),
+    group_label: str = Form(...),
+    group_prefixes: str = Form(""),
+):
+    try:
+        result = excel_bancos.update_pn_group(group_code, group_label, group_prefixes)
+        message = f"Grupo atualizado: {result['code']} - {result['label']}."
+        return RedirectResponse(
+            url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote(message)}",
             status_code=303,
         )
     except Exception as exc:

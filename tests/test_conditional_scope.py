@@ -206,6 +206,16 @@ class PnCodeTests(unittest.TestCase):
         self.assertEqual(excel_bancos.pn_code_prefix(piso, [self.prefix_field], {"prefixo": "PP"}), "2014")
         self.assertEqual(excel_bancos.pn_code_prefix(veiculo_pb, [self.prefix_field], {"prefixo": "JI CONFORT"}), "4034")
 
+    def test_pn_prefix_uses_configurable_group(self):
+        category = {"label": "12 - VIDROS", "sheet_name": "12 - VIDROS"}
+        catalog = {
+            "pn_groups": [
+                {"code": "50", "label": "SERVICO", "prefixes": ["SERVICO", "INSTALACAO"]},
+            ]
+        }
+        with patch.object(excel_bancos, "load_catalog", return_value=catalog):
+            self.assertEqual(excel_bancos.pn_code_prefix(category, [self.prefix_field], {"prefixo": "SERVICO"}), "5012")
+
     def test_next_sku_scans_only_same_group_category_prefix(self):
         workbook = Workbook()
         worksheet = workbook.active

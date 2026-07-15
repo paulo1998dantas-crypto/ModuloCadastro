@@ -555,11 +555,162 @@ def _default_category() -> dict[str, Any]:
     }
 
 
+PN_GROUP_BY_PREFIX = {
+    "ABS": "10",
+    "ACABAMENTO DIFUSOR": "10",
+    "ACABAMENTO LATERAL": "10",
+    "ACABAMENTO PLASTICO": "10",
+    "ACABAMENTO PONTEIRA": "10",
+    "ACABAMENTO TAMPA": "10",
+    "ACABAMENTO TELA": "10",
+    "ACESSORIO": "10",
+    "ALCA": "10",
+    "APOIO BRACO": "10",
+    "ARCO": "10",
+    "ARGOLA": "10",
+    "BCO": "10",
+    "BCO CARONA": "10",
+    "BCO CARONA ORIGINAL": "10",
+    "BCO MOTORISTA": "10",
+    "BCO MOTORISTA ORIGINAL": "10",
+    "BOBINA": "10",
+    "BOTOEIRA": "10",
+    "CALCO": "10",
+    "CANTONEIRA": "10",
+    "CAPA": "10",
+    "CHICOTE": "10",
+    "CINTO": "10",
+    "CM": "10",
+    "COLUNA": "10",
+    "CONTROLADOR": "10",
+    "CP": "10",
+    "CUPULA": "10",
+    "DECODER": "10",
+    "DIAMOND": "10",
+    "ELETRICA": "10",
+    "ESTROBO": "10",
+    "EXAUSTOR": "10",
+    "FAROL": "10",
+    "FATURAMENTO DIRETO": "10",
+    "FX": "10",
+    "ILUMINACAO": "10",
+    "INVERSOR": "10",
+    "JANELA": "10",
+    "LANTERNA": "10",
+    "LED": "10",
+    "LUMINARIA": "10",
+    "LUZ": "10",
+    "MINI": "10",
+    "MODULO": "10",
+    "MP": "10",
+    "PC": "10",
+    "PE": "10",
+    "PEGA MAO": "10",
+    "PORTA": "10",
+    "POSTICO": "10",
+    "QUEBRA": "10",
+    "REFORCO": "10",
+    "SIRENE": "10",
+    "SUPORTE": "10",
+    "TAMPA": "10",
+    "TOMADA": "10",
+    "VIDRO": "10",
+    "PP": "20",
+    "TETO": "20",
+    "CHAPA": "30",
+    "CJ": "30",
+    "JI CONFORT": "40",
+    "JI URBAN": "40",
+    "CITROEN": "80",
+    "FIAT": "80",
+    "FORD": "80",
+    "IVECO": "80",
+    "MERCEDES BENZ SPRINTER": "80",
+    "PEUGEOT": "80",
+    "RENAULT": "80",
+}
+
+PN_GROUP_DEFAULT_LABELS = {
+    "10": "INSUMO",
+    "20": "PRODUTO PROCESSO",
+    "30": "CONJUNTO / KIT",
+    "40": "TRANSFORMACAO",
+    "80": "VEICULO",
+}
+
+
+def _pn_group_code(value: Any) -> str:
+    match = re.search(r"\d+", clean_text(value))
+    if not match:
+        return ""
+    return f"{int(match.group(0)):02d}"
+
+
+def _pn_group_prefixes(value: Any) -> list[str]:
+    if isinstance(value, list):
+        raw_values = value
+    else:
+        raw_values = re.split(r"[,;\n]+", clean_text(value))
+    prefixes: list[str] = []
+    seen: set[str] = set()
+    for raw in raw_values:
+        prefix = normalize_label(raw)
+        if not prefix or prefix in seen:
+            continue
+        prefixes.append(prefix)
+        seen.add(prefix)
+    return prefixes
+
+
+def _default_pn_groups() -> list[dict[str, Any]]:
+    by_code: dict[str, list[str]] = {}
+    for prefix, code in PN_GROUP_BY_PREFIX.items():
+        by_code.setdefault(code, []).append(prefix)
+    return [
+        {
+            "code": code,
+            "label": PN_GROUP_DEFAULT_LABELS.get(code, f"GRUPO {code}"),
+            "prefixes": sorted(prefixes),
+        }
+        for code, prefixes in sorted(by_code.items())
+    ]
+
+
+def _sanitize_pn_groups(groups: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    source = groups if groups else _default_pn_groups()
+    cleaned: list[dict[str, Any]] = []
+    seen_codes: set[str] = set()
+    used_prefixes: set[str] = set()
+    for group in source:
+        code = _pn_group_code(group.get("code"))
+        label = clean_text(group.get("label")).upper()
+        if not code:
+            continue
+        if code in seen_codes:
+            continue
+        prefixes = []
+        for prefix in _pn_group_prefixes(group.get("prefixes") or []):
+            if prefix in used_prefixes:
+                continue
+            prefixes.append(prefix)
+            used_prefixes.add(prefix)
+        cleaned.append(
+            {
+                "code": code,
+                "label": label or PN_GROUP_DEFAULT_LABELS.get(code, f"GRUPO {code}"),
+                "prefixes": prefixes,
+            }
+        )
+        seen_codes.add(code)
+    return cleaned or _default_pn_groups()
+
+
 def _default_catalog() -> dict[str, Any]:
     return {
         "version": 2,
         "active_category": DEFAULT_CATEGORY_KEY,
         "categories": [_default_category()],
+        "pn_groups": _default_pn_groups(),
     }
 
 
@@ -714,6 +865,7 @@ def _sanitize_catalog(catalog: dict[str, Any]) -> dict[str, Any]:
         "version": 2,
         "active_category": active_category_value,
         "categories": categories,
+        "pn_groups": _sanitize_pn_groups(catalog.get("pn_groups") if isinstance(catalog, dict) else None),
     }
 
 
@@ -759,6 +911,64 @@ def list_categories() -> list[dict[str, Any]]:
             }
         )
     return categories
+
+
+def list_pn_groups() -> list[dict[str, Any]]:
+    groups = []
+    for group in load_catalog().get("pn_groups") or _default_pn_groups():
+        prefixes = list(group.get("prefixes") or [])
+        groups.append(
+            {
+                "code": group["code"],
+                "label": group["label"],
+                "prefixes": prefixes,
+                "prefixes_text": ", ".join(prefixes),
+                "prefix_count": len(prefixes),
+            }
+        )
+    return groups
+
+
+def _find_pn_group(catalog: dict[str, Any], code_value: str) -> dict[str, Any]:
+    code = _pn_group_code(code_value)
+    for group in catalog.get("pn_groups") or []:
+        if group.get("code") == code:
+            return group
+    raise ValueError("Grupo nao encontrado.")
+
+
+def add_pn_group(code: str, label: str, prefixes: str = "") -> dict[str, Any]:
+    catalog = load_catalog()
+    group_code = _pn_group_code(code)
+    group_label = clean_text(label).upper()
+    if not group_code:
+        raise ValueError("Informe o codigo numerico do grupo.")
+    if not group_label:
+        raise ValueError("Informe o nome do grupo.")
+    groups = catalog.setdefault("pn_groups", _default_pn_groups())
+    if any(group.get("code") == group_code for group in groups):
+        raise ValueError("Esse codigo de grupo ja existe.")
+    group = {
+        "code": group_code,
+        "label": group_label,
+        "prefixes": _pn_group_prefixes(prefixes),
+    }
+    groups.append(group)
+    groups.sort(key=lambda item: item.get("code", ""))
+    save_catalog(catalog)
+    return group
+
+
+def update_pn_group(code: str, label: str, prefixes: str = "") -> dict[str, Any]:
+    catalog = load_catalog()
+    group = _find_pn_group(catalog, code)
+    group_label = clean_text(label).upper()
+    if not group_label:
+        raise ValueError("Informe o nome do grupo.")
+    group["label"] = group_label
+    group["prefixes"] = _pn_group_prefixes(prefixes)
+    save_catalog(catalog)
+    return group
 
 
 def _find_category(catalog: dict[str, Any], category_key_value: str) -> dict[str, Any]:
@@ -1659,83 +1869,6 @@ def _serialize_field_values(field: dict[str, Any], data: Any) -> list[str]:
         return _order_distancia_pe_values(ordered)
     return ordered
 
-
-PN_GROUP_BY_PREFIX = {
-    "ABS": "10",
-    "ACABAMENTO DIFUSOR": "10",
-    "ACABAMENTO LATERAL": "10",
-    "ACABAMENTO PLASTICO": "10",
-    "ACABAMENTO PONTEIRA": "10",
-    "ACABAMENTO TAMPA": "10",
-    "ACABAMENTO TELA": "10",
-    "ACESSORIO": "10",
-    "ALCA": "10",
-    "APOIO BRACO": "10",
-    "ARCO": "10",
-    "ARGOLA": "10",
-    "BCO": "10",
-    "BCO CARONA": "10",
-    "BCO CARONA ORIGINAL": "10",
-    "BCO MOTORISTA": "10",
-    "BCO MOTORISTA ORIGINAL": "10",
-    "BOBINA": "10",
-    "BOTOEIRA": "10",
-    "CALCO": "10",
-    "CANTONEIRA": "10",
-    "CAPA": "10",
-    "CHICOTE": "10",
-    "CINTO": "10",
-    "CM": "10",
-    "COLUNA": "10",
-    "CONTROLADOR": "10",
-    "CP": "10",
-    "CUPULA": "10",
-    "DECODER": "10",
-    "DIAMOND": "10",
-    "ELETRICA": "10",
-    "ESTROBO": "10",
-    "EXAUSTOR": "10",
-    "FAROL": "10",
-    "FATURAMENTO DIRETO": "10",
-    "FX": "10",
-    "ILUMINACAO": "10",
-    "INVERSOR": "10",
-    "JANELA": "10",
-    "LANTERNA": "10",
-    "LED": "10",
-    "LUMINARIA": "10",
-    "LUZ": "10",
-    "MINI": "10",
-    "MODULO": "10",
-    "MP": "10",
-    "PC": "10",
-    "PE": "10",
-    "PEGA MAO": "10",
-    "PORTA": "10",
-    "POSTICO": "10",
-    "QUEBRA": "10",
-    "REFORCO": "10",
-    "SIRENE": "10",
-    "SUPORTE": "10",
-    "TAMPA": "10",
-    "TOMADA": "10",
-    "VIDRO": "10",
-    "PP": "20",
-    "TETO": "20",
-    "CHAPA": "30",
-    "CJ": "30",
-    "JI CONFORT": "40",
-    "JI URBAN": "40",
-    "CITROEN": "80",
-    "FIAT": "80",
-    "FORD": "80",
-    "IVECO": "80",
-    "MERCEDES BENZ SPRINTER": "80",
-    "PEUGEOT": "80",
-    "RENAULT": "80",
-}
-
-
 def pn_category_code(category: dict[str, Any]) -> str:
     for value in (category.get("label"), category.get("sheet_name")):
         match = re.search(r"\d+", clean_text(value))
@@ -1755,6 +1888,19 @@ def _selected_group_code(fields: list[dict[str, Any]], data: Any) -> str:
     return ""
 
 
+def _pn_group_prefix_map() -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for group in load_catalog().get("pn_groups") or _default_pn_groups():
+        code = _pn_group_code(group.get("code"))
+        if not code:
+            continue
+        for prefix in group.get("prefixes") or []:
+            normalized = normalize_label(prefix)
+            if normalized:
+                mapping[normalized] = code
+    return mapping or dict(PN_GROUP_BY_PREFIX)
+
+
 def pn_group_code(fields: list[dict[str, Any]], data: Any) -> str:
     explicit_group = _selected_group_code(fields, data)
     if explicit_group:
@@ -1763,11 +1909,12 @@ def pn_group_code(fields: list[dict[str, Any]], data: Any) -> str:
     prefix_field = _find_field_by_normalized_label(fields, {"PREFIXO", "PRE FIXO", "PRÉ FIXO"})
     if prefix_field is None:
         return "10"
+    prefix_map = _pn_group_prefix_map()
     for value in _selected_option_labels(prefix_field, data):
         normalized = normalize_label(value)
-        if normalized in PN_GROUP_BY_PREFIX:
-            return PN_GROUP_BY_PREFIX[normalized]
-        for known_prefix, group_code in PN_GROUP_BY_PREFIX.items():
+        if normalized in prefix_map:
+            return prefix_map[normalized]
+        for known_prefix, group_code in prefix_map.items():
             if normalized.startswith(f"{known_prefix} ") or normalized.startswith(known_prefix):
                 return group_code
     return "10"
