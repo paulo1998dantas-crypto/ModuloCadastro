@@ -216,6 +216,18 @@ class PnCodeTests(unittest.TestCase):
         with patch.object(excel_bancos, "load_catalog", return_value=catalog):
             self.assertEqual(excel_bancos.pn_code_prefix(category, [self.prefix_field], {"prefixo": "SERVICO"}), "5012")
 
+    def test_selected_group_overrides_prefix_group(self):
+        category = {"label": "12 - VIDROS", "sheet_name": "12 - VIDROS"}
+
+        self.assertEqual(
+            excel_bancos.pn_code_prefix(
+                category,
+                [self.prefix_field],
+                {"grupo_codigo": "50", "prefixo": "CJ"},
+            ),
+            "5012",
+        )
+
     def test_next_sku_scans_only_same_group_category_prefix(self):
         workbook = Workbook()
         worksheet = workbook.active

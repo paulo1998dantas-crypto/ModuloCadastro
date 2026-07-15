@@ -58,6 +58,15 @@
                             {% endfor %}
                         </select>
                     </label>
+                    <label class="w-full max-w-xs space-y-1">
+                        <span class="block text-xs font-bold uppercase text-slate-500">Grupo</span>
+                        <select id="group-select" name="grupo_codigo" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500" required>
+                            <option value="" {% if not selected_group_code %}selected{% endif %}>Selecione...</option>
+                            {% for group in pn_groups %}
+                            <option value="{{ group.code }}" {% if group.code == selected_group_code %}selected{% endif %}>{{ group.code }} - {{ group.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
                     <label class="w-full max-w-[160px] space-y-1">
                         <span class="block text-xs font-bold uppercase text-slate-500">Unidade</span>
                         <input name="unidade" list="unit-options" value="{{ selected_unit or '' }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500" placeholder="pc" required>

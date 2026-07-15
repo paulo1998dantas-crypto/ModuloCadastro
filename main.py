@@ -466,6 +466,10 @@ def _render_cadastro_page(
             "workbook_path": _workbook_display_path(),
             "save_via_bridge": online_mode,
             "supabase_mode": supabase_mode,
+            "pn_groups": excel_bancos.list_pn_groups(),
+            "selected_group_code": excel_bancos._pn_group_code(
+                _form_first_value(form_data, excel_bancos.PN_GROUP_FORM_KEY)
+            ),
             "unit_options": supabase_store.unidade_options(),
             "selected_unit": supabase_store.normalize_unit(_form_first_value(form_data, "unidade")),
             "sucesso": sucesso,

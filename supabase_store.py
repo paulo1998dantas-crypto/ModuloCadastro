@@ -230,6 +230,9 @@ def _next_sku(category: dict[str, Any], fields: list[dict[str, Any]], form_data:
 
 def _field_groups(fields: list[dict[str, Any]], form_data: Any) -> dict[str, list[str]]:
     groups: dict[str, list[str]] = {}
+    group_code = excel_bancos._pn_group_code(form_data.get(excel_bancos.PN_GROUP_FORM_KEY) if hasattr(form_data, "get") else "")
+    if group_code:
+        groups[excel_bancos.PN_GROUP_FORM_KEY] = [group_code]
     for field in fields:
         values = excel_bancos._serialize_field_values(field, form_data)
         groups[field["key"]] = values

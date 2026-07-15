@@ -22,6 +22,7 @@ from openpyxl.worksheet.formula import ArrayFormula
 DEFAULT_NEW_WORKBOOK_NAME = "Cadastro Bancos.xlsx"
 DEFAULT_CATEGORY_KEY = "bancos"
 DEFAULT_CATEGORY_LABEL = "Bancos"
+PN_GROUP_FORM_KEY = "grupo_codigo"
 FIRST_DATA_ROW = 3
 REGISTRATION_SHEET_NAME = "_cadastro_app"
 DRAFT_SHEET_NAME = "_rascunhos_app"
@@ -1878,6 +1879,22 @@ def pn_category_code(category: dict[str, Any]) -> str:
 
 
 def _selected_group_code(fields: list[dict[str, Any]], data: Any) -> str:
+    if data is not None and hasattr(data, "get"):
+        explicit_code = _pn_group_code(data.get(PN_GROUP_FORM_KEY))
+        if explicit_code:
+            return explicit_code
+    if isinstance(data, dict):
+        values = data.get(PN_GROUP_FORM_KEY)
+        if isinstance(values, list):
+            for value in values:
+                explicit_code = _pn_group_code(value)
+                if explicit_code:
+                    return explicit_code
+        else:
+            explicit_code = _pn_group_code(values)
+            if explicit_code:
+                return explicit_code
+
     group_field = _find_field_by_normalized_label(fields, {"GRUPO"})
     if group_field is None:
         return ""
