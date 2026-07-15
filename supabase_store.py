@@ -499,10 +499,40 @@ def all_categories_key(value: str) -> bool:
     return clean_text(value).lower() in {ALL_CATEGORIES_KEY, "all", "todas", "todos", "*"}
 
 
+def _group_label_map() -> dict[str, str]:
+    return {group["code"]: group["label"] for group in excel_bancos.list_pn_groups()}
+
+
+def _row_group_code(row: dict[str, Any]) -> str:
+    form_values = row.get("form_values") if isinstance(row.get("form_values"), dict) else {}
+    value = form_values.get(excel_bancos.PN_GROUP_FORM_KEY)
+    if isinstance(value, list):
+        for item in value:
+            code = excel_bancos._pn_group_code(item)
+            if code:
+                return code
+    else:
+        code = excel_bancos._pn_group_code(value)
+        if code:
+            return code
+    sku = clean_text(row.get("sku"))
+    return sku[:2] if len(sku) >= 2 and sku[:2].isdigit() else ""
+
+
+def _enrich_registration_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    labels = _group_label_map()
+    for row in rows:
+        code = _row_group_code(row)
+        row["grupo_codigo"] = code
+        row["grupo_label"] = labels.get(code, "")
+    return rows
+
+
 def list_registrations(
     category_key: str = "",
     query: str = "",
     filters: dict[str, str] | None = None,
+    group_code: str = "",
     missing_unit: bool = False,
     include_inactive: bool = False,
     limit: int = 250,
@@ -524,6 +554,9 @@ def list_registrations(
     term = _search_text(query)
     if term:
         params.append(("search_text", f"ilike.*{term}*"))
+    selected_group = excel_bancos._pn_group_code(group_code)
+    if selected_group:
+        params.append(("sku", f"like.{selected_group}%"))
     if missing_unit:
         params.append(("unidade", "eq."))
     for key, value in (filters or {}).items():
@@ -533,11 +566,12 @@ def list_registrations(
     fallback_without_active = False
     if requested_limit <= 1000:
         try:
-            return _request(
+            rows = _request(
                 "GET",
                 REGISTRATIONS_TABLE,
                 [*params, ("limit", str(requested_limit)), ("offset", str(requested_offset))],
             ) or []
+            return _enrich_registration_rows(rows)
         except SupabaseStoreError as exc:
             if include_inactive or not _is_missing_column_error(exc, "ativo"):
                 raise
@@ -550,7 +584,7 @@ def list_registrations(
             ) or []
             for row in rows:
                 row.setdefault("ativo", True)
-            return rows
+            return _enrich_registration_rows(rows)
 
     rows: list[dict[str, Any]] = []
     page_size = 1000
@@ -577,7 +611,7 @@ def list_registrations(
         rows.extend(batch)
         if len(batch) < page_size:
             break
-    return rows
+    return _enrich_registration_rows(rows)
 
 
 def count_registrations_without_unit(category_key: str = "", include_inactive: bool = False) -> int:
@@ -1376,6 +1410,7 @@ def export_registrations(
     category_key: str,
     query: str = "",
     filters: dict[str, str] | None = None,
+    group_code: str = "",
     missing_unit: bool = False,
     include_inactive: bool = False,
 ) -> Path:
@@ -1386,6 +1421,7 @@ def export_registrations(
         ALL_CATEGORIES_KEY if all_categories else category["key"],
         query=query,
         filters=filters,
+        group_code=group_code,
         missing_unit=missing_unit,
         include_inactive=include_inactive,
         limit=10000,
@@ -1408,6 +1444,7 @@ def export_registrations(
         "CARACTERES PRIMARIO",
         "CARACTERES SECUNDARIO",
     ]
+    headers.insert(2, "GRUPO")
     if all_categories:
         headers.append("CAMPOS")
     else:
@@ -1418,6 +1455,7 @@ def export_registrations(
         row_values = [
             row.get("category_label"),
             row.get("sku"),
+            f"{row.get('grupo_codigo') or ''} - {row.get('grupo_label') or ''}".strip(" -"),
             row.get("descricao_primaria"),
             row.get("descricao_secundaria"),
             row.get("unidade"),
@@ -1437,7 +1475,7 @@ def export_registrations(
         cell.font = Font(bold=True)
         cell.fill = header_fill
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-    widths = {1: 24, 2: 14, 3: 48, 4: 72, 5: 14, 6: 16, 7: 18, 8: 18, 9: 22, 10: 72}
+    widths = {1: 24, 2: 14, 3: 22, 4: 48, 5: 72, 6: 14, 7: 16, 8: 18, 9: 18, 10: 22, 11: 72}
     for index in range(1, len(headers) + 1):
         ws.column_dimensions[ws.cell(1, index).column_letter].width = widths.get(index, 28)
     for row_cells in ws.iter_rows(min_row=2):

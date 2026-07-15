@@ -1022,6 +1022,7 @@ def _require_bridge_token(authorization: str = "") -> None:
 async def cadastros_page(
     request: Request,
     categoria: str = "",
+    grupo: str = "",
     q: str = "",
     sem_unidade: str = "",
     mostrar_inativos: str = "",
@@ -1049,6 +1050,7 @@ async def cadastros_page(
             selected_category["key"],
             query=q,
             filters=filters,
+            group_code=grupo,
             missing_unit=only_missing_unit,
             include_inactive=include_inactive,
             limit=1000,
@@ -1069,9 +1071,11 @@ async def cadastros_page(
         context={
             "request": request,
             "categories": excel_bancos.list_categories(),
+            "pn_groups": excel_bancos.list_pn_groups(),
             "selected_category": selected_category,
             "nav_category_key": nav_category["key"],
             "all_categories": all_categories,
+            "grupo": excel_bancos._pn_group_code(grupo),
             "fields": fields,
             "items": items,
             "q": q,
@@ -1094,6 +1098,7 @@ async def cadastros_page(
 async def cadastros_exportar(
     request: Request,
     categoria: str = "",
+    grupo: str = "",
     q: str = "",
     sem_unidade: str = "",
     mostrar_inativos: str = "",
@@ -1115,6 +1120,7 @@ async def cadastros_exportar(
         selected_category["key"],
         query=q,
         filters=filters,
+        group_code=grupo,
         missing_unit=excel_bancos.clean_text(sem_unidade) == "1",
         include_inactive=excel_bancos.clean_text(mostrar_inativos) == "1",
     )
