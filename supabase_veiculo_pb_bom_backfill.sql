@@ -1,5 +1,5 @@
--- Define como "Com B.O.M." somente os cadastros legados de VEICULO P.B.
--- Valores ja definidos explicitamente como true ou false sao preservados.
+-- Define como "Com B.O.M." todos os cadastros de VEICULO P.B.
+-- Nenhuma estrutura ou componente de B.O.M. e criado ou alterado.
 
 update public.cadastro_registros
 set form_values = jsonb_set(
@@ -9,7 +9,7 @@ set form_values = jsonb_set(
     true
 )
 where category_key = 'cat_34_veiculo_p_b'
-  and not (coalesce(form_values, '{}'::jsonb) ? 'possui_bom');
+  and coalesce(form_values ->> 'possui_bom', '') <> 'true';
 
 select
     count(*) as total_veiculo_pb,
