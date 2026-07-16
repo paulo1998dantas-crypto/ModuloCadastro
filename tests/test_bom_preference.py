@@ -27,6 +27,22 @@ class BomPreferenceTests(unittest.TestCase):
     def test_missing_stored_preference_is_undefined(self):
         self.assertIsNone(supabase_store._stored_bom_preference({"form_values": {}}))
 
+    def test_legacy_veiculo_pb_defaults_to_bom(self):
+        row = {
+            "category_key": "cat_34_veiculo_p_b",
+            "form_values": {},
+        }
+
+        self.assertTrue(supabase_store._stored_bom_preference(row))
+
+    def test_explicit_veiculo_pb_preference_is_preserved(self):
+        row = {
+            "category_key": "cat_34_veiculo_p_b",
+            "form_values": {"possui_bom": False},
+        }
+
+        self.assertFalse(supabase_store._stored_bom_preference(row))
+
 
 class SkuStructureMigrationTests(unittest.TestCase):
     def test_structure_change_compares_group_and_category(self):

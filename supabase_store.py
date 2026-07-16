@@ -581,6 +581,10 @@ def _row_group_code(row: dict[str, Any]) -> str:
 def _stored_bom_preference(row: dict[str, Any]) -> bool | None:
     form_values = row.get("form_values") if isinstance(row.get("form_values"), dict) else {}
     if excel_bancos.BOM_FORM_KEY not in form_values:
+        # Registros de Veiculo P.B. anteriores ao campo explicito sempre representam
+        # transformacoes que podem receber uma estrutura de produto.
+        if clean_text(row.get("category_key")) == "cat_34_veiculo_p_b":
+            return True
         return None
     value = form_values.get(excel_bancos.BOM_FORM_KEY)
     if isinstance(value, list):
