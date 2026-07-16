@@ -649,9 +649,19 @@ async def admin_credentials_post(
 
 
 @app.get("/suprimentos", response_class=HTMLResponse)
-async def suprimentos_page(request: Request, sucesso: str = "", erro: str = ""):
+async def suprimentos_page(
+    request: Request,
+    sucesso: str = "",
+    erro: str = "",
+    editar_pessoa: int = 0,
+):
+    pessoa_edicao = {}
     try:
         pessoas = supabase_suprimentos.listar_pessoas()
+        if editar_pessoa:
+            pessoa_edicao = supabase_suprimentos.obter_pessoa(editar_pessoa) or {}
+            if not pessoa_edicao:
+                erro = erro or "Pessoa nao encontrada para edicao."
         processos = supabase_suprimentos.listar_processos()
         regras = supabase_suprimentos.listar_regras()
         relacoes = supabase_suprimentos.listar_relacoes()
@@ -664,6 +674,7 @@ async def suprimentos_page(request: Request, sucesso: str = "", erro: str = ""):
         context={
             "request": request,
             "pessoas": pessoas,
+            "pessoa_edicao": pessoa_edicao,
             "processos": processos,
             "regras": regras,
             "relacoes": relacoes,
@@ -675,38 +686,30 @@ async def suprimentos_page(request: Request, sucesso: str = "", erro: str = ""):
 
 
 @app.post("/suprimentos/pessoas")
-async def suprimentos_pessoas_post(
-    nome_fantasia: str = Form(""),
-    razao_social: str = Form(""),
-    cnpj_cpf: str = Form(""),
-    email: str = Form(""),
-    telefone: str = Form(""),
-    cidade: str = Form(""),
-    uf: str = Form(""),
-    cliente: str = Form(""),
-    fornecedor: str = Form(""),
-    colaborador: str = Form(""),
-    transportadora: str = Form(""),
-):
+async def suprimentos_pessoas_post(request: Request):
     try:
-        count = supabase_suprimentos.salvar_pessoas(
-            [
-                {
-                    "nome_fantasia": nome_fantasia,
-                    "razao_social": razao_social,
-                    "cnpj_cpf": cnpj_cpf,
-                    "email": email,
-                    "telefone": telefone,
-                    "cidade": cidade,
-                    "uf": uf,
-                    "cliente": bool(cliente),
-                    "fornecedor": bool(fornecedor),
-                    "colaborador": bool(colaborador),
-                    "transportadora": bool(transportadora),
-                }
-            ]
+        form = await request.form()
+        campos = (
+            "data_registro", "nome_fantasia", "razao_social", "cnpj_cpf",
+            "codigo_identificador_unico", "rg", "ie", "identificador",
+            "logradouro", "logradouro_numero", "complemento", "bairro", "cidade",
+            "codigo_municipio", "pais", "codigo_pais", "cep", "uf", "codigo_uf",
+            "telefone", "whatsapp", "celular", "email", "site", "pessoa_grupo",
+            "vendedor_padrao", "categoria", "tabela_preco", "observacoes",
+            "limite_credito", "periodicidade_venda_compra_dias", "validation",
+            "valor_minimo_compra", "data_nascimento_fundacao",
         )
-        return RedirectResponse(url=f"/suprimentos?sucesso={quote(f'{count} pessoa(s) salva(s).')}", status_code=303)
+        pessoa = {campo: str(form.get(campo, "") or "").strip() for campo in campos}
+        for campo in ("pessoa_fisica", "cliente", "fornecedor", "colaborador", "transportadora"):
+            pessoa[campo] = bool(form.get(campo))
+        pessoa_id = int(str(form.get("pessoa_id", "0") or "0"))
+        if pessoa_id:
+            count = supabase_suprimentos.atualizar_pessoa(pessoa_id, pessoa)
+            mensagem = f"{count} pessoa(s) atualizada(s)."
+        else:
+            count = supabase_suprimentos.salvar_pessoas([pessoa])
+            mensagem = f"{count} pessoa(s) salva(s)."
+        return RedirectResponse(url=f"/suprimentos?sucesso={quote(mensagem)}", status_code=303)
     except Exception as exc:
         return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
 

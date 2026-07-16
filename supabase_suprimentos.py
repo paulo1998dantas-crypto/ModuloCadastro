@@ -101,15 +101,23 @@ def normalizar_pessoa(pessoa: dict[str, Any]) -> dict[str, Any]:
     row["transportadora"] = _bool(row.get("transportadora"))
     for key in ("limite_credito", "periodicidade_venda_compra_dias", "valor_minimo_compra"):
         row[key] = _numeric(row.get(key))
+    row["data_registro"] = _date_or_none(row.get("data_registro"))
     row["data_nascimento_fundacao"] = _date_or_none(row.get("data_nascimento_fundacao"))
     row["search_text"] = _search_text(
         row.get("nome_fantasia"),
         row.get("razao_social"),
         row.get("cnpj_cpf"),
+        row.get("logradouro"),
+        row.get("logradouro_numero"),
+        row.get("complemento"),
+        row.get("bairro"),
         row.get("email"),
         row.get("telefone"),
+        row.get("whatsapp"),
+        row.get("celular"),
         row.get("cidade"),
         row.get("uf"),
+        row.get("cep"),
         row.get("identificador"),
     )
     row.setdefault("payload", {})
@@ -130,8 +138,31 @@ def salvar_pessoas(pessoas: list[dict[str, Any]]) -> int:
     return len(rows)
 
 
-def listar_pessoas(limit: int = 80) -> list[dict[str, Any]]:
+def listar_pessoas(limit: int = 1000) -> list[dict[str, Any]]:
     return _all_rows(PESSOAS_TABLE, order="nome_fantasia.asc")[:limit]
+
+
+def obter_pessoa(pessoa_id: int) -> dict[str, Any] | None:
+    rows = _request(
+        "GET",
+        PESSOAS_TABLE,
+        query=[("select", "*"), ("id", f"eq.{int(pessoa_id)}"), ("limit", "1")],
+    ) or []
+    return rows[0] if rows else None
+
+
+def atualizar_pessoa(pessoa_id: int, pessoa: dict[str, Any]) -> int:
+    row = normalizar_pessoa(pessoa)
+    if not _key_from_pessoa(row):
+        return 0
+    _request(
+        "PATCH",
+        PESSOAS_TABLE,
+        query=[("id", f"eq.{int(pessoa_id)}")],
+        payload=row,
+        prefer="return=minimal",
+    )
+    return 1
 
 
 def listar_processos() -> dict[str, dict[str, list[dict[str, str]]]]:
