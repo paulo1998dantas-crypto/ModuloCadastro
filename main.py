@@ -63,6 +63,17 @@ def _resource_file(name: str) -> Path:
     return BASE_DIR / name
 
 
+XLSX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _xlsx_download(content: bytes, filename: str) -> Response:
+    return Response(
+        content=content,
+        media_type=XLSX_MEDIA_TYPE,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 def _login_required() -> bool:
     value = os.environ.get("CADASTRO_REQUIRE_LOGIN")
     if value is not None:
@@ -724,6 +735,11 @@ async def suprimentos_pessoas_upload(arquivo_pessoas: UploadFile = File(...)):
         return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
 
 
+@app.get("/suprimentos/pessoas/template")
+async def suprimentos_pessoas_template():
+    return _xlsx_download(supabase_suprimentos.template_pessoas_xlsx(), "template_pessoas.xlsx")
+
+
 @app.post("/suprimentos/processos/upload")
 async def suprimentos_processos_upload(arquivo_processos: list[UploadFile] = File(...)):
     try:
@@ -736,6 +752,11 @@ async def suprimentos_processos_upload(arquivo_processos: list[UploadFile] = Fil
         return RedirectResponse(url=f"/suprimentos?sucesso={quote(f'{total} processo(s)/atividade(s) importado(s).')}", status_code=303)
     except Exception as exc:
         return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
+
+
+@app.get("/suprimentos/processos/template")
+async def suprimentos_processos_template():
+    return _xlsx_download(supabase_suprimentos.template_processos_xlsx(), "template_processos.xlsx")
 
 
 @app.post("/suprimentos/regras")
@@ -772,6 +793,14 @@ async def suprimentos_regras_upload(arquivo_regras: UploadFile = File(...)):
         return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
 
 
+@app.get("/suprimentos/regras/template")
+async def suprimentos_regras_template():
+    return _xlsx_download(
+        supabase_suprimentos.template_regras_xlsx(),
+        "template_parametros_item_relacionado.xlsx",
+    )
+
+
 @app.post("/suprimentos/regras/excluir")
 async def suprimentos_regras_excluir(rule_id: str = Form(...)):
     try:
@@ -800,6 +829,14 @@ async def suprimentos_relacoes_upload(arquivo_relacoes: UploadFile = File(...)):
         return RedirectResponse(url=f"/suprimentos?sucesso={quote(f'{count} relação(ões) persistida(s).')}", status_code=303)
     except Exception as exc:
         return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
+
+
+@app.get("/suprimentos/relacoes/template")
+async def suprimentos_relacoes_template():
+    return _xlsx_download(
+        supabase_suprimentos.template_relacoes_xlsx(),
+        "template_relacao_processo_item.xlsx",
+    )
 
 
 @app.post("/suprimentos/relacoes/excluir")
@@ -1189,6 +1226,11 @@ async def bom_upload(arquivo_bom: UploadFile = File(...)):
         return RedirectResponse(url=f"/bom?sucesso={quote(message)}", status_code=303)
     except Exception as exc:
         return RedirectResponse(url=f"/bom?erro={quote(str(exc))}", status_code=303)
+
+
+@app.get("/bom/template")
+async def bom_template():
+    return _xlsx_download(supabase_store.template_bom_xlsx(), "template_bom.xlsx")
 
 
 @app.post("/bom/copiar")

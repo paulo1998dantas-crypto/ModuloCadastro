@@ -178,7 +178,10 @@
                     <label class="block text-xs font-black uppercase text-slate-500">Importar planilha de pessoas
                         <input type="file" name="arquivo_pessoas" accept=".xlsx,.xlsm" required class="mt-2 w-full border border-slate-300 p-2 text-sm">
                     </label>
-                    <button class="mt-3 h-10 bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800">Importar Pessoas</button>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <button class="h-10 bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800">Importar Pessoas</button>
+                        <a href="/suprimentos/pessoas/template" class="flex h-10 items-center border border-slate-300 bg-white px-5 text-sm font-black text-slate-700 hover:bg-slate-50">Baixar template</a>
+                    </div>
                 </form>
             </div>
 
@@ -188,7 +191,10 @@
                     <label class="block text-xs font-black uppercase text-slate-500">Importar processos XLSX
                         <input type="file" name="arquivo_processos" accept=".xlsx,.xlsm" multiple required class="mt-2 w-full border border-slate-300 p-2 text-sm">
                     </label>
-                    <button class="mt-3 h-10 bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800">Importar Processos</button>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <button class="h-10 bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800">Importar Processos</button>
+                        <a href="/suprimentos/processos/template" class="flex h-10 items-center border border-slate-300 bg-white px-5 text-sm font-black text-slate-700 hover:bg-slate-50">Baixar template</a>
+                    </div>
                 </form>
                 <div class="mt-4 max-h-72 overflow-auto border border-slate-200">
                     <table class="w-full border-collapse text-left text-xs">
@@ -219,7 +225,10 @@
                 </form>
                 <form method="post" action="/suprimentos/regras/upload" enctype="multipart/form-data" class="mt-4 border-t border-slate-200 pt-4">
                     <input type="file" name="arquivo_regras" accept=".xlsx,.xlsm" required class="w-full border border-slate-300 p-2 text-sm">
-                    <button class="mt-3 h-10 bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800">Importar Regras</button>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <button class="h-10 bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800">Importar Regras</button>
+                        <a href="/suprimentos/regras/template" class="flex h-10 items-center border border-slate-300 bg-white px-5 text-sm font-black text-slate-700 hover:bg-slate-50">Baixar template</a>
+                    </div>
                 </form>
                 <div class="mt-4 max-h-72 overflow-auto border border-slate-200">
                     <table class="w-full border-collapse text-left text-xs">
@@ -252,7 +261,10 @@
                 </form>
                 <form method="post" action="/suprimentos/relacoes/upload" enctype="multipart/form-data" class="mt-4 border-t border-slate-200 pt-4">
                     <input type="file" name="arquivo_relacoes" accept=".xlsx,.xlsm" required class="w-full border border-slate-300 p-2 text-sm">
-                    <button class="mt-3 h-10 bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800">Importar Relacoes</button>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <button class="h-10 bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800">Importar Relacoes</button>
+                        <a href="/suprimentos/relacoes/template" class="flex h-10 items-center border border-slate-300 bg-white px-5 text-sm font-black text-slate-700 hover:bg-slate-50">Baixar template</a>
+                    </div>
                 </form>
                 <div class="mt-4 max-h-72 overflow-auto border border-slate-200">
                     <table class="w-full border-collapse text-left text-xs">

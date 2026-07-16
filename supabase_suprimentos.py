@@ -8,6 +8,7 @@ from typing import Any
 from openpyxl import load_workbook
 
 import supabase_store
+from xlsx_templates import build_import_template
 
 
 PESSOAS_TABLE = "suprimentos_pessoas"
@@ -439,3 +440,85 @@ def importar_relacoes_xlsx(content: bytes) -> int:
         processos = [clean_text(part) for part in re.split(r"[;\r\n]+", processos_text) if clean_text(part)]
         relacoes[codigo] = list(dict.fromkeys(processos))
     return salvar_relacoes(relacoes)
+
+
+def template_pessoas_xlsx() -> bytes:
+    descriptions = {
+        "data_registro": ("Data do cadastro no formato AAAA-MM-DD.", "2026-07-16"),
+        "pessoa_fisica": ("Use 1 para sim e 0 para nao.", "0"),
+        "nome_fantasia": ("Nome usado nas buscas e documentos.", "Empresa Exemplo"),
+        "razao_social": ("Razao social completa.", "Empresa Exemplo LTDA"),
+        "cnpj_cpf": ("CNPJ ou CPF, com ou sem pontuacao.", "12.345.678/0001-90"),
+        "logradouro": ("Rua, avenida ou rodovia.", "Rua das Flores"),
+        "logradouro_numero": ("Numero do endereco.", "123"),
+        "cidade": ("Municipio.", "Sao Paulo"),
+        "uf": ("Sigla da unidade federativa.", "SP"),
+        "cep": ("CEP, com ou sem pontuacao.", "01000-000"),
+        "cliente": ("Use 1 para sim e 0 para nao.", "1"),
+        "fornecedor": ("Use 1 para sim e 0 para nao.", "0"),
+        "colaborador": ("Use 1 para sim e 0 para nao.", "0"),
+        "transportadora": ("Use 1 para sim e 0 para nao.", "0"),
+        "identificador": ("Chave unica. Se vazio, o sistema usa CNPJ/CPF ou nome.", "PESSOA-001"),
+        "limite_credito": ("Valor numerico.", "1500,00"),
+        "periodicidade_venda_compra_dias": ("Quantidade de dias.", "30"),
+        "valor_minimo_compra": ("Valor numerico.", "100,00"),
+        "data_nascimento_fundacao": ("Data no formato AAAA-MM-DD.", "2000-01-31"),
+    }
+    fields = []
+    for header in PESSOA_FIELDS:
+        description, example = descriptions.get(header, ("Preencha quando aplicavel.", ""))
+        fields.append(
+            {
+                "header": header,
+                "required": False,
+                "description": description,
+                "example": example,
+                "width": 24,
+            }
+        )
+    return build_import_template(
+        "PESSOAS",
+        fields,
+        warning=(
+            "Preencha a partir da linha 2. Informe pelo menos nome_fantasia, razao_social, "
+            "cnpj_cpf ou identificador. Linhas vazias sao ignoradas."
+        ),
+    )
+
+
+def template_processos_xlsx() -> bytes:
+    return build_import_template(
+        "PROCESSOS",
+        [
+            {"header": "conjunto", "required": True, "description": "Grupo do roteiro de processo.", "example": "PADRAO", "width": 24},
+            {"header": "processo", "required": True, "description": "Nome do processo.", "example": "PREPARACAO", "width": 28},
+            {"header": "atividade", "required": True, "description": "Uma atividade por linha, na ordem de execucao.", "example": "Separar componentes", "width": 54},
+            {"header": "responsavel", "required": False, "description": "Setor ou funcao responsavel.", "example": "PCP", "width": 28},
+        ],
+        warning="Repita conjunto e processo em cada linha. A ordem das linhas define a sequencia das atividades.",
+    )
+
+
+def template_regras_xlsx() -> bytes:
+    return build_import_template(
+        "REGRAS_ITEM",
+        [
+            {"header": "id_regra", "required": False, "description": "Identificador unico. Se vazio, sera gerado automaticamente.", "example": "regra-1", "width": 20},
+            {"header": "item_gatilho", "required": True, "description": "SKU que abre a escolha de itens relacionados.", "example": "30180001", "width": 22},
+            {"header": "itens_opcoes", "required": True, "description": "SKUs disponiveis separados por ponto e virgula.", "example": "10180001;10180002", "width": 48},
+            {"header": "quantidade", "required": False, "description": "Quantidade padrao. Se vazio, assume 1.", "example": "1", "width": 18},
+            {"header": "quantidade_editavel", "required": False, "description": "Use 1 para permitir alteracao e 0 para bloquear.", "example": "1", "width": 24},
+        ],
+        warning="Use ponto e virgula para separar varios SKUs na coluna itens_opcoes.",
+    )
+
+
+def template_relacoes_xlsx() -> bytes:
+    return build_import_template(
+        "PROCESSO_ITEM",
+        [
+            {"header": "item_codigo", "required": True, "description": "SKU relacionado aos processos.", "example": "30180001", "width": 22},
+            {"header": "processos", "required": True, "description": "Processos separados por ponto e virgula.", "example": "PREPARACAO;MONTAGEM", "width": 54},
+        ],
+        warning="Use exatamente os mesmos nomes cadastrados na base de processos.",
+    )

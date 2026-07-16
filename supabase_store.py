@@ -16,6 +16,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
 import excel_bancos
+from xlsx_templates import build_import_template
 
 
 REGISTRATIONS_TABLE = "cadastro_registros"
@@ -1534,6 +1535,9 @@ def _parse_bom_workbook(content: bytes, filename: str = "") -> dict[str, dict[st
             review_parent_key = _review_parent_key(f"{filename}:{ws.title}")
             for row_index in range(header_row + 1, ws.max_row + 1):
                 raw_parent_sku = clean_text(ws.cell(row_index, header_map["item_codigo"]).value)
+                row_parent_description = clean_text(
+                    ws.cell(row_index, header_map.get("item_descricao", 0)).value
+                ) if header_map.get("item_descricao") else ""
                 raw_component_sku = clean_text(ws.cell(row_index, header_map["componente_codigo"]).value)
                 description = clean_text(ws.cell(row_index, header_map.get("descricao", 3)).value)
                 unit = clean_text(ws.cell(row_index, header_map.get("unidade", 4)).value) or "pc"
@@ -1558,7 +1562,8 @@ def _parse_bom_workbook(content: bytes, filename: str = "") -> dict[str, dict[st
                     parent_sku,
                     {
                         "parent_description": (
-                            parent_hint
+                            row_parent_description
+                            or parent_hint
                             or (description if parent_missing else "")
                             or _bom_parent_description_from_filename(filename)
                             or parent_sku
@@ -1579,6 +1584,24 @@ def _parse_bom_workbook(content: bytes, filename: str = "") -> dict[str, dict[st
     finally:
         wb.close()
     return parents
+
+
+def template_bom_xlsx() -> bytes:
+    return build_import_template(
+        "BOM",
+        [
+            {"header": "item_codigo", "required": True, "description": "SKU do item pai. Repita em todas as linhas da estrutura.", "example": "30180001", "width": 18},
+            {"header": "item_descricao", "required": False, "description": "Descricao primaria do item pai.", "example": "CJ EXEMPLO", "width": 54},
+            {"header": "componente_codigo", "required": True, "description": "SKU do componente.", "example": "10180001", "width": 22},
+            {"header": "descricao", "required": False, "description": "Descricao do componente. O cadastro do SKU tem prioridade.", "example": "COMPONENTE EXEMPLO", "width": 64},
+            {"header": "unidade", "required": False, "description": "Unidade de medida. O cadastro do SKU tem prioridade.", "example": "pc", "width": 16},
+            {"header": "quantidade", "required": True, "description": "Consumo numerico maior que zero.", "example": "1", "width": 18},
+        ],
+        warning=(
+            "ATENCAO: ao importar um item_codigo ja existente, a composicao atual desse item sera substituida. "
+            "Use uma linha por componente e repita o item pai."
+        ),
+    )
 
 
 def import_bom_workbook(content: bytes, filename: str = "") -> dict[str, Any]:
