@@ -379,6 +379,8 @@ def save_registration(form_data: Any) -> dict[str, Any]:
     sku = _next_sku(category, fields, form_data)
     unidade = normalize_unit(form_data.get("unidade"))
     ativo = status_to_active(form_data.get("ativo"), default=True)
+    possui_bom = excel_bancos.requires_component_bom(fields, form_data)
+    groups[excel_bancos.BOM_FORM_KEY] = possui_bom
     payload = {
         "category_key": category["key"],
         "category_label": category["label"],
@@ -415,6 +417,7 @@ def save_registration(form_data: Any) -> dict[str, Any]:
         "descricao_secundaria": descriptions["secundaria"],
         "unidade": unidade,
         "ativo": ativo,
+        "possui_bom": possui_bom,
         "sku": sku,
         "path": display_target(),
     }
@@ -519,12 +522,25 @@ def _row_group_code(row: dict[str, Any]) -> str:
     return sku[:2] if len(sku) >= 2 and sku[:2].isdigit() else ""
 
 
+def _stored_bom_preference(row: dict[str, Any]) -> bool | None:
+    form_values = row.get("form_values") if isinstance(row.get("form_values"), dict) else {}
+    if excel_bancos.BOM_FORM_KEY not in form_values:
+        return None
+    value = form_values.get(excel_bancos.BOM_FORM_KEY)
+    if isinstance(value, list):
+        value = value[0] if value else ""
+    if isinstance(value, bool):
+        return value
+    return status_to_active(value, default=False)
+
+
 def _enrich_registration_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     labels = _group_label_map()
     for row in rows:
         code = _row_group_code(row)
         row["grupo_codigo"] = code
         row["grupo_label"] = labels.get(code, "")
+        row["possui_bom"] = _stored_bom_preference(row)
     return rows
 
 
@@ -689,6 +705,10 @@ def editable_registration(registration_id: int | str) -> dict[str, Any]:
     if not record:
         raise SupabaseStoreError("Cadastro não encontrado.")
     category = _category(clean_text(record.get("category_key")))
+    possui_bom = _stored_bom_preference(record)
+    if possui_bom is None:
+        possui_bom = bool(_bom_header_by_parent(clean_text(record.get("sku"))))
+    record = {**record, "possui_bom": possui_bom}
     fields = excel_bancos.get_banco_fields(category["key"])
     groups = _groups_from_record(fields, record)
     return {"record": record, "category": category, "fields": fields, "groups": groups}
@@ -711,6 +731,8 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
     sku = clean_text(current.get("sku"))
     unidade = normalize_unit(form_data.get("unidade"))
     ativo = status_to_active(form_data.get("ativo"), default=False)
+    possui_bom = excel_bancos.requires_component_bom(fields, form_data)
+    groups[excel_bancos.BOM_FORM_KEY] = possui_bom
     payload = {
         "category_label": category["label"],
         "sheet": _sheet_name(category),

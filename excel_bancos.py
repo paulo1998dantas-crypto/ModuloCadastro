@@ -2569,13 +2569,17 @@ def _selected_option_labels(field: dict[str, Any], data: Any) -> list[str]:
     return [option_label(value) for value in _serialize_field_values(field, data)]
 
 
-def requires_component_bom(fields: list[dict[str, Any]], data: Any) -> bool:
-    prefix_field = _find_field_by_normalized_label(fields, {"PREFIXO", "PRE FIXO", "PRÉ FIXO"})
-    if prefix_field is None:
-        return False
+BOM_FORM_KEY = "possui_bom"
 
-    selected = [normalize_label(value).replace(" ", "") for value in _selected_option_labels(prefix_field, data)]
-    return any(value in {"CJ", "PP"} or value.startswith("CJ") or value.startswith("PP") for value in selected)
+
+def requires_component_bom(fields: list[dict[str, Any]], data: Any) -> bool:
+    del fields
+    value = data.get(BOM_FORM_KEY) if hasattr(data, "get") else None
+    if isinstance(value, list):
+        value = value[0] if value else ""
+    if isinstance(value, bool):
+        return value
+    return normalize_label(value) in {"1", "SIM", "TRUE", "COM BOM", "COM B.O.M."}
 
 
 def _form_getlist(data: Any, key: str) -> list[str]:

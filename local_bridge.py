@@ -77,7 +77,7 @@ def process_save_registration(job: dict) -> dict:
     needs_bom = excel_bancos.requires_component_bom(fields, form)
     components = excel_bancos.parse_component_lines(form) if needs_bom else []
     if needs_bom and not components:
-        raise ValueError("Inclua pelo menos um componente para conjunto ou produto em processo.")
+        raise ValueError("O item foi definido com B.O.M. Inclua pelo menos um componente.")
 
     result = excel_bancos.save_banco_registration(form)
     if needs_bom:

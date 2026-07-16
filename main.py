@@ -472,6 +472,7 @@ def _render_cadastro_page(
             ),
             "unit_options": supabase_store.unidade_options(),
             "selected_unit": supabase_store.normalize_unit(_form_first_value(form_data, "unidade")),
+            "selected_bom_option": _form_first_value(form_data, excel_bancos.BOM_FORM_KEY),
             "sucesso": sucesso,
             "erro": erro,
             "form_data": normalized_form,
@@ -854,7 +855,7 @@ async def cadastro_bancos_post(request: Request):
         components = excel_bancos.parse_component_lines(form_data) if needs_bom else []
         bom_item_code = excel_bancos.clean_text(form_data.get("bom_item_codigo"))
         if needs_bom and not components:
-            raise ValueError("Inclua pelo menos um componente para conjunto ou produto em processo.")
+            raise ValueError("O item foi definido com B.O.M. Inclua pelo menos um componente.")
 
         if _supabase_mode():
             result = supabase_store.save_registration(form_data)

@@ -76,6 +76,19 @@
                             {% endfor %}
                         </datalist>
                     </label>
+                    <fieldset class="w-full max-w-xs space-y-1">
+                        <legend class="block text-xs font-bold uppercase text-slate-500">Estrutura B.O.M.</legend>
+                        <div class="grid grid-cols-2 overflow-hidden rounded-lg border border-slate-300 bg-white">
+                            <label class="flex h-11 cursor-pointer items-center justify-center gap-2 border-r border-slate-300 px-3 text-sm font-black text-slate-700 has-[:checked]:bg-slate-900 has-[:checked]:text-white">
+                                <input type="radio" name="possui_bom" value="0" {% if selected_bom_option == '0' %}checked{% endif %} required class="h-4 w-4">
+                                Sem B.O.M.
+                            </label>
+                            <label class="flex h-11 cursor-pointer items-center justify-center gap-2 px-3 text-sm font-black text-slate-700 has-[:checked]:bg-amber-500 has-[:checked]:text-white">
+                                <input type="radio" name="possui_bom" value="1" {% if selected_bom_option == '1' %}checked{% endif %} required class="h-4 w-4">
+                                Com B.O.M.
+                            </label>
+                        </div>
+                    </fieldset>
                     <div class="flex flex-wrap gap-2">
                         <button id="save-draft-button" type="button" class="rounded-lg bg-amber-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-amber-600">
                             Salvar rascunho
@@ -208,9 +221,9 @@
             <section id="components-section" class="hidden rounded-lg border border-amber-200 bg-amber-50 p-5 shadow-sm">
                 <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
-                        <h2 class="text-sm font-black uppercase tracking-wide text-amber-800">Componentes do conjunto / produto em processo</h2>
+                        <h2 class="text-sm font-black uppercase tracking-wide text-amber-800">Componentes da B.O.M.</h2>
                         <p class="mt-1 text-sm font-semibold text-amber-700">
-                            ObrigatÃ³rio quando o prefixo for CJ ou PP. Digite cÃ³digo ou descriÃ§Ã£o, selecione o produto e informe a quantidade.
+                            Preencha quando o item for definido como Com B.O.M. O prefixo, o grupo e a categoria nao alteram esta escolha.
                         </p>
                     </div>
                     <label class="w-full max-w-xs space-y-1">
@@ -427,14 +440,12 @@
         const componentRows = document.getElementById("component-rows");
         const addComponentButton = document.getElementById("add-component-floating");
         const bomItemCode = document.getElementById("bom-item-code");
+        const bomModeInputs = Array.from(document.querySelectorAll('input[name="possui_bom"]'));
         const componentRowTemplate = componentRows ? componentRows.querySelector("[data-component-row]") : null;
 
         const requiresComponents = () => {
-            const prefixBlock = findBlock(["PRE FIXO", "PRÉ FIXO", "PREFIXO"], "primaria");
-            if (!prefixBlock) {
-                return false;
-            }
-            return getSelectedTokens(prefixBlock).some((token) => token === "CJ" || token === "PP" || token.startsWith("CJ") || token.startsWith("PP"));
+            const selected = bomModeInputs.find((input) => input.checked);
+            return Boolean(selected && selected.value === "1");
         };
 
         const componentInputs = () => {
@@ -945,6 +956,12 @@
             });
             block.querySelectorAll("input:not([type='hidden']), textarea").forEach((input) => {
                 input.addEventListener("change", updateConditionalFields);
+            });
+        });
+        bomModeInputs.forEach((input) => {
+            input.addEventListener("change", () => {
+                setComponentsEnabled(requiresComponents());
+                scheduleDraftSave();
             });
         });
 

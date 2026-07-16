@@ -126,6 +126,7 @@
                             <th class="min-w-[520px] border border-slate-300 px-2 py-2">Descricao Secundaria</th>
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Unidade</th>
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Status</th>
+                            <th class="whitespace-nowrap border border-slate-300 px-2 py-2">B.O.M.</th>
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Sufixo</th>
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Car. Prim.</th>
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Car. Sec.</th>
@@ -164,6 +165,15 @@
                                 <span class="inline-flex border border-emerald-500 bg-emerald-50 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-700">Ativo</span>
                                 {% endif %}
                             </td>
+                            <td class="whitespace-nowrap border border-slate-200 px-2 py-1">
+                                {% if item.possui_bom is sameas true %}
+                                <span class="inline-flex border border-emerald-400 bg-emerald-100 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-800">Sim</span>
+                                {% elif item.possui_bom is sameas false %}
+                                <span class="inline-flex border border-slate-300 bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase text-slate-700">Nao</span>
+                                {% else %}
+                                <span class="inline-flex border border-amber-400 bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase text-amber-800">Nao definido</span>
+                                {% endif %}
+                            </td>
                             <td class="border border-slate-200 px-2 py-1">{{ item.sufixo }}</td>
                             <td class="border border-slate-200 px-2 py-1 text-right font-mono">{{ item.caracteres_primario }}</td>
                             <td class="border border-slate-200 px-2 py-1 text-right font-mono">{{ item.caracteres_secundario }}</td>
@@ -174,7 +184,7 @@
                         {% endfor %}
                         {% if items|length == 0 %}
                         <tr>
-                            <td colspan="{{ 10 + fields|length + (1 if all_categories else 0) }}" class="border border-slate-200 p-8 text-center text-sm font-bold text-slate-500">
+                            <td colspan="{{ 11 + fields|length + (1 if all_categories else 0) }}" class="border border-slate-200 p-8 text-center text-sm font-bold text-slate-500">
                                 Nenhum cadastro encontrado.
                             </td>
                         </tr>
