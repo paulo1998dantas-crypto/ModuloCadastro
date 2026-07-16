@@ -1282,11 +1282,17 @@ async def bom_excluir(bom_id: int):
 
 
 @app.get("/cadastros/{registration_id}/editar", response_class=HTMLResponse)
-async def cadastro_editar_page(request: Request, registration_id: int, sucesso: str = "", erro: str = ""):
+async def cadastro_editar_page(
+    request: Request,
+    registration_id: int,
+    categoria: str = "",
+    sucesso: str = "",
+    erro: str = "",
+):
     if not _supabase_mode():
         return RedirectResponse(url="/cadastros", status_code=303)
     try:
-        editable = supabase_store.editable_registration(registration_id)
+        editable = supabase_store.editable_registration(registration_id, target_category_key=categoria)
         fields = editable["fields"]
         groups = editable["groups"]
         category = {"key": editable["category"]["key"], "label": editable["category"]["label"]}
@@ -1297,7 +1303,10 @@ async def cadastro_editar_page(request: Request, registration_id: int, sucesso: 
                 "request": request,
                 "record": editable["record"],
                 "categories": excel_bancos.list_categories(),
+                "pn_groups": excel_bancos.list_pn_groups(),
                 "selected_category": category,
+                "source_category": editable["source_category"],
+                "selected_group_code": editable["current_group_code"],
                 "fields": _enrich_fields(fields, groups),
                 "ordered_fields": _enrich_fields(excel_bancos.get_banco_fields_for_display(category["key"]), groups),
                 "conditional_rules": excel_bancos.get_conditional_rules_for_form(category["key"]),
@@ -1318,14 +1327,22 @@ async def cadastro_editar_post(request: Request, registration_id: int):
     form_data = await request.form()
     try:
         result = supabase_store.update_registration(registration_id, form_data)
-        message = f"Cadastro atualizado. SKU: {result.get('sku') or '-'}."
+        if result.get("migrated"):
+            message = (
+                f"Estrutura corrigida: {result.get('previous_sku')} foi inativado e substituido por "
+                f"{result.get('sku')}. B.O.M.: {result.get('bom_headers', 0)} estrutura(s) e "
+                f"{result.get('bom_components', 0)} referencia(s) atualizadas."
+            )
+        else:
+            message = f"Cadastro atualizado. SKU: {result.get('sku') or '-'}."
         return RedirectResponse(
             url=f"/cadastros?categoria={quote(result.get('category_key') or '')}&sucesso={quote(message)}",
             status_code=303,
         )
     except Exception as exc:
+        category_query = quote(excel_bancos.clean_text(form_data.get("categoria")))
         return RedirectResponse(
-            url=f"/cadastros/{registration_id}/editar?erro={quote(str(exc))}",
+            url=f"/cadastros/{registration_id}/editar?categoria={category_query}&erro={quote(str(exc))}",
             status_code=303,
         )
 

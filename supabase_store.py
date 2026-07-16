@@ -27,6 +27,8 @@ ALL_CATEGORIES_KEY = "__all__"
 REVIEW_PARENT_PREFIX = "REVISAO-"
 DUPLICATE_PARENT_SEPARATOR = "__BOM__"
 UNIT_OPTIONS = ["pc", "un", "cj", "ch", "br", "m", "mm"]
+SKU_MIGRATION_FORM_KEY = "_sku_migration"
+PREVIOUS_SKU_FORM_KEY = "_sku_anterior"
 
 
 class SupabaseStoreError(RuntimeError):
@@ -346,19 +348,73 @@ def _catalog_data_by_sku(skus: list[Any]) -> dict[str, dict[str, str]]:
     }
 
 
-def _duplicate_exists(category_key: str, primaria: str, secundaria: str) -> bool:
+def _duplicate_exists(
+    category_key: str,
+    primaria: str,
+    secundaria: str,
+    exclude_id: int | str | None = None,
+) -> bool:
+    params = [
+        ("select", "id"),
+        ("category_key", f"eq.{category_key}"),
+        ("descricao_primaria", f"eq.{primaria}"),
+        ("descricao_secundaria", f"eq.{secundaria}"),
+        ("limit", "1"),
+    ]
+    if exclude_id is not None:
+        params.append(("id", f"neq.{clean_text(exclude_id)}"))
     rows = _request(
         "GET",
         REGISTRATIONS_TABLE,
-        [
-            ("select", "id"),
-            ("category_key", f"eq.{category_key}"),
-            ("descricao_primaria", f"eq.{primaria}"),
-            ("descricao_secundaria", f"eq.{secundaria}"),
-            ("limit", "1"),
-        ],
+        params,
     )
     return bool(rows)
+
+
+def _registration_payload(
+    category: dict[str, Any],
+    fields: list[dict[str, Any]],
+    form_data: Any,
+    sku: str,
+    default_active: bool,
+) -> tuple[dict[str, Any], dict[str, str], bool]:
+    if category["key"] == excel_bancos.DEFAULT_CATEGORY_KEY:
+        excel_bancos._validate_banco_dependencies(fields, form_data)
+        excel_bancos._validate_visible_field_requirements(fields, category["key"], form_data)
+
+    descriptions = excel_bancos.build_descriptions(fields, form_data, category["key"])
+    groups = _field_groups(fields, form_data)
+    field_values = _field_values(fields, groups)
+    field_codes = _field_codes(fields, groups)
+    unidade = normalize_unit(form_data.get("unidade"))
+    ativo = status_to_active(form_data.get("ativo"), default=default_active)
+    possui_bom = excel_bancos.requires_component_bom(fields, form_data)
+    groups[excel_bancos.BOM_FORM_KEY] = possui_bom
+    payload = {
+        "category_key": category["key"],
+        "category_label": category["label"],
+        "sheet": _sheet_name(category),
+        "sku": sku,
+        "descricao_primaria": descriptions["primaria"],
+        "descricao_secundaria": descriptions["secundaria"],
+        "sufixo": descriptions.get("sufixo") or "",
+        "unidade": unidade,
+        "ativo": ativo,
+        "caracteres_primario": len(descriptions["primaria"]),
+        "caracteres_secundario": len(descriptions["secundaria"]),
+        "form_values": groups,
+        "field_values": field_values,
+        "field_codes": field_codes,
+        "search_text": _search_text(
+            sku,
+            category["label"],
+            descriptions["primaria"],
+            descriptions["secundaria"],
+            unidade,
+            " ".join(field_values.values()),
+        ),
+    }
+    return payload, descriptions, possui_bom
 
 
 def save_registration(form_data: Any) -> dict[str, Any]:
@@ -700,69 +756,281 @@ def _groups_from_record(fields: list[dict[str, Any]], record: dict[str, Any]) ->
     return groups
 
 
-def editable_registration(registration_id: int | str) -> dict[str, Any]:
+def editable_registration(registration_id: int | str, target_category_key: str = "") -> dict[str, Any]:
     record = get_registration(registration_id)
     if not record:
         raise SupabaseStoreError("Cadastro não encontrado.")
-    category = _category(clean_text(record.get("category_key")))
+    source_category = _category(clean_text(record.get("category_key")))
+    category = _category(clean_text(target_category_key)) if clean_text(target_category_key) else source_category
     possui_bom = _stored_bom_preference(record)
     if possui_bom is None:
         possui_bom = bool(_bom_header_by_parent(clean_text(record.get("sku"))))
-    record = {**record, "possui_bom": possui_bom}
+    form_values = record.get("form_values") if isinstance(record.get("form_values"), dict) else {}
+    migration = form_values.get(SKU_MIGRATION_FORM_KEY) if isinstance(form_values.get(SKU_MIGRATION_FORM_KEY), dict) else {}
+    record = {
+        **record,
+        "possui_bom": possui_bom,
+        "replacement_sku": clean_text(migration.get("replacement_sku")),
+        "replacement_id": migration.get("replacement_id"),
+    }
     fields = excel_bancos.get_banco_fields(category["key"])
     groups = _groups_from_record(fields, record)
-    return {"record": record, "category": category, "fields": fields, "groups": groups}
+    return {
+        "record": record,
+        "category": category,
+        "source_category": source_category,
+        "current_group_code": _row_group_code(record),
+        "fields": fields,
+        "groups": groups,
+    }
+
+
+def _registration_structure_changed(
+    current: dict[str, Any],
+    target_category: dict[str, Any],
+    fields: list[dict[str, Any]],
+    form_data: Any,
+) -> bool:
+    current_category_key = clean_text(current.get("category_key"))
+    current_group_code = _row_group_code(current)
+    target_group_code = excel_bancos.pn_group_code(fields, form_data)
+    return target_category["key"] != current_category_key or target_group_code != current_group_code
+
+
+def _bom_reference_snapshots(sku: str) -> dict[str, Any]:
+    header_rows = _request_all(
+        BOM_HEADERS_TABLE,
+        [("select", "*"), ("parent_sku", f"eq.{sku}")],
+        limit=10,
+    )
+    parent_rows = _request_all(
+        BOM_COMPONENTS_TABLE,
+        [("select", "*"), ("parent_sku", f"eq.{sku}")],
+    )
+    component_rows = _request_all(
+        BOM_COMPONENTS_TABLE,
+        [("select", "*"), ("component_sku", f"eq.{sku}")],
+    )
+    components = {clean_text(row.get("id")): row for row in [*parent_rows, *component_rows]}
+    return {"headers": header_rows, "components": list(components.values())}
+
+
+def _bom_header_restore_payload(row: dict[str, Any]) -> dict[str, Any]:
+    keys = {
+        "parent_sku",
+        "parent_descricao",
+        "parent_category_key",
+        "parent_category_label",
+        "registration_id",
+        "source",
+        "search_text",
+    }
+    return {key: row.get(key) for key in keys}
+
+
+def _bom_component_restore_payload(row: dict[str, Any]) -> dict[str, Any]:
+    keys = {
+        "bom_id",
+        "parent_sku",
+        "component_sku",
+        "component_descricao",
+        "unidade",
+        "quantidade",
+        "ordem",
+        "search_text",
+    }
+    return {key: row.get(key) for key in keys}
+
+
+def _apply_bom_sku_migration(
+    snapshots: dict[str, Any],
+    old_sku: str,
+    new_record: dict[str, Any],
+) -> dict[str, int]:
+    new_sku = clean_text(new_record.get("sku"))
+    for header in snapshots["headers"]:
+        source = clean_text(header.get("source"))
+        header_payload = {
+            "parent_sku": new_sku,
+            "parent_descricao": clean_text(new_record.get("descricao_primaria")),
+            "parent_category_key": clean_text(new_record.get("category_key")),
+            "parent_category_label": clean_text(new_record.get("category_label")),
+            "registration_id": new_record.get("id"),
+            "source": source,
+            "search_text": _search_text(
+                new_sku,
+                new_record.get("descricao_primaria"),
+                new_record.get("category_label"),
+                source,
+            ),
+        }
+        _request(
+            "PATCH",
+            BOM_HEADERS_TABLE,
+            [("id", f"eq.{header['id']}")],
+            payload=header_payload,
+            prefer="return=minimal",
+        )
+
+    for component in snapshots["components"]:
+        payload = _bom_component_restore_payload(component)
+        if clean_text(payload.get("parent_sku")) == old_sku:
+            payload["parent_sku"] = new_sku
+        if clean_text(payload.get("component_sku")) == old_sku:
+            payload["component_sku"] = new_sku
+            payload["component_descricao"] = clean_text(new_record.get("descricao_primaria"))
+            payload["unidade"] = normalize_unit(new_record.get("unidade"))
+        payload["search_text"] = _search_text(
+            payload.get("parent_sku"),
+            payload.get("component_sku"),
+            payload.get("component_descricao"),
+            payload.get("unidade"),
+        )
+        _request(
+            "PATCH",
+            BOM_COMPONENTS_TABLE,
+            [("id", f"eq.{component['id']}")],
+            payload=payload,
+            prefer="return=minimal",
+        )
+    return {"bom_headers": len(snapshots["headers"]), "bom_components": len(snapshots["components"])}
+
+
+def _restore_bom_references(snapshots: dict[str, Any]) -> None:
+    for component in snapshots.get("components") or []:
+        _request(
+            "PATCH",
+            BOM_COMPONENTS_TABLE,
+            [("id", f"eq.{component['id']}")],
+            payload=_bom_component_restore_payload(component),
+            prefer="return=minimal",
+        )
+    for header in snapshots.get("headers") or []:
+        _request(
+            "PATCH",
+            BOM_HEADERS_TABLE,
+            [("id", f"eq.{header['id']}")],
+            payload=_bom_header_restore_payload(header),
+            prefer="return=minimal",
+        )
 
 
 def update_registration(registration_id: int | str, form_data: Any) -> dict[str, Any]:
     current = get_registration(registration_id)
     if not current:
         raise SupabaseStoreError("Cadastro não encontrado.")
-    category = _category(clean_text(current.get("category_key")))
-    fields = excel_bancos.get_banco_fields(category["key"])
-    if category["key"] == excel_bancos.DEFAULT_CATEGORY_KEY:
-        excel_bancos._validate_banco_dependencies(fields, form_data)
-        excel_bancos._validate_visible_field_requirements(fields, category["key"], form_data)
+    current_values = current.get("form_values") if isinstance(current.get("form_values"), dict) else {}
+    previous_migration = current_values.get(SKU_MIGRATION_FORM_KEY)
+    if isinstance(previous_migration, dict) and clean_text(previous_migration.get("replacement_sku")):
+        raise SupabaseStoreError(
+            f"Este cadastro foi substituido pelo SKU {clean_text(previous_migration.get('replacement_sku'))}."
+        )
 
-    descriptions = excel_bancos.build_descriptions(fields, form_data, category["key"])
-    groups = _field_groups(fields, form_data)
-    field_values = _field_values(fields, groups)
-    field_codes = _field_codes(fields, groups)
-    sku = clean_text(current.get("sku"))
-    unidade = normalize_unit(form_data.get("unidade"))
-    ativo = status_to_active(form_data.get("ativo"), default=False)
-    possui_bom = excel_bancos.requires_component_bom(fields, form_data)
-    groups[excel_bancos.BOM_FORM_KEY] = possui_bom
-    payload = {
-        "category_label": category["label"],
-        "sheet": _sheet_name(category),
-        "descricao_primaria": descriptions["primaria"],
-        "descricao_secundaria": descriptions["secundaria"],
-        "sufixo": descriptions.get("sufixo") or "",
-        "unidade": unidade,
-        "ativo": ativo,
-        "caracteres_primario": len(descriptions["primaria"]),
-        "caracteres_secundario": len(descriptions["secundaria"]),
-        "form_values": groups,
-        "field_values": field_values,
-        "field_codes": field_codes,
-        "search_text": _search_text(
-            sku,
-            category["label"],
-            descriptions["primaria"],
-            descriptions["secundaria"],
-            unidade,
-            " ".join(field_values.values()),
-        ),
+    target_category = _category(clean_text(form_data.get("categoria")) or clean_text(current.get("category_key")))
+    fields = excel_bancos.get_banco_fields(target_category["key"])
+    requested_group = excel_bancos._pn_group_code(form_data.get(excel_bancos.PN_GROUP_FORM_KEY))
+    if not requested_group:
+        raise SupabaseStoreError("Selecione o grupo do cadastro.")
+
+    old_sku = clean_text(current.get("sku"))
+    structure_changed = _registration_structure_changed(current, target_category, fields, form_data)
+    new_sku = _next_sku(target_category, fields, form_data) if structure_changed else old_sku
+    payload, descriptions, _ = _registration_payload(target_category, fields, form_data, new_sku, False)
+    if _duplicate_exists(
+        target_category["key"],
+        descriptions["primaria"],
+        descriptions["secundaria"],
+        exclude_id=registration_id,
+    ):
+        raise SupabaseStoreError("Ja existe outro cadastro com a mesma descricao primaria e secundaria.")
+
+    if not structure_changed:
+        rows = _request(
+            "PATCH",
+            REGISTRATIONS_TABLE,
+            [("id", f"eq.{clean_text(registration_id)}")],
+            payload=payload,
+            prefer="return=representation",
+        )
+        return rows[0] if rows else {**current, **payload}
+
+    if clean_text(form_data.get("confirmar_migracao")) != "1":
+        raise SupabaseStoreError(
+            "Confirme a geracao de um novo SKU e a inativacao do codigo anterior."
+        )
+
+    payload["form_values"] = {
+        **payload["form_values"],
+        PREVIOUS_SKU_FORM_KEY: old_sku,
     }
-    rows = _request(
-        "PATCH",
+    snapshots = _bom_reference_snapshots(old_sku)
+    new_rows = _request(
+        "POST",
         REGISTRATIONS_TABLE,
-        [("id", f"eq.{clean_text(registration_id)}")],
         payload=payload,
         prefer="return=representation",
-    )
-    return rows[0] if rows else {**current, **payload}
+    ) or []
+    if not new_rows or not new_rows[0].get("id"):
+        raise SupabaseStoreError("Nao foi possivel criar o cadastro substituto.")
+    new_record = new_rows[0]
+
+    try:
+        migrated = _apply_bom_sku_migration(snapshots, old_sku, new_record)
+        old_form_values = dict(current_values)
+        old_form_values[SKU_MIGRATION_FORM_KEY] = {
+            "replacement_id": new_record["id"],
+            "replacement_sku": new_sku,
+            "migrated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        old_rows = _request(
+            "PATCH",
+            REGISTRATIONS_TABLE,
+            [("id", f"eq.{clean_text(registration_id)}")],
+            payload={
+                "ativo": False,
+                "form_values": old_form_values,
+                "search_text": _search_text(current.get("search_text"), "substituido por", new_sku),
+            },
+            prefer="return=representation",
+        )
+        if not old_rows:
+            raise SupabaseStoreError("Nao foi possivel inativar o SKU anterior.")
+    except Exception as exc:
+        rollback_errors = []
+        try:
+            _restore_bom_references(snapshots)
+        except Exception as rollback_exc:
+            rollback_errors.append(f"B.O.M.: {rollback_exc}")
+        try:
+            _request(
+                "PATCH",
+                REGISTRATIONS_TABLE,
+                [("id", f"eq.{clean_text(registration_id)}")],
+                payload={
+                    "ativo": current.get("ativo", True),
+                    "form_values": current_values,
+                    "search_text": clean_text(current.get("search_text")),
+                },
+                prefer="return=minimal",
+            )
+        except Exception as rollback_exc:
+            rollback_errors.append(f"SKU anterior: {rollback_exc}")
+        try:
+            _request("DELETE", REGISTRATIONS_TABLE, [("id", f"eq.{new_record['id']}")])
+        except Exception as rollback_exc:
+            rollback_errors.append(f"SKU substituto: {rollback_exc}")
+        if rollback_errors:
+            raise SupabaseStoreError(
+                f"Falha na migracao ({exc}). Reversao incompleta: {'; '.join(rollback_errors)}"
+            ) from exc
+        raise
+
+    return {
+        **new_record,
+        "migrated": True,
+        "previous_sku": old_sku,
+        **migrated,
+    }
 
 
 def search_products(query: str, limit: int = 25) -> list[dict[str, str]]:
