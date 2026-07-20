@@ -55,7 +55,7 @@
             </div>
         </section>
 
-        <form id="edit-registration-form" method="post" action="/cadastros/{{ record.id }}/editar" class="space-y-6" data-original-category="{{ source_category.key }}" data-original-group="{{ source_group_code }}" data-edit-url="/cadastros/{{ record.id }}/editar">
+        <form id="edit-registration-form" method="post" action="/cadastros/{{ record.id }}/editar" class="space-y-6" data-original-category="{{ source_category.key }}" data-original-group="{{ selected_group_code }}" data-edit-url="/cadastros/{{ record.id }}/editar">
             <section class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[240px_240px_150px_300px_1fr] xl:items-end">
                     <label class="block space-y-1">
@@ -119,7 +119,7 @@
                         {% for field in ordered_fields if field.scope == 'primaria' %}
                         <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}">
                             <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
-                            {% if selected_category.key != 'bancos' or selected_group_code == '30' %}
+                            {% if selected_category.key != 'bancos' %}
                             <input name="{{ field.key }}" list="options-{{ field.key }}" value="{{ field.selected_value or (field.selected_values|join(' | ')) }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
                             <datalist id="options-{{ field.key }}">
                                 {% for option in field.options %}<option value="{{ option }}"></option>{% endfor %}
@@ -145,7 +145,7 @@
                         {% for field in ordered_fields if field.scope == 'secundaria' %}
                         <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}">
                             <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
-                            {% if selected_category.key != 'bancos' or selected_group_code == '30' %}
+                            {% if selected_category.key != 'bancos' %}
                             <input name="{{ field.key }}" list="options-{{ field.key }}" value="{{ field.selected_value or (field.selected_values|join(' | ')) }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
                             <datalist id="options-{{ field.key }}">
                                 {% for option in field.options %}<option value="{{ option }}"></option>{% endfor %}
@@ -194,14 +194,9 @@
 
         categorySelect.addEventListener("change", () => {
             const target = encodeURIComponent(categorySelect.value);
-            const group = encodeURIComponent(groupSelect.value || "");
-            window.location.href = `${editForm.dataset.editUrl}?categoria=${target}&grupo=${group}`;
+            window.location.href = `${editForm.dataset.editUrl}?categoria=${target}`;
         });
-        groupSelect.addEventListener("change", () => {
-            const target = encodeURIComponent(categorySelect.value);
-            const group = encodeURIComponent(groupSelect.value || "");
-            window.location.href = `${editForm.dataset.editUrl}?categoria=${target}&grupo=${group}`;
-        });
+        groupSelect.addEventListener("change", syncMigrationWarning);
         syncMigrationWarning();
     </script>
 </body>

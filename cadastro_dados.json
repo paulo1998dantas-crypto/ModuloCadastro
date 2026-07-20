@@ -21,9 +21,6 @@
             "5- BCO MOTORISTA ORIGINAL",
             "6- BCO ORIGINAL",
             "7- BCO E/S/J"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -40,9 +37,6 @@
             "5- INC",
             "6- JL",
             "7- ORI"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -57,9 +51,6 @@
             "3- LS",
             "4- LL",
             "5- ORI"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -77,9 +68,6 @@
             "6- ESPUM. LE E/S/J",
             "7- ESPUM. LS",
             "8- ESPUM. LB INCORPOL"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -96,9 +84,6 @@
             "6- IVECO",
             "7- KANGOO",
             "8- SPRINTER"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -111,9 +96,6 @@
             "1- FIXO",
             "2- RECLINAVEL",
             "3- INTERICO"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -136,9 +118,6 @@
             "11- LARGURA ENCOSTO 1700MM",
             "12- LARGURA ENCOSTO 1420 MM",
             "13- LARGURA ENCOSTO 380 MM"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -158,9 +137,6 @@
             "8- PROFUNDIDADE 400 MM",
             "9- PROFUNDIDADE 340 MM",
             "10- PROFUNDIDADE 440 MM"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -175,9 +151,6 @@
             "3- 3 L",
             "4- 4 L",
             "5- 5 L"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -200,9 +173,6 @@
             "11- E/S/J",
             "12- (2FIX / 1REB)",
             "13- TRAS CX RODAS"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -214,9 +184,6 @@
           "options": [
             "1- S/ AP BRACO",
             "2- C/ AP BRACO"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -234,9 +201,6 @@
             "6- APOIO BRACO SIMPLES PU MDBUS",
             "7- APOIO BRACO SIMPLES PU AMARELO",
             "10- APOIO BRACO SIMPLES PU AMARELO C/ TAMPO PRETO"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -268,9 +232,6 @@
             "22- ACABAMENTO LATERAL LD/LE PLASTICO INJETADO PRETO CELSIL",
             "23- ACABAMENTO LATERAL LD/LE PLASTICO INJETADO MDBUS",
             "24- ACABAMENTO LATERAL LD/LE PLASTICO INJETADO PRETO STF"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -300,9 +261,6 @@
             "18- 110 MM",
             "19- 410 MM",
             "21- 400 MM"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -314,9 +272,6 @@
           "options": [
             "1- 2P",
             "2- 3P"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -334,9 +289,6 @@
             "6- COSTURA LS",
             "7- COSTURA ST02 STF",
             "8- COSTURA SUPER SPORT"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -353,9 +305,6 @@
             "5- COR LINHA MARROM",
             "6- COR LINHA DOURADO",
             "7- COR LINHA CINZA"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -368,9 +317,6 @@
             "1- TECIDO",
             "2- COURVIN",
             "3- MISTO"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -394,9 +340,6 @@
             "13- CAPA LB INC C/ VIVO BRANCA",
             "14- CAPA LB MC COURVIN PRETO",
             "15- CAPA LB MC COURVIN GRAFITE"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -407,9 +350,6 @@
           "description_order": 7,
           "options": [
             "1- S/ USB"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -420,9 +360,6 @@
           "description_order": 8,
           "options": [
             "1- S/ RESFRIADOR"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -433,9 +370,6 @@
           "description_order": 9,
           "options": [
             "1- S/ AQUECEDOR"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -446,9 +380,6 @@
           "description_order": 10,
           "options": [
             "1- S/ APOIO PE"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -459,9 +390,6 @@
           "description_order": 11,
           "options": [
             "1- S/ MASSAGEADOR"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -472,9 +400,6 @@
           "description_order": 12,
           "options": [
             "1- S/ M. SNACK"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -488,9 +413,6 @@
             "2- 2 ISOFIX",
             "3- 3 ISOFIX",
             "4- S/ ISOFIX"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -499,10 +421,7 @@
           "scope": "secundaria",
           "selection_mode": "unitaria",
           "description_order": 14,
-          "options": [],
-          "group_codes": [
-            "10"
-          ]
+          "options": []
         },
         {
           "key": "apoio_panturrilha",
@@ -512,9 +431,6 @@
           "description_order": 15,
           "options": [
             "1- S/ APOIO PANTURRILHA"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -533,9 +449,6 @@
             "7- PEGA MAO BCO PLASTICO PU SIMPLES AMARELO",
             "8- PEGA MAO BCO SIMPLES PU CINZA ACRYLIS 200 MM",
             "9- PEGA MAO BCO PRETO INJETADO PU EXECUTIVO STF"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -558,9 +471,6 @@
             "11- PE BCO INC 3 ESTAMPADO C/ LOGO",
             "12- PE BCO STF",
             "13- PE BCO INC 1 - CP DOBRADA"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -575,9 +485,6 @@
             "3- TRES PES",
             "4- QUATRO PES",
             "5- CINCO PES"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -650,9 +557,6 @@
             "61- QUARTO VAO 1435 MM",
             "62- SEGUNDO VAO 705 MM",
             "63- PRIMEIRO VAO 245 MM"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -664,9 +568,6 @@
           "options": [
             "1- AMORTECEDOR A GAS",
             "2- CATRACA"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -679,9 +580,6 @@
             "1- CORREDOR",
             "2- CENTRAL",
             "3- PAREDE"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -695,9 +593,6 @@
             "2- LE",
             "3- LD/LE",
             "4- AP BRACO INDIVIDUAL"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -709,9 +604,6 @@
           "options": [
             "1- INCLINACAO 32",
             "2- INCLINACAO 41"
-          ],
-          "group_codes": [
-            "10"
           ]
         },
         {
@@ -722,9 +614,6 @@
           "description_order": 1,
           "options": [
             "CJ"
-          ],
-          "group_codes": [
-            "30"
           ]
         },
         {
@@ -736,9 +625,6 @@
           "options": [
             "BANCOS FIXOS",
             "BANCOS REC"
-          ],
-          "group_codes": [
-            "30"
           ]
         },
         {
@@ -749,9 +635,6 @@
           "description_order": 3,
           "options": [
             "BJD"
-          ],
-          "group_codes": [
-            "30"
           ]
         },
         {
@@ -762,9 +645,6 @@
           "description_order": 1,
           "options": [
             "LE"
-          ],
-          "group_codes": [
-            "30"
           ]
         },
         {
@@ -777,9 +657,6 @@
             "2P",
             "3P",
             "2P / 2A"
-          ],
-          "group_codes": [
-            "30"
           ]
         },
         {
@@ -792,9 +669,6 @@
             "TECIDO",
             "COURVIN",
             "MARROM / COURVIN"
-          ],
-          "group_codes": [
-            "30"
           ]
         },
         {
@@ -828,9 +702,6 @@
             "MC - LB - 4,3,3,3,4 - 3P - TECIDO - NORMAL",
             "MC - LB - 3,4 - 2P - TECIDO",
             "MC - LB - 4,3 - 2P - TECIDO"
-          ],
-          "group_codes": [
-            "30"
           ]
         },
         {
@@ -839,10 +710,7 @@
           "scope": "secundaria",
           "selection_mode": "unitaria",
           "description_order": 5,
-          "options": [],
-          "group_codes": [
-            "30"
-          ]
+          "options": []
         }
       ],
       "conditional_rules": [

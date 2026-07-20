@@ -432,10 +432,7 @@ def _registration_payload(
 def save_registration(form_data: Any) -> dict[str, Any]:
     category_key = clean_text(form_data.get("categoria"))
     category = _category(category_key)
-    requested_group = excel_bancos._pn_group_code(form_data.get(excel_bancos.PN_GROUP_FORM_KEY))
-    if category["key"] == excel_bancos.DEFAULT_CATEGORY_KEY and not requested_group:
-        raise SupabaseStoreError("Selecione o grupo do cadastro.")
-    fields = excel_bancos.get_banco_fields(category["key"], requested_group)
+    fields = excel_bancos.get_banco_fields(category["key"])
     if category["key"] == excel_bancos.DEFAULT_CATEGORY_KEY:
         excel_bancos._validate_banco_dependencies(fields, form_data)
         excel_bancos._validate_visible_field_requirements(fields, category["key"], form_data)
@@ -500,11 +497,10 @@ def _draft_groups(payload_json: str | dict[str, Any]) -> dict[str, list[str]]:
 
 def save_draft(category_key: str, draft_payload: str, draft_id: str = "") -> dict[str, Any]:
     category = _category(category_key)
+    fields = excel_bancos.get_banco_fields(category["key"])
     groups = _draft_groups(draft_payload)
     if not groups:
         raise SupabaseStoreError("Rascunho vazio.")
-    requested_group = excel_bancos._pn_group_code(groups.get(excel_bancos.PN_GROUP_FORM_KEY))
-    fields = excel_bancos.get_banco_fields(category["key"], requested_group)
     descriptions = excel_bancos.build_descriptions(fields, groups, category["key"])
     draft_id = clean_text(draft_id) or uuid.uuid4().hex[:12]
     payload = {
@@ -782,11 +778,7 @@ def _groups_from_record(fields: list[dict[str, Any]], record: dict[str, Any]) ->
     return groups
 
 
-def editable_registration(
-    registration_id: int | str,
-    target_category_key: str = "",
-    target_group_code: str = "",
-) -> dict[str, Any]:
+def editable_registration(registration_id: int | str, target_category_key: str = "") -> dict[str, Any]:
     record = get_registration(registration_id)
     if not record:
         raise SupabaseStoreError("Cadastro não encontrado.")
@@ -803,17 +795,13 @@ def editable_registration(
         "replacement_sku": clean_text(migration.get("replacement_sku")),
         "replacement_id": migration.get("replacement_id"),
     }
-    source_group_code = _row_group_code(record)
-    target_group = excel_bancos._pn_group_code(target_group_code) or source_group_code
-    fields = excel_bancos.get_banco_fields(category["key"], target_group)
+    fields = excel_bancos.get_banco_fields(category["key"])
     groups = _groups_from_record(fields, record)
     return {
         "record": record,
         "category": category,
         "source_category": source_category,
-        "current_group_code": source_group_code,
-        "source_group_code": source_group_code,
-        "target_group_code": target_group,
+        "current_group_code": _row_group_code(record),
         "fields": fields,
         "groups": groups,
     }
@@ -963,11 +951,11 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
             f"Este cadastro foi substituido pelo SKU {clean_text(previous_migration.get('replacement_sku'))}."
         )
 
+    target_category = _category(clean_text(form_data.get("categoria")) or clean_text(current.get("category_key")))
+    fields = excel_bancos.get_banco_fields(target_category["key"])
     requested_group = excel_bancos._pn_group_code(form_data.get(excel_bancos.PN_GROUP_FORM_KEY))
     if not requested_group:
         raise SupabaseStoreError("Selecione o grupo do cadastro.")
-    target_category = _category(clean_text(form_data.get("categoria")) or clean_text(current.get("category_key")))
-    fields = excel_bancos.get_banco_fields(target_category["key"], requested_group)
 
     old_sku = clean_text(current.get("sku"))
     structure_changed = _registration_structure_changed(current, target_category, fields, form_data)
@@ -1767,7 +1755,7 @@ def export_registrations(
 ) -> Path:
     all_categories = all_categories_key(category_key)
     category = {"key": ALL_CATEGORIES_KEY, "label": "Todas as categorias"} if all_categories else _category(category_key)
-    fields = [] if all_categories else excel_bancos.get_banco_fields_for_display(category["key"], group_code)
+    fields = [] if all_categories else excel_bancos.get_banco_fields_for_display(category["key"])
     rows = list_registrations(
         ALL_CATEGORIES_KEY if all_categories else category["key"],
         query=query,

@@ -73,8 +73,7 @@ def process_save_registration(job: dict) -> dict:
     pairs = payload.get("form_pairs") or []
     form = bridge_store.FormPayload(pairs)
 
-    group_code = excel_bancos._pn_group_code(form.get(excel_bancos.PN_GROUP_FORM_KEY))
-    fields = excel_bancos.get_banco_fields(excel_bancos.clean_text(form.get("categoria")), group_code)
+    fields = excel_bancos.get_banco_fields(excel_bancos.clean_text(form.get("categoria")))
     needs_bom = excel_bancos.requires_component_bom(fields, form)
     components = excel_bancos.parse_component_lines(form) if needs_bom else []
     if needs_bom and not components:
