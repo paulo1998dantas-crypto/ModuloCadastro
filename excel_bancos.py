@@ -25,14 +25,6 @@ from openpyxl.worksheet.formula import ArrayFormula
 DEFAULT_NEW_WORKBOOK_NAME = "Cadastro Bancos.xlsx"
 DEFAULT_CATEGORY_KEY = "bancos"
 DEFAULT_CATEGORY_LABEL = "Bancos"
-CATEGORY_KEY_ALIASES = {
-    "cat_20_bco": DEFAULT_CATEGORY_KEY,
-    "cat_20_cj_bco": DEFAULT_CATEGORY_KEY,
-    "20_cj_bco": DEFAULT_CATEGORY_KEY,
-}
-CATEGORY_CANONICAL_LABELS = {
-    DEFAULT_CATEGORY_KEY: "20 - BANCOS",
-}
 PN_GROUP_FORM_KEY = "grupo_codigo"
 FIRST_DATA_ROW = 3
 REGISTRATION_SHEET_NAME = "_cadastro_app"
@@ -391,22 +383,6 @@ def field_key(value: Any) -> str:
 def category_key(value: Any) -> str:
     normalized = normalize_label(value).lower().replace(" ", "_")
     return normalized or "categoria"
-
-
-def canonical_category_key(value: Any) -> str:
-    key = clean_text(value)
-    return CATEGORY_KEY_ALIASES.get(key, key)
-
-
-def category_key_candidates(value: Any) -> list[str]:
-    canonical = canonical_category_key(value)
-    keys = [canonical] if canonical else []
-    keys.extend(alias for alias, target in CATEGORY_KEY_ALIASES.items() if target == canonical and alias not in keys)
-    return keys
-
-
-def same_category_key(left: Any, right: Any) -> bool:
-    return canonical_category_key(left) == canonical_category_key(right)
 
 
 def field_scope(value: Any) -> str:
@@ -928,64 +904,6 @@ def _sanitize_conditional_rules(
     return cleaned
 
 
-def _merge_field_options(target: dict[str, Any], source: dict[str, Any]) -> None:
-    seen_options = {
-        f"{option_code(value)}|{option_identity(value)}" if option_code(value) else option_identity(value)
-        for value in target.get("options") or []
-    }
-    for option in source.get("options") or []:
-        option_key = f"{option_code(option)}|{option_identity(option)}" if option_code(option) else option_identity(option)
-        if option_key in seen_options:
-            continue
-        target.setdefault("options", []).append(option)
-        seen_options.add(option_key)
-
-
-def _merge_category_data(target: dict[str, Any], source: dict[str, Any]) -> None:
-    fields_by_key = {field["key"]: field for field in target.get("fields") or []}
-    for field in source.get("fields") or []:
-        existing = fields_by_key.get(field["key"])
-        if existing:
-            _merge_field_options(existing, field)
-            continue
-        new_field = deepcopy(field)
-        target.setdefault("fields", []).append(new_field)
-        fields_by_key[new_field["key"]] = new_field
-
-    rules_by_key = {clean_text(rule.get("key")) for rule in target.get("conditional_rules") or []}
-    for rule in source.get("conditional_rules") or []:
-        rule_key = clean_text(rule.get("key"))
-        if rule_key and rule_key in rules_by_key:
-            continue
-        target.setdefault("conditional_rules", []).append(deepcopy(rule))
-        if rule_key:
-            rules_by_key.add(rule_key)
-
-
-def _merge_category_aliases(categories: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    merged: list[dict[str, Any]] = []
-    by_key: dict[str, dict[str, Any]] = {}
-    for raw_category in categories:
-        category = deepcopy(raw_category)
-        original_key = category["key"]
-        canonical_key = canonical_category_key(original_key)
-        category["key"] = canonical_key
-        if original_key != canonical_key and canonical_key in CATEGORY_CANONICAL_LABELS:
-            category["label"] = CATEGORY_CANONICAL_LABELS[canonical_key]
-            category["sheet_name"] = _safe_sheet_title(category["label"])
-
-        existing = by_key.get(canonical_key)
-        if existing:
-            if original_key == canonical_key:
-                existing["label"] = category["label"]
-                existing["sheet_name"] = category["sheet_name"]
-            _merge_category_data(existing, category)
-            continue
-        by_key[canonical_key] = category
-        merged.append(category)
-    return merged
-
-
 def _sanitize_catalog(catalog: dict[str, Any]) -> dict[str, Any]:
     if catalog.get("fields") is not None:
         raw_categories = [
@@ -1031,8 +949,6 @@ def _sanitize_catalog(catalog: dict[str, Any]) -> dict[str, Any]:
             }
         )
 
-    categories = _merge_category_aliases(categories)
-    active_category_value = canonical_category_key(active_category_value)
     if active_category_value not in {category["key"] for category in categories}:
         active_category_value = categories[0]["key"]
 
@@ -1165,11 +1081,9 @@ def update_pn_group(code: str, label: str, prefixes: str = "") -> dict[str, Any]
 
 
 def _find_category(catalog: dict[str, Any], category_key_value: str) -> dict[str, Any]:
-    requested = canonical_category_key(
-        clean_text(category_key_value) or clean_text(catalog.get("active_category")) or DEFAULT_CATEGORY_KEY
-    )
+    requested = clean_text(category_key_value) or clean_text(catalog.get("active_category")) or DEFAULT_CATEGORY_KEY
     for category in catalog["categories"]:
-        if same_category_key(category["key"], requested):
+        if category["key"] == requested:
             return category
     return catalog["categories"][0]
 
