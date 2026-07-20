@@ -411,10 +411,11 @@ def _workbook_display_path() -> str:
 
 def _online_draft_payload(category_key: str, draft_payload: str, draft_id: str = "") -> dict:
     category = excel_bancos.selected_category(category_key)
-    fields = excel_bancos.get_banco_fields(category["key"])
     groups = excel_bancos._draft_payload_groups(draft_payload)
     if not groups:
         raise ValueError("Rascunho vazio.")
+    group_code = excel_bancos._pn_group_code(groups.get(excel_bancos.PN_GROUP_FORM_KEY))
+    fields = excel_bancos.get_banco_fields(category["key"], group_code)
     descriptions = excel_bancos.build_descriptions(fields, groups, category["key"])
     return bridge_store.save_draft(
         category["key"],
@@ -429,6 +430,7 @@ def _online_draft_payload(category_key: str, draft_payload: str, draft_id: str =
 def _render_cadastro_page(
     request: Request,
     categoria: str = "",
+    grupo: str = "",
     sucesso: str = "",
     erro: str = "",
     form_data=None,
@@ -459,7 +461,12 @@ def _render_cadastro_page(
                 groups.setdefault(excel_bancos.clean_text(key), []).append(excel_bancos.clean_text(value))
         active_draft = {"draft_id": draft_id, "groups": groups}
     selected_category = excel_bancos.selected_category(categoria)
-    fields = excel_bancos.get_banco_fields(selected_category["key"])
+    selected_group_code = excel_bancos._pn_group_code(
+        _form_first_value(form_data, excel_bancos.PN_GROUP_FORM_KEY)
+    ) or excel_bancos._pn_group_code(grupo)
+    if selected_category["key"] == excel_bancos.DEFAULT_CATEGORY_KEY and not selected_group_code:
+        selected_group_code = "10"
+    fields = excel_bancos.get_banco_fields(selected_category["key"], selected_group_code)
     normalized_form = _normalize_form_data(fields, form_data) if form_data is not None else {}
     return templates.TemplateResponse(
         request=request,
@@ -470,7 +477,7 @@ def _render_cadastro_page(
             "selected_category": selected_category,
             "fields": _enrich_fields(fields, normalized_form),
             "ordered_fields": _enrich_fields(
-                excel_bancos.get_banco_fields_for_display(selected_category["key"]),
+                excel_bancos.get_banco_fields_for_display(selected_category["key"], selected_group_code),
                 normalized_form,
             ),
             "conditional_rules": excel_bancos.get_conditional_rules_for_form(selected_category["key"]),
@@ -478,9 +485,7 @@ def _render_cadastro_page(
             "save_via_bridge": online_mode,
             "supabase_mode": supabase_mode,
             "pn_groups": excel_bancos.list_pn_groups(),
-            "selected_group_code": excel_bancos._pn_group_code(
-                _form_first_value(form_data, excel_bancos.PN_GROUP_FORM_KEY)
-            ),
+            "selected_group_code": selected_group_code,
             "unit_options": supabase_store.unidade_options(),
             "selected_unit": supabase_store.normalize_unit(_form_first_value(form_data, "unidade")),
             "selected_bom_option": _form_first_value(form_data, excel_bancos.BOM_FORM_KEY),
@@ -874,11 +879,12 @@ async def healthz_head():
 async def cadastro_bancos_page(
     request: Request,
     categoria: str = "",
+    grupo: str = "",
     sucesso: str = "",
     erro: str = "",
     draft_id: str = "",
 ):
-    return _render_cadastro_page(request, categoria=categoria, sucesso=sucesso, erro=erro, draft_id=draft_id)
+    return _render_cadastro_page(request, categoria=categoria, grupo=grupo, sucesso=sucesso, erro=erro, draft_id=draft_id)
 
 
 @app.post("/cadastro/bancos", response_class=HTMLResponse)
@@ -887,7 +893,8 @@ async def cadastro_bancos_post(request: Request):
     category_key = excel_bancos.clean_text(form_data.get("categoria"))
     draft_id = excel_bancos.clean_text(form_data.get("draft_id"))
     try:
-        fields = excel_bancos.get_banco_fields(category_key)
+        group_code = excel_bancos._pn_group_code(form_data.get(excel_bancos.PN_GROUP_FORM_KEY))
+        fields = excel_bancos.get_banco_fields(category_key, group_code)
         needs_bom = excel_bancos.requires_component_bom(fields, form_data)
         components = excel_bancos.parse_component_lines(form_data) if needs_bom else []
         bom_item_code = excel_bancos.clean_text(form_data.get("bom_item_codigo"))
@@ -1076,7 +1083,7 @@ async def cadastros_page(
         if all_categories
         else excel_bancos.selected_category(categoria)
     )
-    fields = [] if all_categories else excel_bancos.get_banco_fields_for_display(selected_category["key"])
+    fields = [] if all_categories else excel_bancos.get_banco_fields_for_display(selected_category["key"], grupo)
     filters = {
         key[2:]: excel_bancos.clean_text(value)
         for key, value in request.query_params.items()
@@ -1328,13 +1335,14 @@ async def cadastro_editar_page(
     request: Request,
     registration_id: int,
     categoria: str = "",
+    grupo: str = "",
     sucesso: str = "",
     erro: str = "",
 ):
     if not _supabase_mode():
         return RedirectResponse(url="/cadastros", status_code=303)
     try:
-        editable = supabase_store.editable_registration(registration_id, target_category_key=categoria)
+        editable = supabase_store.editable_registration(registration_id, target_category_key=categoria, target_group_code=grupo)
         fields = editable["fields"]
         groups = editable["groups"]
         category = {"key": editable["category"]["key"], "label": editable["category"]["label"]}
@@ -1348,9 +1356,13 @@ async def cadastro_editar_page(
                 "pn_groups": excel_bancos.list_pn_groups(),
                 "selected_category": category,
                 "source_category": editable["source_category"],
-                "selected_group_code": editable["current_group_code"],
+                "selected_group_code": editable["target_group_code"],
+                "source_group_code": editable["source_group_code"],
                 "fields": _enrich_fields(fields, groups),
-                "ordered_fields": _enrich_fields(excel_bancos.get_banco_fields_for_display(category["key"]), groups),
+                "ordered_fields": _enrich_fields(
+                    excel_bancos.get_banco_fields_for_display(category["key"], editable["target_group_code"]),
+                    groups,
+                ),
                 "conditional_rules": excel_bancos.get_conditional_rules_for_form(category["key"]),
                 "workbook_path": _workbook_display_path(),
                 "supabase_mode": True,

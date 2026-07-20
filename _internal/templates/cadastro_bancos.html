@@ -45,7 +45,7 @@
         </div>
         {% endif %}
 
-        {% set free_text_fields = selected_category.key != 'bancos' %}
+        {% set free_text_fields = selected_category.key != 'bancos' or selected_group_code == '30' %}
         <form method="post" action="/cadastro/bancos" class="space-y-6">
             <input id="draft-id" type="hidden" name="draft_id" value="{{ active_draft.draft_id if active_draft else '' }}">
             <section class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -265,6 +265,7 @@
         const serverDraftGroups = {{ (active_draft.groups if active_draft and active_draft.groups else {}) | tojson }};
         const savedSuccessfully = {{ 'true' if sucesso else 'false' }};
         const categorySelect = document.getElementById("category-select");
+        const groupSelect = document.getElementById("group-select");
         const draftReturn = document.getElementById("draft-return");
         const draftReturnLabel = document.getElementById("draft-return-label");
         const draftReturnButton = document.getElementById("draft-return-button");
@@ -1029,7 +1030,17 @@
             categorySelect.addEventListener("change", async () => {
                 saveDraftNow();
                 await saveDraftToServer({ silent: true });
-                window.location = `/cadastro/bancos?categoria=${encodeURIComponent(categorySelect.value)}`;
+                const groupQuery = groupSelect && groupSelect.value ? `&grupo=${encodeURIComponent(groupSelect.value)}` : "";
+                window.location = `/cadastro/bancos?categoria=${encodeURIComponent(categorySelect.value)}${groupQuery}`;
+            });
+        }
+
+        if (groupSelect) {
+            groupSelect.addEventListener("change", async () => {
+                saveDraftNow();
+                await saveDraftToServer({ silent: true });
+                const groupQuery = groupSelect.value ? `&grupo=${encodeURIComponent(groupSelect.value)}` : "";
+                window.location = `/cadastro/bancos?categoria=${encodeURIComponent(currentCategoryKey)}${groupQuery}`;
             });
         }
 

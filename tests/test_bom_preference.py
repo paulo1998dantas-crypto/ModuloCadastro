@@ -258,6 +258,33 @@ class CategoryAliasTests(unittest.TestCase):
             ["pre_fixo", "prefixo"],
         )
 
+    def test_bancos_fields_are_split_by_group_profile(self):
+        catalog = {
+            "active_category": "bancos",
+            "categories": [
+                {
+                    "key": "bancos",
+                    "label": "20 - BANCOS",
+                    "sheet_name": "20 - BANCOS",
+                    "fields": [
+                        {"key": "pre_fixo", "label": "PRE FIXO", "scope": "primaria", "options": ["1- BCO"]},
+                        {"key": "prefixo", "label": "PREFIXO", "scope": "primaria", "options": ["CJ"]},
+                    ],
+                },
+            ],
+        }
+
+        catalog["categories"][0]["fields"][0]["group_codes"] = ["10"]
+        catalog["categories"][0]["fields"][1]["group_codes"] = ["30"]
+
+        with patch.object(excel_bancos, "load_catalog", return_value=excel_bancos._sanitize_catalog(catalog)):
+            self.assertEqual([field["key"] for field in excel_bancos.get_banco_fields("bancos", "10")], ["pre_fixo"])
+            self.assertEqual([field["key"] for field in excel_bancos.get_banco_fields("bancos", "30")], ["prefixo"])
+            self.assertEqual(
+                [field["key"] for field in excel_bancos.get_banco_fields("cat_20_bco", "30")],
+                ["prefixo"],
+            )
+
     def test_supabase_category_filter_includes_legacy_aliases(self):
         self.assertEqual(
             supabase_store._category_key_filter("category_key", "bancos"),

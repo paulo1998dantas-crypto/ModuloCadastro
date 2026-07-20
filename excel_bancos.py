@@ -33,6 +33,12 @@ CATEGORY_KEY_ALIASES = {
 CATEGORY_CANONICAL_LABELS = {
     DEFAULT_CATEGORY_KEY: "20 - BANCOS",
 }
+CATEGORY_SOURCE_GROUP_CODES = {
+    DEFAULT_CATEGORY_KEY: ["10"],
+    "cat_20_bco": ["30"],
+    "cat_20_cj_bco": ["30"],
+    "20_cj_bco": ["30"],
+}
 PN_GROUP_FORM_KEY = "grupo_codigo"
 FIRST_DATA_ROW = 3
 REGISTRATION_SHEET_NAME = "_cadastro_app"
@@ -407,6 +413,13 @@ def category_key_candidates(value: Any) -> list[str]:
 
 def same_category_key(left: Any, right: Any) -> bool:
     return canonical_category_key(left) == canonical_category_key(right)
+
+
+def field_group_codes(field: dict[str, Any]) -> list[str]:
+    raw_codes = field.get("group_codes") or field.get("pn_group_codes") or []
+    if isinstance(raw_codes, str):
+        raw_codes = [raw_codes]
+    return list(dict.fromkeys(_pn_group_code(code) for code in raw_codes if _pn_group_code(code)))
 
 
 def field_scope(value: Any) -> str:
@@ -862,16 +875,18 @@ def _sanitize_fields(fields: list[dict[str, Any]] | None, include_defaults: bool
             seen_options.add(option_key)
             options.append(value)
 
-        cleaned.append(
-            {
-                "key": key,
-                "label": label,
-                "scope": scope,
-                "selection_mode": selection_mode,
-                "description_order": description_order,
-                "options": options,
-            }
-        )
+        field_data = {
+            "key": key,
+            "label": label,
+            "scope": scope,
+            "selection_mode": selection_mode,
+            "description_order": description_order,
+            "options": options,
+        }
+        groups = field_group_codes(field)
+        if groups:
+            field_data["group_codes"] = groups
+        cleaned.append(field_data)
 
     if include_defaults and not cleaned:
         cleaned.extend(_default_category()["fields"])
@@ -970,6 +985,11 @@ def _merge_category_aliases(categories: list[dict[str, Any]]) -> list[dict[str, 
         original_key = category["key"]
         canonical_key = canonical_category_key(original_key)
         category["key"] = canonical_key
+        source_group_codes = CATEGORY_SOURCE_GROUP_CODES.get(original_key) or []
+        if source_group_codes:
+            for field in category.get("fields") or []:
+                if not field_group_codes(field):
+                    field["group_codes"] = list(source_group_codes)
         if original_key != canonical_key and canonical_key in CATEGORY_CANONICAL_LABELS:
             category["label"] = CATEGORY_CANONICAL_LABELS[canonical_key]
             category["sheet_name"] = _safe_sheet_title(category["label"])
@@ -1722,6 +1742,7 @@ def _field_response(field: dict[str, Any], index: int) -> dict[str, Any]:
         "scope": field["scope"],
         "selection_mode": field.get("selection_mode", SELECTION_MODE_UNITARIA),
         "description_order": _field_description_order(field, index),
+        "group_codes": field_group_codes(field),
         "column": column,
         "letter": get_column_letter(column),
         "options": options,
@@ -1729,14 +1750,27 @@ def _field_response(field: dict[str, Any], index: int) -> dict[str, Any]:
     }
 
 
-def get_banco_fields(category_key_value: str) -> list[dict[str, Any]]:
-    category = _find_category(load_catalog(), category_key_value)
-    return [_field_response(field, index) for index, field in enumerate(category.get("fields") or [])]
+def _fields_for_group(fields: list[dict[str, Any]], group_code: str = "") -> list[dict[str, Any]]:
+    selected_group = _pn_group_code(group_code)
+    if not selected_group:
+        return fields
+    filtered = [
+        field
+        for field in fields
+        if not field_group_codes(field) or selected_group in field_group_codes(field)
+    ]
+    return filtered or fields
 
 
-def get_banco_fields_for_display(category_key_value: str) -> list[dict[str, Any]]:
+def get_banco_fields(category_key_value: str, group_code: str = "") -> list[dict[str, Any]]:
     category = _find_category(load_catalog(), category_key_value)
-    ordered_fields = _ordered_fields_for_description(category.get("fields") or [])
+    fields = _fields_for_group(category.get("fields") or [], group_code)
+    return [_field_response(field, index) for index, field in enumerate(fields)]
+
+
+def get_banco_fields_for_display(category_key_value: str, group_code: str = "") -> list[dict[str, Any]]:
+    category = _find_category(load_catalog(), category_key_value)
+    ordered_fields = _ordered_fields_for_description(_fields_for_group(category.get("fields") or [], group_code))
     return [_field_response(field, index) for index, field in enumerate(ordered_fields, start=1)]
 
 
@@ -2878,7 +2912,10 @@ def save_banco_registration(form_data: Any) -> dict[str, str]:
     category = selected_category(category_key_value)
     catalog = load_catalog()
     raw_category = _find_category(catalog, category["key"])
-    fields = get_banco_fields(category["key"])
+    requested_group = _pn_group_code(form_data.get(PN_GROUP_FORM_KEY))
+    if category["key"] == DEFAULT_CATEGORY_KEY and not requested_group:
+        raise ValueError("Selecione o grupo do cadastro.")
+    fields = get_banco_fields(category["key"], requested_group)
     if category["key"] == DEFAULT_CATEGORY_KEY:
         _validate_banco_dependencies(fields, form_data)
         _validate_visible_field_requirements(fields, category["key"], form_data)
