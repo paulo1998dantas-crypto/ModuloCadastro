@@ -45,6 +45,19 @@ class BomPreferenceTests(unittest.TestCase):
 
 
 class SkuStructureMigrationTests(unittest.TestCase):
+    def test_category_alias_does_not_trigger_structure_migration(self):
+        current = {"category_key": "cat_20_bco", "sku": "30200012", "form_values": {"grupo_codigo": ["30"]}}
+        category = {"key": "bancos", "label": "20 - BANCOS"}
+
+        self.assertFalse(
+            supabase_store._registration_structure_changed(
+                current,
+                category,
+                [],
+                {"grupo_codigo": "30"},
+            )
+        )
+
     def test_structure_change_compares_group_and_category(self):
         current = {"category_key": "cat_14_piso", "sku": "30140027"}
         category = {"key": "cat_14_piso", "label": "14 - PISO"}
@@ -214,6 +227,46 @@ class SkuStructureMigrationTests(unittest.TestCase):
         self.assertFalse(old_patch.kwargs["payload"]["ativo"])
         migration = old_patch.kwargs["payload"]["form_values"][supabase_store.SKU_MIGRATION_FORM_KEY]
         self.assertEqual(migration["replacement_sku"], "20140031")
+
+
+class CategoryAliasTests(unittest.TestCase):
+    def test_sanitizer_merges_cj_bco_fields_into_bancos(self):
+        catalog = {
+            "active_category": "cat_20_bco",
+            "categories": [
+                {
+                    "key": "bancos",
+                    "label": "20 - BANCOS",
+                    "sheet_name": "20 - BANCOS",
+                    "fields": [{"key": "pre_fixo", "label": "PRE FIXO", "scope": "primaria", "options": ["1- BCO"]}],
+                },
+                {
+                    "key": "cat_20_bco",
+                    "label": "20 - CJ-BCO",
+                    "sheet_name": "20 - CJ-BCO",
+                    "fields": [{"key": "prefixo", "label": "PREFIXO", "scope": "primaria", "options": ["CJ"]}],
+                },
+            ],
+        }
+
+        sanitized = excel_bancos._sanitize_catalog(catalog)
+
+        self.assertEqual(sanitized["active_category"], "bancos")
+        self.assertEqual([category["label"] for category in sanitized["categories"]], ["20 - BANCOS"])
+        self.assertEqual(
+            [field["key"] for field in sanitized["categories"][0]["fields"]],
+            ["pre_fixo", "prefixo"],
+        )
+
+    def test_supabase_category_filter_includes_legacy_aliases(self):
+        self.assertEqual(
+            supabase_store._category_key_filter("category_key", "bancos"),
+            ("category_key", "in.(bancos,cat_20_bco,cat_20_cj_bco,20_cj_bco)"),
+        )
+        self.assertEqual(
+            supabase_store._category_key_filter("category_key", "cat_20_bco"),
+            ("category_key", "in.(bancos,cat_20_bco,cat_20_cj_bco,20_cj_bco)"),
+        )
 
 
 if __name__ == "__main__":

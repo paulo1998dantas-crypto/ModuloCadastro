@@ -206,6 +206,15 @@ def _sheet_name(category: dict[str, Any]) -> str:
     return excel_bancos._safe_sheet_title(category.get("sheet_name") or category.get("label") or "Categoria")
 
 
+def _category_key_filter(column: str, category_key: str) -> tuple[str, str] | None:
+    keys = excel_bancos.category_key_candidates(category_key)
+    if not keys:
+        return None
+    if len(keys) == 1:
+        return (column, f"eq.{keys[0]}")
+    return (column, "in.(" + ",".join(keys) + ")")
+
+
 def _initial_sku(code_prefix: str) -> str:
     return f"{code_prefix}0001"
 
@@ -217,7 +226,7 @@ def _next_sku(category: dict[str, Any], fields: list[dict[str, Any]], form_data:
         REGISTRATIONS_TABLE,
         [
             ("select", "sku"),
-            ("category_key", f"eq.{category['key']}"),
+            _category_key_filter("category_key", category["key"]),
             ("sku", f"like.{code_prefix}%"),
             ("order", "sku.desc"),
             ("limit", "1"),
@@ -357,11 +366,13 @@ def _duplicate_exists(
 ) -> bool:
     params = [
         ("select", "id"),
-        ("category_key", f"eq.{category_key}"),
         ("descricao_primaria", f"eq.{primaria}"),
         ("descricao_secundaria", f"eq.{secundaria}"),
         ("limit", "1"),
     ]
+    category_filter = _category_key_filter("category_key", category_key)
+    if category_filter:
+        params.append(category_filter)
     if exclude_id is not None:
         params.append(("id", f"neq.{clean_text(exclude_id)}"))
     rows = _request(
@@ -625,7 +636,9 @@ def list_registrations(
         ("order", "category_label.asc,sku.asc" if all_categories else "sku.asc"),
     ]
     if selected:
-        params.append(("category_key", f"eq.{selected}"))
+        category_filter = _category_key_filter("category_key", selected)
+        if category_filter:
+            params.append(category_filter)
     if not include_inactive:
         params.append(("ativo", "is.true"))
     term = _search_text(query)
@@ -701,7 +714,9 @@ def count_registrations_without_unit(category_key: str = "", include_inactive: b
         ("limit", "10000"),
     ]
     if selected:
-        params.append(("category_key", f"eq.{selected}"))
+        category_filter = _category_key_filter("category_key", selected)
+        if category_filter:
+            params.append(category_filter)
     if not include_inactive:
         params.append(("ativo", "is.true"))
     try:
@@ -723,7 +738,9 @@ def count_inactive_registrations(category_key: str = "") -> int:
         ("limit", "10000"),
     ]
     if selected:
-        params.append(("category_key", f"eq.{selected}"))
+        category_filter = _category_key_filter("category_key", selected)
+        if category_filter:
+            params.append(category_filter)
     try:
         rows = _request("GET", REGISTRATIONS_TABLE, params) or []
     except SupabaseStoreError as exc:
@@ -799,7 +816,10 @@ def _registration_structure_changed(
     current_category_key = clean_text(current.get("category_key"))
     current_group_code = _row_group_code(current)
     target_group_code = excel_bancos.pn_group_code(fields, form_data)
-    return target_category["key"] != current_category_key or target_group_code != current_group_code
+    return (
+        not excel_bancos.same_category_key(target_category["key"], current_category_key)
+        or target_group_code != current_group_code
+    )
 
 
 def _bom_reference_snapshots(sku: str) -> dict[str, Any]:
@@ -1330,7 +1350,9 @@ def list_boms(
         ("order", "parent_sku.asc"),
     ]
     if clean_text(category_key):
-        params.append(("parent_category_key", f"eq.{clean_text(category_key)}"))
+        category_filter = _category_key_filter("parent_category_key", category_key)
+        if category_filter:
+            params.append(category_filter)
     parent_term = _search_text(parent_query)
     if parent_term:
         params.append(("search_text", f"ilike.*{parent_term}*"))

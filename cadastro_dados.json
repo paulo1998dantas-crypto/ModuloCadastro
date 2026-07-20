@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "active_category": "cat_20_bco",
+  "active_category": "bancos",
   "categories": [
     {
       "key": "bancos",
@@ -605,6 +605,112 @@
             "1- INCLINACAO 32",
             "2- INCLINACAO 41"
           ]
+        },
+        {
+          "key": "prefixo",
+          "label": "PREFIXO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "CJ"
+          ]
+        },
+        {
+          "key": "descritor_base",
+          "label": "DESCRITOR BASE",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "BANCOS FIXOS",
+            "BANCOS REC"
+          ]
+        },
+        {
+          "key": "veiculo_modelo",
+          "label": "VEÍCULO/MODELO",
+          "scope": "primaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "BJD"
+          ]
+        },
+        {
+          "key": "posicao_lado",
+          "label": "POSIÇÃO/LADO",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 1,
+          "options": [
+            "LE"
+          ]
+        },
+        {
+          "key": "medida",
+          "label": "MEDIDA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 2,
+          "options": [
+            "2P",
+            "3P",
+            "2P / 2A"
+          ]
+        },
+        {
+          "key": "material_cor",
+          "label": "MATERIAL/COR",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 3,
+          "options": [
+            "TECIDO",
+            "COURVIN",
+            "MARROM / COURVIN"
+          ]
+        },
+        {
+          "key": "complemento_regra",
+          "label": "COMPLEMENTO/REGRA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 4,
+          "options": [
+            "MC - LB - 4,3,3,3 - 2P - TECIDO - BJD",
+            "MC - LB - 3,2,3 - 3P - COURVIN - E/S/ J",
+            "MC - LB - 3,2,3 - 3P - TECIDO - E/S/ J",
+            "MC - LB - 3,3 - 3P - TECIDO - E/S/ J",
+            "MC - LB - 3,3 - 3P - COURVIN - E/S/ J",
+            "MC - LB - 3,2,3 - 2P - COURVIN - E/S/ J",
+            "MC - LB - 3,2,3 - 2P - TECIDO - E/S/ J",
+            "MC - LB - 4,3,3,2,2-1 - 2P - TECIDO - TRILHO - FOCA",
+            "MC - LB - 4,3,3,3 - 2P - TECIDO - TRILHO",
+            "MC - LB - 1E,1E,1E,1D - 3P - COURVIN - NORMAL",
+            "MC - LB - 4,3,3,2-1 - 2P - TECIDO - NORMAL - FOCA",
+            "MC - LB - 4,2,2,3,3,3 - REC - 3P - COURVIN - NORMAL",
+            "MC - LB - 4,2,3,3,3 - REC - 2P - COURVIN - PME 2A",
+            "MC - LB - 1E,1E,1D,1D,3,3 - 3P - TECIDO - BJD",
+            "MC - LB - 4,2-1,2,3,3,3 - 2P - TECIDO - NORMAL",
+            "MC - LB - 1E,1E,1E,1D - 2P - TECIDO - TRILHO",
+            "MC - LB - 4,3,3,2-1 - 2P - TECIDO - TRILHO - ELEVITTA",
+            "MC - LB - 4,2-1,2,3,3,3 - 2P - TECIDO - TRILHO",
+            "MC - LB - 4,2-1,2,3,3,3 - 3P - COURVIN - NORMAL",
+            "MC - LB - 3,2,2-1 - 2P - TECIDO - E/S/ J - FOCA",
+            "3,3 - 3P - COURVIN MARROM/DIAMENTE/LINHA DOURADA - E/S/ J - EXECUTIVO",
+            "MC - LB - 4,3,3,3,4 - 3P - TECIDO - NORMAL",
+            "MC - LB - 3,4 - 2P - TECIDO",
+            "MC - LB - 4,3 - 2P - TECIDO"
+          ]
+        },
+        {
+          "key": "fornecedor_referencia",
+          "label": "FORNECEDOR/REFERÊNCIA",
+          "scope": "secundaria",
+          "selection_mode": "unitaria",
+          "description_order": 5,
+          "options": []
         }
       ],
       "conditional_rules": [
@@ -3416,120 +3522,6 @@
       "conditional_rules": []
     },
     {
-      "key": "cat_20_bco",
-      "label": "20 - CJ-BCO",
-      "sheet_name": "20 - CJ-BCO",
-      "fields": [
-        {
-          "key": "prefixo",
-          "label": "PREFIXO",
-          "scope": "primaria",
-          "selection_mode": "unitaria",
-          "description_order": 1,
-          "options": [
-            "CJ"
-          ]
-        },
-        {
-          "key": "descritor_base",
-          "label": "DESCRITOR BASE",
-          "scope": "primaria",
-          "selection_mode": "unitaria",
-          "description_order": 2,
-          "options": [
-            "BANCOS FIXOS",
-            "BANCOS REC"
-          ]
-        },
-        {
-          "key": "veiculo_modelo",
-          "label": "VEÍCULO/MODELO",
-          "scope": "primaria",
-          "selection_mode": "unitaria",
-          "description_order": 3,
-          "options": [
-            "BJD"
-          ]
-        },
-        {
-          "key": "posicao_lado",
-          "label": "POSIÇÃO/LADO",
-          "scope": "secundaria",
-          "selection_mode": "unitaria",
-          "description_order": 1,
-          "options": [
-            "LE"
-          ]
-        },
-        {
-          "key": "medida",
-          "label": "MEDIDA",
-          "scope": "secundaria",
-          "selection_mode": "unitaria",
-          "description_order": 2,
-          "options": [
-            "2P",
-            "3P",
-            "2P / 2A"
-          ]
-        },
-        {
-          "key": "material_cor",
-          "label": "MATERIAL/COR",
-          "scope": "secundaria",
-          "selection_mode": "unitaria",
-          "description_order": 3,
-          "options": [
-            "TECIDO",
-            "COURVIN",
-            "MARROM / COURVIN"
-          ]
-        },
-        {
-          "key": "complemento_regra",
-          "label": "COMPLEMENTO/REGRA",
-          "scope": "secundaria",
-          "selection_mode": "unitaria",
-          "description_order": 4,
-          "options": [
-            "MC - LB - 4,3,3,3 - 2P - TECIDO - BJD",
-            "MC - LB - 3,2,3 - 3P - COURVIN - E/S/ J",
-            "MC - LB - 3,2,3 - 3P - TECIDO - E/S/ J",
-            "MC - LB - 3,3 - 3P - TECIDO - E/S/ J",
-            "MC - LB - 3,3 - 3P - COURVIN - E/S/ J",
-            "MC - LB - 3,2,3 - 2P - COURVIN - E/S/ J",
-            "MC - LB - 3,2,3 - 2P - TECIDO - E/S/ J",
-            "MC - LB - 4,3,3,2,2-1 - 2P - TECIDO - TRILHO - FOCA",
-            "MC - LB - 4,3,3,3 - 2P - TECIDO - TRILHO",
-            "MC - LB - 1E,1E,1E,1D - 3P - COURVIN - NORMAL",
-            "MC - LB - 4,3,3,2-1 - 2P - TECIDO - NORMAL - FOCA",
-            "MC - LB - 4,2,2,3,3,3 - REC - 3P - COURVIN - NORMAL",
-            "MC - LB - 4,2,3,3,3 - REC - 2P - COURVIN - PME 2A",
-            "MC - LB - 1E,1E,1D,1D,3,3 - 3P - TECIDO - BJD",
-            "MC - LB - 4,2-1,2,3,3,3 - 2P - TECIDO - NORMAL",
-            "MC - LB - 1E,1E,1E,1D - 2P - TECIDO - TRILHO",
-            "MC - LB - 4,3,3,2-1 - 2P - TECIDO - TRILHO - ELEVITTA",
-            "MC - LB - 4,2-1,2,3,3,3 - 2P - TECIDO - TRILHO",
-            "MC - LB - 4,2-1,2,3,3,3 - 3P - COURVIN - NORMAL",
-            "MC - LB - 3,2,2-1 - 2P - TECIDO - E/S/ J - FOCA",
-            "3,3 - 3P - COURVIN MARROM/DIAMENTE/LINHA DOURADA - E/S/ J - EXECUTIVO",
-            "MC - LB - 4,3,3,3,4 - 3P - TECIDO - NORMAL",
-            "MC - LB - 3,4 - 2P - TECIDO",
-            "MC - LB - 4,3 - 2P - TECIDO"
-          ]
-        },
-        {
-          "key": "fornecedor_referencia",
-          "label": "FORNECEDOR/REFERÊNCIA",
-          "scope": "secundaria",
-          "selection_mode": "unitaria",
-          "description_order": 5,
-          "options": []
-        }
-      ],
-      "conditional_rules": []
-    },
-    {
       "key": "cat_22_pecas_bco",
       "label": "22 - PEÇAS BCO",
       "sheet_name": "22 - PEÇAS BCO",
@@ -6016,6 +6008,130 @@
         }
       ],
       "conditional_rules": []
+    }
+  ],
+  "pn_groups": [
+    {
+      "code": "10",
+      "label": "INSUMO",
+      "prefixes": [
+        "ABS",
+        "ACABAMENTO DIFUSOR",
+        "ACABAMENTO LATERAL",
+        "ACABAMENTO PLASTICO",
+        "ACABAMENTO PONTEIRA",
+        "ACABAMENTO TAMPA",
+        "ACABAMENTO TELA",
+        "ACESSORIO",
+        "ALCA",
+        "APOIO BRACO",
+        "ARCO",
+        "ARGOLA",
+        "BCO",
+        "BCO CARONA",
+        "BCO CARONA ORIGINAL",
+        "BCO MOTORISTA",
+        "BCO MOTORISTA ORIGINAL",
+        "BOBINA",
+        "BOTOEIRA",
+        "CALCO",
+        "CANTONEIRA",
+        "CAPA",
+        "CHICOTE",
+        "CINTO",
+        "CM",
+        "COLUNA",
+        "CONTROLADOR",
+        "CP",
+        "CUPULA",
+        "DECODER",
+        "DIAMOND",
+        "ELETRICA",
+        "ESTROBO",
+        "EXAUSTOR",
+        "FAROL",
+        "FATURAMENTO DIRETO",
+        "FX",
+        "ILUMINACAO",
+        "INVERSOR",
+        "JANELA",
+        "LANTERNA",
+        "LED",
+        "LUMINARIA",
+        "LUZ",
+        "MINI",
+        "MODULO",
+        "MP",
+        "PC",
+        "PE",
+        "PEGA MAO",
+        "PORTA",
+        "POSTICO",
+        "QUEBRA",
+        "REFORCO",
+        "SIRENE",
+        "SUPORTE",
+        "TAMPA",
+        "TOMADA",
+        "VIDRO"
+      ]
+    },
+    {
+      "code": "20",
+      "label": "PRODUTO PROCESSO",
+      "prefixes": [
+        "PP",
+        "TETO"
+      ]
+    },
+    {
+      "code": "30",
+      "label": "CONJUNTO / KIT",
+      "prefixes": [
+        "CHAPA",
+        "CJ"
+      ]
+    },
+    {
+      "code": "40",
+      "label": "TRANSFORMACAO",
+      "prefixes": [
+        "JI CONFORT",
+        "JI URBAN"
+      ]
+    },
+    {
+      "code": "50",
+      "label": "MRO (MANUTENCAO, REPARO E OPERACOES)",
+      "prefixes": []
+    },
+    {
+      "code": "60",
+      "label": "EMBALAGEM",
+      "prefixes": []
+    },
+    {
+      "code": "70",
+      "label": "ATIVO FIXO",
+      "prefixes": []
+    },
+    {
+      "code": "80",
+      "label": "VEICULO",
+      "prefixes": [
+        "CITROEN",
+        "FIAT",
+        "FORD",
+        "IVECO",
+        "MERCEDES BENZ SPRINTER",
+        "PEUGEOT",
+        "RENAULT"
+      ]
+    },
+    {
+      "code": "90",
+      "label": "PROTOTIPO",
+      "prefixes": []
     }
   ]
 }
