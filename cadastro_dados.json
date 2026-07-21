@@ -6017,5 +6017,129 @@
       ],
       "conditional_rules": []
     }
+  ],
+  "pn_groups": [
+    {
+      "code": "10",
+      "label": "INSUMO",
+      "prefixes": [
+        "ABS",
+        "ACABAMENTO DIFUSOR",
+        "ACABAMENTO LATERAL",
+        "ACABAMENTO PLASTICO",
+        "ACABAMENTO PONTEIRA",
+        "ACABAMENTO TAMPA",
+        "ACABAMENTO TELA",
+        "ACESSORIO",
+        "ALCA",
+        "APOIO BRACO",
+        "ARCO",
+        "ARGOLA",
+        "BCO",
+        "BCO CARONA",
+        "BCO CARONA ORIGINAL",
+        "BCO MOTORISTA",
+        "BCO MOTORISTA ORIGINAL",
+        "BOBINA",
+        "BOTOEIRA",
+        "CALCO",
+        "CANTONEIRA",
+        "CAPA",
+        "CHICOTE",
+        "CINTO",
+        "CM",
+        "COLUNA",
+        "CONTROLADOR",
+        "CP",
+        "CUPULA",
+        "DECODER",
+        "DIAMOND",
+        "ELETRICA",
+        "ESTROBO",
+        "EXAUSTOR",
+        "FAROL",
+        "FATURAMENTO DIRETO",
+        "FX",
+        "ILUMINACAO",
+        "INVERSOR",
+        "JANELA",
+        "LANTERNA",
+        "LED",
+        "LUMINARIA",
+        "LUZ",
+        "MINI",
+        "MODULO",
+        "MP",
+        "PC",
+        "PE",
+        "PEGA MAO",
+        "PORTA",
+        "POSTICO",
+        "QUEBRA",
+        "REFORCO",
+        "SIRENE",
+        "SUPORTE",
+        "TAMPA",
+        "TOMADA",
+        "VIDRO"
+      ]
+    },
+    {
+      "code": "20",
+      "label": "PRODUTO PROCESSO",
+      "prefixes": [
+        "PP",
+        "TETO"
+      ]
+    },
+    {
+      "code": "30",
+      "label": "CONJUNTO / KIT",
+      "prefixes": [
+        "CHAPA",
+        "CJ"
+      ]
+    },
+    {
+      "code": "40",
+      "label": "TRANSFORMACAO",
+      "prefixes": [
+        "JI CONFORT",
+        "JI URBAN"
+      ]
+    },
+    {
+      "code": "50",
+      "label": "MRO (MANUTENCAO, REPARO E OPERACOES)",
+      "prefixes": []
+    },
+    {
+      "code": "60",
+      "label": "EMBALAGEM",
+      "prefixes": []
+    },
+    {
+      "code": "70",
+      "label": "ATIVO FIXO",
+      "prefixes": []
+    },
+    {
+      "code": "80",
+      "label": "VEICULO",
+      "prefixes": [
+        "CITROEN",
+        "FIAT",
+        "FORD",
+        "IVECO",
+        "MERCEDES BENZ SPRINTER",
+        "PEUGEOT",
+        "RENAULT"
+      ]
+    },
+    {
+      "code": "90",
+      "label": "PROTOTIPO",
+      "prefixes": []
+    }
   ]
 }
