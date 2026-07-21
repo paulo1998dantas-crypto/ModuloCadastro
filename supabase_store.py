@@ -1393,11 +1393,21 @@ def update_bom(
     current = get_bom(bom_id)
     current_parent_sku = clean_text(current.get("parent_sku"))
     requested_parent_sku = clean_text(parent_sku)
-    if requested_parent_sku and requested_parent_sku == _display_bom_code(current_parent_sku):
+    current_is_duplicate_review = DUPLICATE_PARENT_SEPARATOR in current_parent_sku
+    if (
+        requested_parent_sku
+        and requested_parent_sku == _display_bom_code(current_parent_sku)
+        and not current_is_duplicate_review
+    ):
         effective_parent_sku = current_parent_sku
     elif requested_parent_sku:
         existing = _bom_header_by_parent(requested_parent_sku)
         if existing and clean_text(existing.get("id")) != clean_text(bom_id):
+            if current_is_duplicate_review:
+                raise SupabaseStoreError(
+                    "Ja existe outra B.O.M. com esse item pai. "
+                    "Para resolver a duplicidade, altere o item pai para o SKU correto ou exclua uma das B.O.M."
+                )
             raise SupabaseStoreError("Ja existe outra B.O.M. com esse item pai.")
         effective_parent_sku = requested_parent_sku
     else:

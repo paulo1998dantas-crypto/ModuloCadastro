@@ -44,6 +44,72 @@ class BomPreferenceTests(unittest.TestCase):
         self.assertFalse(supabase_store._stored_bom_preference(row))
 
 
+class BomUpdateReviewTests(unittest.TestCase):
+    def test_update_duplicate_review_normalizes_parent_sku_when_available(self):
+        current = {
+            "id": 366,
+            "parent_sku": "40340051__BOM__659BDEFBEA",
+            "parent_descricao": "JI URBAN E/S/ J TB VITRE",
+            "parent_category_key": "cat_40_transformacao",
+            "parent_category_label": "40 - TRANSFORMACAO",
+            "registration_id": None,
+        }
+        registration = {
+            "id": 51,
+            "sku": "40340051",
+            "category_key": "cat_40_transformacao",
+            "category_label": "40 - TRANSFORMACAO",
+            "descricao_primaria": "JI URBAN E/S/ J TB VITRE",
+            "unidade": "un",
+        }
+
+        def request_side_effect(method, table, query=None, payload=None, prefer=""):
+            if method == "PATCH" and table == supabase_store.BOM_HEADERS_TABLE:
+                return [{**current, **payload}]
+            return None
+
+        with (
+            patch.object(supabase_store, "get_bom", return_value=current),
+            patch.object(supabase_store, "_bom_header_by_parent", return_value=None),
+            patch.object(supabase_store, "_registration_by_sku", return_value=registration),
+            patch.object(supabase_store, "_catalog_data_by_sku", return_value={}),
+            patch.object(supabase_store, "_request", side_effect=request_side_effect) as request,
+        ):
+            result = supabase_store.update_bom(
+                366,
+                "JI URBAN E/S/ J TB VITRE",
+                [{"codigo": "10180001", "descricao": "COMPONENTE", "unidade": "pc", "quantidade": 2}],
+                parent_sku="40340051",
+            )
+
+        header_patch = next(call for call in request.call_args_list if call.args[0] == "PATCH")
+        self.assertEqual(header_patch.kwargs["payload"]["parent_sku"], "40340051")
+        self.assertEqual(header_patch.kwargs["payload"]["source"], "edicao")
+        self.assertEqual(result["parent_sku"], "40340051")
+
+    def test_update_duplicate_review_explains_conflicting_clean_parent(self):
+        current = {
+            "id": 366,
+            "parent_sku": "40340051__BOM__659BDEFBEA",
+            "parent_descricao": "JI URBAN E/S/ J TB VITRE",
+            "parent_category_key": "cat_40_transformacao",
+            "parent_category_label": "40 - TRANSFORMACAO",
+            "registration_id": None,
+        }
+
+        with (
+            patch.object(supabase_store, "get_bom", return_value=current),
+            patch.object(supabase_store, "_bom_header_by_parent", return_value={"id": 120, "parent_sku": "40340051"}),
+        ):
+            with self.assertRaisesRegex(supabase_store.SupabaseStoreError, "Para resolver a duplicidade"):
+                supabase_store.update_bom(
+                    366,
+                    "JI URBAN E/S/ J TB VITRE",
+                    [{"codigo": "10180001", "quantidade": 2}],
+                    parent_sku="40340051",
+                )
+
+
 class SkuStructureMigrationTests(unittest.TestCase):
     def test_structure_change_compares_group_and_category(self):
         current = {"category_key": "cat_14_piso", "sku": "30140027"}
