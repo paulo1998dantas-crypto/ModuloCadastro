@@ -113,6 +113,16 @@ def _shared_auth_enabled() -> bool:
     }
 
 
+def _shared_rbac_enabled() -> bool:
+    return os.environ.get("CADASTRO_SHARED_RBAC_ENABLED", "").strip().lower() in {
+        "1",
+        "true",
+        "sim",
+        "yes",
+        "on",
+    }
+
+
 def _shared_auth_configured() -> bool:
     return bool(supabase_store.configured())
 
@@ -121,9 +131,12 @@ def _shared_user_lookup(username: str) -> dict[str, str | int | bool] | None:
     username = excel_bancos.clean_text(username)
     if not username or not _shared_auth_configured():
         return None
+    selected_fields = "id,username,password_hash,role,active"
+    if _shared_rbac_enabled():
+        selected_fields += ",auth_version"
     query = urllib.parse.urlencode(
         [
-            ("select", "id,username,password_hash,role,active"),
+            ("select", selected_fields),
             ("username", f"eq.{username}"),
             ("limit", "1"),
         ]
@@ -139,17 +152,102 @@ def _shared_user_lookup(username: str) -> dict[str, str | int | bool] | None:
         return None
 
 
-def _verify_shared_login(username: str, password: str) -> bool:
+def _shared_access_lookup(user_id: int) -> dict[str, object] | None:
+    if not user_id or not _shared_auth_configured():
+        return None
+    url = f"{supabase_store._supabase_url()}/rest/v1/rpc/erp_get_user_access"
+    request = urllib.request.Request(
+        url,
+        data=json.dumps({"p_user_id": int(user_id)}).encode("utf-8"),
+        headers={**supabase_store._headers(), "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            body = response.read().decode("utf-8")
+            value = json.loads(body) if body else {}
+            if isinstance(value, list):
+                value = value[0] if value else {}
+            return value if isinstance(value, dict) and value else None
+    except Exception:
+        return None
+
+
+def _cadastro_access_allowed(access: dict[str, object] | None) -> bool:
+    if not access or not bool(access.get("active", False)):
+        return False
+    roles = {str(value).upper() for value in (access.get("roles") or [])}
+    permissions = {str(value) for value in (access.get("permissions") or [])}
+    return "ADMIN" in roles or "cadastro.access" in permissions
+
+
+def _legacy_cadastro_access_allowed(user: dict[str, object] | None) -> bool:
+    """Restrict the pre-RBAC bridge to its historical privileged profiles."""
+    if not user or not bool(user.get("active", False)):
+        return False
+    role = str(user.get("role") or "").strip().upper()
+    if role == "ADM":
+        role = "ADMIN"
+    return role in {"ADMIN", "ENGENHARIA"}
+
+
+def _shared_rbac_schema_status() -> dict[str, object]:
+    if not _shared_rbac_enabled():
+        return {"enabled": False, "ready": False}
+    if not _shared_auth_configured():
+        return {"enabled": True, "ready": False}
+    try:
+        users_query = urllib.parse.urlencode(
+            [("select", "auth_version"), ("limit", "1")]
+        )
+        users_request = urllib.request.Request(
+            f"{supabase_store._supabase_url()}/rest/v1/users?{users_query}",
+            headers=supabase_store._headers(),
+            method="GET",
+        )
+        with urllib.request.urlopen(users_request, timeout=20) as response:
+            response.read()
+
+        rpc_request = urllib.request.Request(
+            f"{supabase_store._supabase_url()}/rest/v1/rpc/erp_get_user_access",
+            data=json.dumps({"p_user_id": 0}).encode("utf-8"),
+            headers={**supabase_store._headers(), "Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(rpc_request, timeout=20) as response:
+            response.read()
+    except Exception:
+        return {"enabled": True, "ready": False}
+    return {"enabled": True, "ready": True}
+
+
+def _authenticate_shared_user(username: str, password: str) -> dict[str, object] | None:
     user = _shared_user_lookup(username)
     if not user or not bool(user.get("active", True)):
-        return False
+        return None
     password_hash = str(user.get("password_hash") or "")
     if not password_hash:
-        return False
+        return None
     try:
-        return check_password_hash(password_hash, password)
+        if not check_password_hash(password_hash, password):
+            return None
     except Exception:
-        return False
+        return None
+    if _shared_rbac_enabled():
+        access = _shared_access_lookup(int(user.get("id") or 0))
+        if not _cadastro_access_allowed(access):
+            return None
+        return {
+            **user,
+            "auth_version": int(access.get("auth_version") or 1),
+            "roles": access.get("roles") or [],
+            "permissions": access.get("permissions") or [],
+        }
+    return user if _legacy_cadastro_access_allowed(user) else None
+
+
+def _verify_shared_login(username: str, password: str) -> bool:
+    return bool(_authenticate_shared_user(username, password))
 
 
 def _hash_password(password: str) -> str:
@@ -235,6 +333,21 @@ def _verify_login(username: str, password: str) -> bool:
     return bool(expected_password) and hmac.compare_digest(password, expected_password)
 
 
+def _login_context(username: str, password: str) -> dict[str, object] | None:
+    if _shared_auth_enabled():
+        user = _authenticate_shared_user(username, password)
+        if not user:
+            return None
+        return {
+            "username": str(user.get("username") or username),
+            "user_id": int(user.get("id") or 0),
+            "auth_version": int(user.get("auth_version") or 1),
+        }
+    if not _verify_login(username, password):
+        return None
+    return {"username": username, "user_id": 0, "auth_version": 0}
+
+
 def _auth_status() -> dict[str, str | bool]:
     record = _auth_record()
     source = str(record.get("source") or "missing")
@@ -289,29 +402,48 @@ def _sign_session(payload: str) -> str:
     return hmac.new(_session_secret(), payload.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
-def _make_session(username: str) -> str:
+def _make_session(username: str, user_id: int = 0, auth_version: int = 0) -> str:
     payload = {
         "u": username,
+        "uid": int(user_id or 0),
+        "av": int(auth_version or 0),
         "exp": int(time.time()) + SESSION_MAX_AGE_SECONDS,
     }
     encoded = _b64encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
     return f"{encoded}.{_sign_session(encoded)}"
 
 
-def _read_session(request: Request) -> str:
+def _read_session_payload(request: Request) -> dict[str, object]:
     raw = request.cookies.get(SESSION_COOKIE, "")
     if "." not in raw:
-        return ""
+        return {}
     encoded, signature = raw.rsplit(".", 1)
     if not hmac.compare_digest(_sign_session(encoded), signature):
-        return ""
+        return {}
     try:
         payload = json.loads(_b64decode(encoded).decode("utf-8"))
     except Exception:
-        return ""
+        return {}
     if int(payload.get("exp") or 0) < int(time.time()):
-        return ""
-    return str(payload.get("u") or "")
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _read_session(request: Request) -> str:
+    return str(_read_session_payload(request).get("u") or "")
+
+
+def _safe_next_path(value: str, default: str = "/cadastro/bancos") -> str:
+    candidate = str(value or "").strip()
+    parsed = urllib.parse.urlsplit(candidate)
+    if (
+        not candidate.startswith("/")
+        or candidate.startswith("//")
+        or parsed.scheme
+        or parsed.netloc
+    ):
+        return default
+    return candidate
 
 
 def _is_public_path(path: str) -> bool:
@@ -326,7 +458,30 @@ def _is_public_path(path: str) -> bool:
 async def require_login_middleware(request: Request, call_next):
     if not _login_required() or _is_public_path(request.url.path):
         return await call_next(request)
-    if _read_session(request):
+    session_payload = _read_session_payload(request)
+    if session_payload:
+        if _shared_auth_enabled() and _shared_rbac_enabled():
+            access = _shared_access_lookup(int(session_payload.get("uid") or 0))
+            access_is_current = (
+                _cadastro_access_allowed(access)
+                and int(access.get("auth_version") or 0)
+                == int(session_payload.get("av") or 0)
+                and str(access.get("username") or "").casefold()
+                == str(session_payload.get("u") or "").casefold()
+            )
+            if not access_is_current:
+                if request.url.path.startswith("/api/"):
+                    return JSONResponse(
+                        {"ok": False, "error": "Sessao revogada ou acesso nao autorizado."},
+                        status_code=401,
+                    )
+                response = RedirectResponse(
+                    url=f"/login?erro={quote('Sessao revogada ou acesso nao autorizado.')}",
+                    status_code=303,
+                )
+                response.delete_cookie(SESSION_COOKIE)
+                return response
+            request.state.erp_access = access
         if (
             bridge_store.save_via_bridge()
             and _persistence_required()
@@ -540,7 +695,7 @@ async def login_page(request: Request, next: str = "/cadastro/bancos", erro: str
             "request": request,
             "erro": erro,
             "sucesso": sucesso,
-            "next_url": next or "/cadastro/bancos",
+            "next_url": _safe_next_path(next),
             "username": auth_status["username"],
             "auth_configured": auth_status["configured"],
             "setup_available": (not auth_status["configured"]) and (not _shared_auth_enabled()),
@@ -560,12 +715,17 @@ async def login_post(
         if _shared_auth_enabled():
             return RedirectResponse(url=f"/login?erro={quote('Login compartilhado não configurado.')}", status_code=303)
         return RedirectResponse(url="/admin/setup", status_code=303)
-    if not _verify_login(username, password):
+    context = _login_context(username, password)
+    if not context:
         return RedirectResponse(url=f"/login?erro={quote('Usuário ou senha inválidos.')}", status_code=303)
-    response = RedirectResponse(url=next_url or "/cadastro/bancos", status_code=303)
+    response = RedirectResponse(url=_safe_next_path(next_url), status_code=303)
     response.set_cookie(
         SESSION_COOKIE,
-        _make_session(username),
+        _make_session(
+            str(context["username"]),
+            int(context["user_id"]),
+            int(context["auth_version"]),
+        ),
         max_age=SESSION_MAX_AGE_SECONDS,
         httponly=True,
         secure=request.url.scheme == "https",
@@ -857,17 +1017,33 @@ async def home_head():
 
 @app.get("/healthz")
 async def healthz():
-    return {
+    rbac_status = _shared_rbac_schema_status()
+    payload = {
         "ok": True,
         "mode": supabase_store.save_mode() or bridge_store.save_mode(),
         "persistence": bridge_store.persistence_info(),
         "supabase": supabase_store.status(),
+        "shared_rbac": rbac_status,
     }
+    if (
+        _shared_auth_enabled()
+        and rbac_status["enabled"]
+        and not rbac_status["ready"]
+    ):
+        payload["ok"] = False
+        return JSONResponse(payload, status_code=503)
+    return payload
 
 
 @app.head("/healthz")
 async def healthz_head():
-    return Response(status_code=200)
+    rbac_status = _shared_rbac_schema_status()
+    ready = not (
+        _shared_auth_enabled()
+        and rbac_status["enabled"]
+        and not rbac_status["ready"]
+    )
+    return Response(status_code=200 if ready else 503)
 
 
 @app.get("/cadastro/bancos", response_class=HTMLResponse)

@@ -16,6 +16,8 @@ services:
         value: "1"
       - key: CADASTRO_AUTH_MODE
         value: shared
+      - key: CADASTRO_SHARED_RBAC_ENABLED
+        value: "0"
       - key: CADASTRO_REQUIRE_PERSISTENCE
         value: "0"
       - key: CADASTRO_SESSION_SECRET
