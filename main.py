@@ -22,6 +22,7 @@ import bridge_store
 import excel_bancos
 import supabase_store
 import supabase_suprimentos
+import portal_sso
 
 
 HOST = os.environ.get("HOST", "127.0.0.1")
@@ -132,7 +133,7 @@ def _shared_user_lookup(username: str) -> dict[str, str | int | bool] | None:
     if not username or not _shared_auth_configured():
         return None
     selected_fields = "id,username,password_hash,role,active"
-    if _shared_rbac_enabled():
+    if _shared_rbac_enabled() or portal_sso.enabled():
         selected_fields += ",auth_version"
     query = urllib.parse.urlencode(
         [
@@ -448,7 +449,7 @@ def _safe_next_path(value: str, default: str = "/cadastro/bancos") -> str:
 
 def _is_public_path(path: str) -> bool:
     return (
-        path in {"/login", "/healthz", "/favicon.ico"}
+        path in {"/login", "/logout", "/healthz", "/favicon.ico", "/_sso/consume"}
         or (path.startswith("/admin/setup") and not _shared_auth_enabled() and not _auth_configured())
         or path.startswith("/api/ponte/")
     )
@@ -475,10 +476,19 @@ async def require_login_middleware(request: Request, call_next):
                         {"ok": False, "error": "Sessao revogada ou acesso nao autorizado."},
                         status_code=401,
                     )
-                response = RedirectResponse(
-                    url=f"/login?erro={quote('Sessao revogada ou acesso nao autorizado.')}",
-                    status_code=303,
-                )
+                if portal_sso.enabled():
+                    target = _safe_next_path(
+                        request.url.path + (f"?{request.url.query}" if request.url.query else ""),
+                        "/cadastro/bancos",
+                    )
+                    response = RedirectResponse(
+                        url=portal_sso.portal_login_url("CADASTRO", target), status_code=303
+                    )
+                else:
+                    response = RedirectResponse(
+                        url=f"/login?erro={quote('Sessao revogada ou acesso nao autorizado.')}",
+                        status_code=303,
+                    )
                 response.delete_cookie(SESSION_COOKIE)
                 return response
             request.state.erp_access = access
@@ -497,7 +507,12 @@ async def require_login_middleware(request: Request, call_next):
         return await call_next(request)
     if request.url.path.startswith("/api/"):
         return JSONResponse({"ok": False, "error": "Login obrigatório."}, status_code=401)
-    next_url = quote(str(request.url.path))
+    next_url = _safe_next_path(
+        request.url.path + (f"?{request.url.query}" if request.url.query else ""),
+        "/cadastro/bancos",
+    )
+    if portal_sso.enabled():
+        return RedirectResponse(url=portal_sso.portal_login_url("CADASTRO", next_url), status_code=303)
     return RedirectResponse(url=f"/login?next={next_url}", status_code=303)
 
 
@@ -687,6 +702,10 @@ async def home():
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, next: str = "/cadastro/bancos", erro: str = "", sucesso: str = ""):
+    if portal_sso.enabled():
+        return RedirectResponse(
+            url=portal_sso.portal_login_url("CADASTRO", _safe_next_path(next)), status_code=303
+        )
     auth_status = _auth_status()
     return templates.TemplateResponse(
         request=request,
@@ -710,6 +729,10 @@ async def login_post(
     password: str = Form(...),
     next_url: str = Form("/cadastro/bancos"),
 ):
+    if portal_sso.enabled():
+        return RedirectResponse(
+            url=portal_sso.portal_login_url("CADASTRO", _safe_next_path(next_url)), status_code=303
+        )
     auth_is_configured = _auth_configured()
     if not auth_is_configured:
         if _shared_auth_enabled():
@@ -734,9 +757,54 @@ async def login_post(
     return response
 
 
+@app.get("/_sso/consume")
+async def portal_sso_consume(ticket: str, request: Request):
+    """Exchange the Portal assertion for Cadastros' isolated session cookie."""
+    if not portal_sso.enabled():
+        return HTMLResponse("SSO central desativado.", status_code=404)
+    if not _shared_auth_enabled():
+        return HTMLResponse("Cadastros precisa usar autenticação compartilhada para o login central.", status_code=503)
+    try:
+        claims = portal_sso.consume_ticket(ticket, "CADASTRO")
+        user = _shared_user_lookup(claims["username"])
+        if (
+            not user
+            or int(user.get("id") or 0) != claims["uid"]
+            or not bool(user.get("active", False))
+            or int(user.get("auth_version") or 1) != claims["auth_version"]
+        ):
+            raise ValueError("Usuário sem sessão válida para este módulo.")
+        if _shared_rbac_enabled():
+            access = _shared_access_lookup(claims["uid"])
+            if not _cadastro_access_allowed(access):
+                return HTMLResponse("Este usuário não possui acesso a Cadastros.", status_code=403)
+        elif not _legacy_cadastro_access_allowed(user):
+            return HTMLResponse("Este usuário não possui acesso a Cadastros.", status_code=403)
+        response = RedirectResponse(
+            url=portal_sso.normalize_next(claims.get("next"), "/cadastro/bancos"),
+            status_code=303,
+        )
+        response.set_cookie(
+            SESSION_COOKIE,
+            _make_session(claims["username"], claims["uid"], claims["auth_version"]),
+            max_age=SESSION_MAX_AGE_SECONDS,
+            httponly=True,
+            secure=request.url.scheme == "https",
+            samesite="lax",
+        )
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        return response
+    except ValueError:
+        return HTMLResponse("Não foi possível validar o acesso centralizado.", status_code=401)
+
+
 @app.get("/logout")
 async def logout():
-    response = RedirectResponse(url="/login", status_code=303)
+    response = RedirectResponse(
+        url=portal_sso.portal_logout_url() if portal_sso.enabled() else "/login",
+        status_code=303,
+    )
     response.delete_cookie(SESSION_COOKIE)
     return response
 
