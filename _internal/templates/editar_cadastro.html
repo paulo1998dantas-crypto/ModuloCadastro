@@ -106,11 +106,12 @@
             </section>
             <section id="sku-migration-warning" class="hidden border border-amber-400 bg-amber-50 p-4 text-sm text-amber-950">
                 <div class="font-black uppercase">Correcao de estrutura</div>
-                <p class="mt-1 font-semibold">Um novo SKU sera criado no proximo sequencial do grupo e categoria escolhidos. O SKU {{ record.sku }} ficara inativo e as referencias de B.O.M. serao transferidas. Movimentacoes e historicos de estoque nao serao alterados.</p>
+                <p class="mt-1 font-semibold">Um novo SKU sera criado no proximo sequencial do grupo e categoria escolhidos e o SKU {{ record.sku }} ficara inativo. Ao salvar, o sistema perguntara se o codigo antigo tambem deve ser substituido nas listas tecnicas (B.O.M.). Movimentacoes e historicos de estoque nao serao alterados.</p>
                 <label class="mt-3 inline-flex items-start gap-2 font-black">
                     <input id="confirm-sku-migration" type="checkbox" name="confirmar_migracao" value="1" disabled class="mt-0.5 h-4 w-4">
                     Confirmo a geracao do novo SKU e a inativacao do codigo anterior.
                 </label>
+                <input id="bom-replacement-choice" type="hidden" name="substituir_referencias_bom" value="">
             </section>
             <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -173,6 +174,27 @@
                 {% endif %}
             </div>
         </form>
+
+        <div id="bom-replacement-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 p-4" role="dialog" aria-modal="true" aria-labelledby="bom-replacement-title">
+            <div class="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl">
+                <div class="text-xs font-black uppercase tracking-wide text-amber-600">Alteracao de grupo ou categoria</div>
+                <h2 id="bom-replacement-title" class="mt-1 text-xl font-black text-slate-950">Deseja substituir o codigo nas listas tecnicas?</h2>
+                <p class="mt-3 text-sm font-semibold text-slate-700">
+                    O SKU antigo <span class="font-mono font-black">{{ record.sku }}</span> pode estar como item pai ou componente de uma ou mais B.O.M.
+                </p>
+                <div class="mt-4 grid gap-3 md:grid-cols-2">
+                    <button id="replace-bom-yes" type="button" class="rounded-lg bg-blue-600 px-5 py-4 text-left text-sm font-black text-white hover:bg-blue-700">
+                        Sim, substituir nas B.O.M.
+                        <span class="mt-1 block text-xs font-semibold text-blue-100">O novo SKU assumira todas as referencias do codigo antigo.</span>
+                    </button>
+                    <button id="replace-bom-no" type="button" class="rounded-lg border border-slate-300 bg-white px-5 py-4 text-left text-sm font-black text-slate-800 hover:bg-slate-50">
+                        Nao, manter as listas atuais
+                        <span class="mt-1 block text-xs font-semibold text-slate-500">As B.O.M. continuarao apontando para o SKU antigo inativo.</span>
+                    </button>
+                </div>
+                <button id="replace-bom-cancel" type="button" class="mt-4 w-full rounded-lg px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100">Voltar para a edicao</button>
+            </div>
+        </div>
     </main>
     <script>
         const editForm = document.getElementById("edit-registration-form");
@@ -180,15 +202,23 @@
         const groupSelect = document.getElementById("edit-group");
         const migrationWarning = document.getElementById("sku-migration-warning");
         const migrationConfirmation = document.getElementById("confirm-sku-migration");
+        const bomReplacementChoice = document.getElementById("bom-replacement-choice");
+        const bomReplacementModal = document.getElementById("bom-replacement-modal");
+        const replaceBomYes = document.getElementById("replace-bom-yes");
+        const replaceBomNo = document.getElementById("replace-bom-no");
+        const replaceBomCancel = document.getElementById("replace-bom-cancel");
+
+        const structureChanged = () => categorySelect.value !== editForm.dataset.originalCategory
+            || groupSelect.value !== editForm.dataset.originalGroup;
 
         const syncMigrationWarning = () => {
-            const changed = categorySelect.value !== editForm.dataset.originalCategory
-                || groupSelect.value !== editForm.dataset.originalGroup;
+            const changed = structureChanged();
             migrationWarning.classList.toggle("hidden", !changed);
             migrationConfirmation.disabled = !changed;
             migrationConfirmation.required = changed;
             if (!changed) {
                 migrationConfirmation.checked = false;
+                bomReplacementChoice.value = "";
             }
         };
 
@@ -196,7 +226,30 @@
             const target = encodeURIComponent(categorySelect.value);
             window.location.href = `${editForm.dataset.editUrl}?categoria=${target}`;
         });
-        groupSelect.addEventListener("change", syncMigrationWarning);
+        groupSelect.addEventListener("change", () => {
+            bomReplacementChoice.value = "";
+            syncMigrationWarning();
+        });
+        editForm.addEventListener("submit", (event) => {
+            if (!structureChanged() || bomReplacementChoice.value) {
+                return;
+            }
+            event.preventDefault();
+            bomReplacementModal.classList.remove("hidden");
+            bomReplacementModal.classList.add("flex");
+        });
+        const finishMigrationChoice = (choice) => {
+            bomReplacementChoice.value = choice;
+            bomReplacementModal.classList.add("hidden");
+            bomReplacementModal.classList.remove("flex");
+            editForm.requestSubmit();
+        };
+        replaceBomYes.addEventListener("click", () => finishMigrationChoice("1"));
+        replaceBomNo.addEventListener("click", () => finishMigrationChoice("0"));
+        replaceBomCancel.addEventListener("click", () => {
+            bomReplacementModal.classList.add("hidden");
+            bomReplacementModal.classList.remove("flex");
+        });
         syncMigrationWarning();
     </script>
 </body>

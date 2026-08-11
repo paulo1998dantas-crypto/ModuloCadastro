@@ -964,11 +964,22 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
             "Confirme a geracao de um novo SKU e a inativacao do codigo anterior."
         )
 
+    bom_replacement_choice = clean_text(form_data.get("substituir_referencias_bom"))
+    if bom_replacement_choice not in {"0", "1"}:
+        raise SupabaseStoreError(
+            "Informe se as referencias do SKU anterior devem ser substituidas nas B.O.M."
+        )
+    replace_bom_references = bom_replacement_choice == "1"
+
     payload["form_values"] = {
         **payload["form_values"],
         PREVIOUS_SKU_FORM_KEY: old_sku,
     }
-    snapshots = _bom_reference_snapshots(old_sku)
+    snapshots = (
+        _bom_reference_snapshots(old_sku)
+        if replace_bom_references
+        else {"headers": [], "components": []}
+    )
     new_rows = _request(
         "POST",
         REGISTRATIONS_TABLE,
@@ -980,12 +991,19 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
     new_record = new_rows[0]
 
     try:
-        migrated = _apply_bom_sku_migration(snapshots, old_sku, new_record)
+        migrated = (
+            _apply_bom_sku_migration(snapshots, old_sku, new_record)
+            if replace_bom_references
+            else {"bom_headers": 0, "bom_components": 0}
+        )
         old_form_values = dict(current_values)
         old_form_values[SKU_MIGRATION_FORM_KEY] = {
             "replacement_id": new_record["id"],
             "replacement_sku": new_sku,
             "migrated_at": datetime.now(timezone.utc).isoformat(),
+            "bom_references_replaced": replace_bom_references,
+            "bom_headers_updated": migrated["bom_headers"],
+            "bom_components_updated": migrated["bom_components"],
         }
         old_rows = _request(
             "PATCH",
@@ -1002,10 +1020,11 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
             raise SupabaseStoreError("Nao foi possivel inativar o SKU anterior.")
     except Exception as exc:
         rollback_errors = []
-        try:
-            _restore_bom_references(snapshots)
-        except Exception as rollback_exc:
-            rollback_errors.append(f"B.O.M.: {rollback_exc}")
+        if replace_bom_references:
+            try:
+                _restore_bom_references(snapshots)
+            except Exception as rollback_exc:
+                rollback_errors.append(f"B.O.M.: {rollback_exc}")
         try:
             _request(
                 "PATCH",
@@ -1034,6 +1053,7 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
         **new_record,
         "migrated": True,
         "previous_sku": old_sku,
+        "bom_references_replaced": replace_bom_references,
         **migrated,
     }
 

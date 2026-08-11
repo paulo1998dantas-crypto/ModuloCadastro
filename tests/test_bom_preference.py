@@ -266,6 +266,7 @@ class SkuStructureMigrationTests(unittest.TestCase):
                     "categoria": "cat_14_piso",
                     "grupo_codigo": "20",
                     "confirmar_migracao": "1",
+                    "substituir_referencias_bom": "1",
                 },
             )
 
@@ -280,6 +281,76 @@ class SkuStructureMigrationTests(unittest.TestCase):
         self.assertFalse(old_patch.kwargs["payload"]["ativo"])
         migration = old_patch.kwargs["payload"]["form_values"][supabase_store.SKU_MIGRATION_FORM_KEY]
         self.assertEqual(migration["replacement_sku"], "20140031")
+        self.assertTrue(migration["bom_references_replaced"])
+
+    def test_update_can_preserve_bom_references_after_explicit_choice(self):
+        current = {
+            "id": 12,
+            "category_key": "cat_14_piso",
+            "category_label": "14 - PISO",
+            "sku": "30140027",
+            "ativo": True,
+            "form_values": {"possui_bom": True},
+            "search_text": "30140027 PISO",
+        }
+        category = {"key": "cat_14_piso", "label": "14 - PISO"}
+        payload = {
+            "category_key": category["key"],
+            "category_label": category["label"],
+            "sku": "20140031",
+            "descricao_primaria": "PP PISO CORRIGIDO",
+            "descricao_secundaria": "PP PISO CORRIGIDO COMPLETO",
+            "unidade": "cj",
+            "ativo": True,
+            "form_values": {"grupo_codigo": ["20"], "possui_bom": True},
+        }
+        new_record = {**payload, "id": 44}
+
+        def request_side_effect(method, table, query=None, payload=None, prefer=""):
+            if method == "POST" and table == supabase_store.REGISTRATIONS_TABLE:
+                return [new_record]
+            if method == "PATCH" and table == supabase_store.REGISTRATIONS_TABLE:
+                return [{**current, **(payload or {})}]
+            return None
+
+        with (
+            patch.object(supabase_store, "get_registration", return_value=current),
+            patch.object(supabase_store, "_category", return_value=category),
+            patch.object(excel_bancos, "get_banco_fields", return_value=[]),
+            patch.object(supabase_store, "_next_sku", return_value="20140031"),
+            patch.object(
+                supabase_store,
+                "_registration_payload",
+                return_value=(payload, {"primaria": payload["descricao_primaria"], "secundaria": payload["descricao_secundaria"]}, True),
+            ),
+            patch.object(supabase_store, "_duplicate_exists", return_value=False),
+            patch.object(supabase_store, "_bom_reference_snapshots") as snapshots,
+            patch.object(supabase_store, "_apply_bom_sku_migration") as migrate_bom,
+            patch.object(supabase_store, "_request", side_effect=request_side_effect) as request,
+        ):
+            result = supabase_store.update_registration(
+                12,
+                {
+                    "categoria": "cat_14_piso",
+                    "grupo_codigo": "20",
+                    "confirmar_migracao": "1",
+                    "substituir_referencias_bom": "0",
+                },
+            )
+
+        self.assertTrue(result["migrated"])
+        self.assertFalse(result["bom_references_replaced"])
+        self.assertEqual(result["bom_headers"], 0)
+        self.assertEqual(result["bom_components"], 0)
+        snapshots.assert_not_called()
+        migrate_bom.assert_not_called()
+        old_patch = next(
+            call
+            for call in request.call_args_list
+            if call.args[0] == "PATCH" and call.args[1] == supabase_store.REGISTRATIONS_TABLE
+        )
+        migration = old_patch.kwargs["payload"]["form_values"][supabase_store.SKU_MIGRATION_FORM_KEY]
+        self.assertFalse(migration["bom_references_replaced"])
 
 
 if __name__ == "__main__":

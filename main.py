@@ -1614,10 +1614,16 @@ async def cadastro_editar_post(request: Request, registration_id: int):
     try:
         result = supabase_store.update_registration(registration_id, form_data)
         if result.get("migrated"):
+            if result.get("bom_references_replaced"):
+                bom_message = (
+                    f"B.O.M.: {result.get('bom_headers', 0)} estrutura(s) e "
+                    f"{result.get('bom_components', 0)} referencia(s) atualizadas."
+                )
+            else:
+                bom_message = "As B.O.M. existentes foram preservadas com o codigo anterior."
             message = (
                 f"Estrutura corrigida: {result.get('previous_sku')} foi inativado e substituido por "
-                f"{result.get('sku')}. B.O.M.: {result.get('bom_headers', 0)} estrutura(s) e "
-                f"{result.get('bom_components', 0)} referencia(s) atualizadas."
+                f"{result.get('sku')}. {bom_message}"
             )
         else:
             message = f"Cadastro atualizado. SKU: {result.get('sku') or '-'}."
