@@ -182,6 +182,30 @@ def _cadastro_access_allowed(access: dict[str, object] | None) -> bool:
     return "ADMIN" in roles or "cadastro.access" in permissions
 
 
+def _cadastro_delete_allowed(request: Request) -> bool:
+    """Hard deletion is deliberately restricted to the ADMIN profile.
+
+    Cadastro access also includes Engenharia, but catalog deletion affects the
+    shared SKU master used by Estoque, Suprimentos and production. Therefore
+    this action must never be inferred from the broader cadastro.access grant.
+    """
+    access = getattr(request.state, "erp_access", None)
+    if isinstance(access, dict):
+        if not bool(access.get("active", False)):
+            return False
+        roles = {str(value).upper() for value in (access.get("roles") or [])}
+        return "ADMIN" in roles
+
+    # Compatibility path while a deployment still uses the historical shared
+    # login bridge without the RBAC RPC enabled.
+    session = _read_session_payload(request)
+    user = _shared_user_lookup(str(session.get("u") or ""))
+    if not user or not bool(user.get("active", False)):
+        return False
+    role = str(user.get("role") or "").strip().upper()
+    return role in {"ADMIN", "ADM"}
+
+
 def _legacy_cadastro_access_allowed(user: dict[str, object] | None) -> bool:
     """Restrict the pre-RBAC bridge to its historical privileged profiles."""
     if not user or not bool(user.get("active", False)):
@@ -1375,6 +1399,7 @@ async def cadastros_page(
             "sucesso": sucesso,
             "erro": erro,
             "active_page": "cadastros",
+            "can_delete_records": _cadastro_delete_allowed(request),
         },
     )
 
@@ -1637,6 +1662,34 @@ async def cadastro_editar_post(request: Request, registration_id: int):
             url=f"/cadastros/{registration_id}/editar?categoria={category_query}&erro={quote(str(exc))}",
             status_code=303,
         )
+
+
+@app.post("/cadastros/{registration_id}/excluir")
+async def cadastro_excluir(request: Request, registration_id: int, categoria: str = Form("")):
+    """Remove an unused catalog record through the atomic shared-database RPC."""
+    category_query = quote(excel_bancos.clean_text(categoria))
+    base_url = f"/cadastros?categoria={category_query}" if category_query else "/cadastros"
+    if not _supabase_mode():
+        return RedirectResponse(
+            url=f"{base_url}&erro={quote('Exclusao definitiva disponivel apenas no modo Supabase.')}",
+            status_code=303,
+        )
+    if not _cadastro_delete_allowed(request):
+        return RedirectResponse(
+            url=f"{base_url}&erro={quote('Somente o perfil ADMIN pode excluir cadastros.')}",
+            status_code=303,
+        )
+    try:
+        result = supabase_store.delete_registration(registration_id)
+        if result.get("deleted"):
+            message = f"Cadastro {result.get('sku') or registration_id} excluido definitivamente."
+            return RedirectResponse(url=f"{base_url}&sucesso={quote(message)}", status_code=303)
+        blockers = result.get("blockers") or []
+        detail = "; ".join(str(item) for item in blockers) or "existem vinculos operacionais"
+        message = f"Cadastro nao excluido: {detail}. Use a inativacao para preservar o historico."
+        return RedirectResponse(url=f"{base_url}&erro={quote(message)}", status_code=303)
+    except Exception as exc:
+        return RedirectResponse(url=f"{base_url}&erro={quote(str(exc))}", status_code=303)
 
 
 @app.get("/ponte", response_class=HTMLResponse)

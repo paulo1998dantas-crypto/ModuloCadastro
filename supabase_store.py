@@ -551,6 +551,31 @@ def delete_draft(draft_id: str) -> dict[str, Any]:
     return existing
 
 
+def delete_registration(registration_id: int | str) -> dict[str, Any]:
+    """Request an atomic, integrity-checked catalog deletion from PostgreSQL.
+
+    The RPC intentionally returns blockers instead of attempting to remove
+    operational history. The service-role key remains server-side in this
+    module; browsers never receive direct access to the RPC.
+    """
+    try:
+        normalized_id = int(registration_id)
+    except (TypeError, ValueError) as exc:
+        raise SupabaseStoreError("Identificador de cadastro invalido.") from exc
+    if normalized_id <= 0:
+        raise SupabaseStoreError("Identificador de cadastro invalido.")
+    result = _request(
+        "POST",
+        "rpc/erp_delete_catalog_sku",
+        payload={"p_registration_id": normalized_id},
+    )
+    if isinstance(result, list):
+        result = result[0] if result else {}
+    if not isinstance(result, dict):
+        raise SupabaseStoreError("Resposta invalida ao excluir cadastro.")
+    return result
+
+
 def _safe_filter_value(value: str) -> str:
     return clean_text(value).replace("*", "").replace(",", " ")
 
