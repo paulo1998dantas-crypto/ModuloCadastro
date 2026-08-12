@@ -48,7 +48,7 @@ with origem as (
 ), normalizado as (
     select
         montado.*,
-        trim(
+        trim(regexp_replace(
             regexp_replace(
                 regexp_replace(
                     regexp_replace(
@@ -60,17 +60,17 @@ with origem as (
                 'DIAMENTE', 'DIAMANTE', 'gi'
             ),
             '[[:space:]]+', ' ', 'g'
-        ) as primaria_nova
+        )) as primaria_nova
     from montado
 ), preparado as (
     select
         normalizado.*,
-        coalesce((regexp_match(primaria_nova, '(?:^| - )(MC|CS|MD|STF|INC|JL|ORI)(?: - |$)'))[1], '') as fornecedor,
-        coalesce((regexp_match(primaria_nova, '(?:^| - )(LB|LE|LS|LL|ORI)(?: - |$)'))[1], '') as linha,
-        coalesce((regexp_match(primaria_nova, ' - ([0-9ED][0-9ED,;-]*) - (?:2P|3P)'))[1], '') as layout,
+        coalesce((regexp_match(primaria_nova, '(^| - )(MC|CS|MD|STF|INC|JL|ORI)( - |$)'))[2], '') as fornecedor,
+        coalesce((regexp_match(primaria_nova, '(^| - )(LB|LE|LS|LL|ORI)( - |$)'))[2], '') as linha,
+        coalesce((regexp_match(primaria_nova, ' - ([0-9ED][0-9ED,;-]*) - (2P|3P)'))[1], '') as layout,
         coalesce((regexp_match(primaria_nova, ' - (2P|3P) - '))[1], '') as tipo_cinto,
-        coalesce((regexp_match(primaria_nova, ' - (TECIDO|COURVIN|MISTO)(?:[[:space:]]| - )'))[1], '') as tipo_revestimento,
-        coalesce((regexp_match(primaria_nova, ' - COURVIN ([A-Z0-9/[:space:]]+) - (?:E/S|ESJ|TRILHO|NORMAL|BJD|PME|EXECUTIVO|FOCA|ELEVITTA|MASTER)'))[1], '') as detalhe_revestimento,
+        coalesce((regexp_match(primaria_nova, ' - (TECIDO|COURVIN|MISTO)([[:space:]]| - )'))[1], '') as tipo_revestimento,
+        coalesce((regexp_match(primaria_nova, ' - COURVIN ([A-Z0-9/[:space:]]+) - (E/S|ESJ|TRILHO|NORMAL|BJD|PME|EXECUTIVO|FOCA|ELEVITTA|MASTER)'))[1], '') as detalhe_revestimento,
         nullif(trim(btrim(replace(secundaria_original, primaria_original, ''), ' |')), '') as observacao_legada
     from normalizado
 ), atualizado as (
@@ -187,7 +187,13 @@ update public.cadastro_catalogo c
            ), '[]'::jsonb)
        ),
        updated_at = now()
- where c.payload @> '{"categories": [{"key": "cat_20_bco"}]}'::jsonb;
+  where c.payload @> '{"categories": [{"key": "cat_20_bco"}]}'::jsonb;
+
+-- Evita que novos acessos apontem para a antiga aba removida do catalogo.
+update public.cadastro_catalogo c
+   set payload = jsonb_set(c.payload, '{active_category}', '"bancos"'::jsonb),
+       updated_at = now()
+ where c.payload ->> 'active_category' = 'cat_20_bco';
 
 commit;
 
