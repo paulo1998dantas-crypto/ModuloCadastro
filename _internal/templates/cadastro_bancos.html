@@ -139,9 +139,9 @@
                     {% endif %}
                     <div id="primary-field-grid" class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {% for field in ordered_fields if field.scope == 'primaria' %}
-                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-description-order="{{ field.description_order }}">
+                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-description-order="{{ field.description_order }}" data-banco-mode="{{ field.banco_mode or '' }}" data-field-required="{{ 'true' if field.required else 'false' }}">
                             <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
-                            {% if free_text_fields %}
+                            {% if free_text_fields or field.free_text %}
                             <input name="{{ field.key }}" list="options-{{ field.scope }}-{{ field.key }}" value="{{ field.selected_value or (field.selected_values|join(' | ')) }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Digite livremente ou escolha uma sugestão...">
                             <datalist id="options-{{ field.scope }}-{{ field.key }}">
                                 {% for option in field.options %}
@@ -179,14 +179,14 @@
                     {% endif %}
                     <div id="secondary-field-grid" class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {% for field in ordered_fields if field.scope == 'secundaria' %}
-                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-description-order="{{ field.description_order }}">
+                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-description-order="{{ field.description_order }}" data-banco-mode="{{ field.banco_mode or '' }}" data-field-required="{{ 'true' if field.required else 'false' }}">
                             <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
                             {% if field.key == 'distancia_pe' %}
                             <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-slate-600">
                                 ORIENTADO A ESQ:
                             </div>
                             {% endif %}
-                            {% if free_text_fields %}
+                            {% if free_text_fields or field.free_text %}
                             <input name="{{ field.key }}" list="options-{{ field.scope }}-{{ field.key }}" value="{{ field.selected_value or (field.selected_values|join(' | ')) }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Digite livremente ou escolha uma sugestão...">
                             <datalist id="options-{{ field.scope }}-{{ field.key }}">
                                 {% for option in field.options %}
@@ -265,6 +265,7 @@
         const serverDraftGroups = {{ (active_draft.groups if active_draft and active_draft.groups else {}) | tojson }};
         const savedSuccessfully = {{ 'true' if sucesso else 'false' }};
         const categorySelect = document.getElementById("category-select");
+        const groupSelect = document.getElementById("group-select");
         const draftReturn = document.getElementById("draft-return");
         const draftReturnLabel = document.getElementById("draft-return-label");
         const draftReturnButton = document.getElementById("draft-return-button");
@@ -346,7 +347,7 @@
                     }
                 }
                 control.disabled = !visible;
-                control.required = enforceRequiredVisibleFields && visible;
+                control.required = enforceRequiredVisibleFields && visible && block.dataset.fieldRequired !== "false";
             });
         };
 
@@ -896,9 +897,59 @@
             });
         };
 
+        const selectedControlValues = (block) => {
+            if (!block) {
+                return [];
+            }
+            const select = block.querySelector("select");
+            if (select) {
+                return select.multiple
+                    ? Array.from(select.selectedOptions).map((option) => option.value || "")
+                    : [select.value || ""];
+            }
+            return Array.from(block.querySelectorAll("input:not([type='hidden']), textarea"))
+                .map((control) => control.value || "");
+        };
+
+        const bancoConjuntoAtivo = () => {
+            if (currentCategoryKey !== "bancos") {
+                return false;
+            }
+            const sufixoBlock = fieldBlocks.find((block) => block.dataset.fieldKey === "cj_sufixo");
+            const sufixoSelecionado = selectedControlValues(sufixoBlock)
+                .some((value) => normalizeOptionValue(value) === "CJ");
+            return (groupSelect && groupSelect.value === "30") || sufixoSelecionado;
+        };
+
+        const updateBancoMode = () => {
+            const visibility = new Map(fieldBlocks.map((block) => [block, true]));
+            if (currentCategoryKey !== "bancos") {
+                return visibility;
+            }
+            const conjunto = bancoConjuntoAtivo();
+            const sufixoBlock = fieldBlocks.find((block) => block.dataset.fieldKey === "cj_sufixo");
+            const sufixoSelect = sufixoBlock ? sufixoBlock.querySelector("select") : null;
+            if (conjunto && groupSelect && groupSelect.value !== "30") {
+                groupSelect.value = "30";
+            }
+            if (conjunto && sufixoSelect && !sufixoSelect.value) {
+                sufixoSelect.value = "CJ";
+            }
+            fieldBlocks.forEach((block) => {
+                const mode = block.dataset.bancoMode;
+                if (mode === "insumo") {
+                    visibility.set(block, !conjunto);
+                } else if (mode === "conjunto") {
+                    visibility.set(block, conjunto);
+                }
+            });
+            return visibility;
+        };
+
         const updateConditionalFields = () => {
             const visibilityRules = new Map(fieldBlocks.map((block) => [block, { show: [], hide: [] }]));
             const effectiveScopes = new Map(fieldBlocks.map((block) => [block, block.dataset.fieldScope]));
+            const bancoModeVisibility = updateBancoMode();
 
             rules.forEach((rule) => {
                 const sourceBlock = findBlock(rule.sourceLabel, rule.sourceScope);
@@ -942,7 +993,7 @@
                 const targetRules = visibilityRules.get(block);
                 const showOk = targetRules.show.length ? targetRules.show.some(Boolean) : true;
                 const hideHit = targetRules.hide.some(Boolean);
-                const shouldShow = showOk && !hideHit;
+                const shouldShow = Boolean(bancoModeVisibility.get(block)) && showOk && !hideHit;
                 clearAndToggleBlock(block, shouldShow);
                 block.dataset.effectiveScope = effectiveScopes.get(block);
             });
@@ -964,6 +1015,9 @@
                 scheduleDraftSave();
             });
         });
+        if (groupSelect) {
+            groupSelect.addEventListener("change", updateConditionalFields);
+        }
 
         const isBlockFilled = (block) => {
             const controls = block.querySelectorAll("input, select, textarea");
@@ -1007,6 +1061,7 @@
                 }
                 const missing = fieldBlocks
                     .filter((block) => !block.classList.contains("hidden"))
+                    .filter((block) => block.dataset.fieldRequired !== "false")
                     .filter((block) => !isBlockFilled(block));
                 if (!missing.length) {
                     return;

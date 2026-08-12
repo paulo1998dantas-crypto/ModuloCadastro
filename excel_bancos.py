@@ -25,6 +25,8 @@ from openpyxl.worksheet.formula import ArrayFormula
 DEFAULT_NEW_WORKBOOK_NAME = "Cadastro Bancos.xlsx"
 DEFAULT_CATEGORY_KEY = "bancos"
 DEFAULT_CATEGORY_LABEL = "Bancos"
+LEGACY_CJ_BCO_CATEGORY_KEY = "cat_20_bco"
+CONJUNTO_BANCO_GROUP_CODE = "30"
 PN_GROUP_FORM_KEY = "grupo_codigo"
 FIRST_DATA_ROW = 3
 REGISTRATION_SHEET_NAME = "_cadastro_app"
@@ -649,6 +651,137 @@ PN_GROUP_DEFAULT_LABELS = {
     "90": "PROTOTIPO",
 }
 
+# Os conjuntos de bancos usam a mesma categoria 20 dos bancos unitarios, mas
+# pertencem ao grupo 30 (CONJUNTO / KIT) e, portanto, possuem uma composicao
+# tecnica diferente. Estes campos sao acrescentados em tempo de execucao para
+# manter a compatibilidade do catalogo ja publicado no Supabase durante a
+# transicao da antiga categoria 20 - CJ-BCO.
+CONJUNTO_BANCO_FIELDS = [
+    {
+        "key": "cj_sufixo",
+        "label": "SUFIXO",
+        "scope": "primaria",
+        "selection_mode": SELECTION_MODE_UNITARIA,
+        "description_order": 1,
+        "options": ["CJ"],
+        "banco_mode": "conjunto_trigger",
+        "required": False,
+    },
+    {
+        "key": "cj_encosto",
+        "label": "ENCOSTO",
+        "scope": "primaria",
+        "selection_mode": SELECTION_MODE_UNITARIA,
+        "description_order": 2,
+        "options": ["FIXO", "RECLINAVEL", "INTERICO"],
+        "banco_mode": "conjunto",
+        "required": False,
+    },
+    {
+        "key": "cj_fornecedor",
+        "label": "FORNECEDOR",
+        "scope": "primaria",
+        "selection_mode": SELECTION_MODE_UNITARIA,
+        "description_order": 3,
+        "options": ["MC", "CS", "MD", "STF", "INC", "JL", "ORI"],
+        "banco_mode": "conjunto",
+        "required": False,
+    },
+    {
+        "key": "cj_linha",
+        "label": "LINHA",
+        "scope": "primaria",
+        "selection_mode": SELECTION_MODE_UNITARIA,
+        "description_order": 4,
+        "options": ["LB", "LE", "LS", "LL", "ORI"],
+        "banco_mode": "conjunto",
+        "required": False,
+    },
+    {
+        "key": "cj_layout",
+        "label": "LAYOUT",
+        "scope": "primaria",
+        "selection_mode": SELECTION_MODE_UNITARIA,
+        "description_order": 5,
+        "options": [],
+        "banco_mode": "conjunto",
+        "free_text": True,
+        "required": False,
+    },
+    {
+        "key": "cj_tipo_cinto",
+        "label": "TIPO DO CINTO",
+        "scope": "primaria",
+        "selection_mode": SELECTION_MODE_UNITARIA,
+        "description_order": 6,
+        "options": ["2P", "3P"],
+        "banco_mode": "conjunto",
+        "required": False,
+    },
+    {
+        "key": "cj_tipo_revestimento",
+        "label": "TIPO REVESTIMENTO",
+        "scope": "primaria",
+        "selection_mode": SELECTION_MODE_UNITARIA,
+        "description_order": 7,
+        "options": ["TECIDO", "COURVIN", "MISTO"],
+        "banco_mode": "conjunto",
+        "required": False,
+    },
+    {
+        "key": "cj_detalhe_revestimento",
+        "label": "DETALHE DO REVESTIMENTO",
+        "scope": "primaria",
+        "selection_mode": SELECTION_MODE_UNITARIA,
+        "description_order": 8,
+        "options": [],
+        "banco_mode": "conjunto",
+        "free_text": True,
+        "required": False,
+    },
+    {
+        "key": "cj_especificidade",
+        "label": "ESPECIFICIDADE",
+        "scope": "primaria",
+        "selection_mode": SELECTION_MODE_MULTIPLA,
+        "description_order": 9,
+        "options": ["NORMAL", "TRILHO", "BJD", "E/S/ J", "PME 1A", "PME 2A", "PME 3A", "EXECUTIVO", "4L REC"],
+        "banco_mode": "conjunto",
+        "required": False,
+    },
+    {
+        "key": "cj_acessibilidade",
+        "label": "ACESSIBILIDADE",
+        "scope": "primaria",
+        "selection_mode": SELECTION_MODE_UNITARIA,
+        "description_order": 10,
+        "options": ["FOCA", "ELEVITTA", "PLATAFORMA BI-PARTIDA", "PLATAFORMA FECHADA"],
+        "banco_mode": "conjunto",
+        "required": False,
+    },
+    {
+        "key": "cj_acessibilidade_secundaria",
+        "label": "ACESSIBILIDADE (DETALHE)",
+        "scope": "secundaria",
+        "selection_mode": SELECTION_MODE_UNITARIA,
+        "description_order": 1,
+        "options": ["N/A"],
+        "banco_mode": "conjunto",
+        "required": False,
+    },
+    {
+        "key": "cj_observacao",
+        "label": "OBSERVACAO TECNICA",
+        "scope": "secundaria",
+        "selection_mode": SELECTION_MODE_UNITARIA,
+        "description_order": 2,
+        "options": [],
+        "banco_mode": "conjunto",
+        "free_text": True,
+        "required": False,
+    },
+]
+
 
 def _catalog_supabase_url() -> str:
     raw = clean_text(os.environ.get("SUPABASE_URL")) or clean_text(os.environ.get("CADASTRO_SUPABASE_URL"))
@@ -1012,6 +1145,8 @@ def save_catalog(catalog: dict[str, Any]) -> None:
 def list_categories() -> list[dict[str, Any]]:
     categories = []
     for category in load_catalog()["categories"]:
+        if category["key"] == LEGACY_CJ_BCO_CATEGORY_KEY:
+            continue
         categories.append(
             {
                 "key": category["key"],
@@ -1082,6 +1217,8 @@ def update_pn_group(code: str, label: str, prefixes: str = "") -> dict[str, Any]
 
 def _find_category(catalog: dict[str, Any], category_key_value: str) -> dict[str, Any]:
     requested = clean_text(category_key_value) or clean_text(catalog.get("active_category")) or DEFAULT_CATEGORY_KEY
+    if requested == LEGACY_CJ_BCO_CATEGORY_KEY:
+        requested = DEFAULT_CATEGORY_KEY
     for category in catalog["categories"]:
         if category["key"] == requested:
             return category
@@ -1640,17 +1777,33 @@ def _field_response(field: dict[str, Any], index: int) -> dict[str, Any]:
         "letter": get_column_letter(column),
         "options": options,
         "option_rows": [{"row": option_index, "value": value} for option_index, value in enumerate(options, start=1)],
+        "banco_mode": clean_text(field.get("banco_mode")),
+        "free_text": bool(field.get("free_text")),
+        "required": bool(field.get("required", True)),
     }
+
+
+def _fields_for_category(category: dict[str, Any]) -> list[dict[str, Any]]:
+    fields = deepcopy(category.get("fields") or [])
+    if category.get("key") != DEFAULT_CATEGORY_KEY:
+        return fields
+
+    # A serie 1020 continua com os campos atuais; a serie 3020 recebe os
+    # campos de conjunto somente quando o grupo 30/CJ estiver selecionado.
+    for field in fields:
+        field["banco_mode"] = "insumo"
+    fields.extend(deepcopy(CONJUNTO_BANCO_FIELDS))
+    return fields
 
 
 def get_banco_fields(category_key_value: str) -> list[dict[str, Any]]:
     category = _find_category(load_catalog(), category_key_value)
-    return [_field_response(field, index) for index, field in enumerate(category.get("fields") or [])]
+    return [_field_response(field, index) for index, field in enumerate(_fields_for_category(category))]
 
 
 def get_banco_fields_for_display(category_key_value: str) -> list[dict[str, Any]]:
     category = _find_category(load_catalog(), category_key_value)
-    ordered_fields = _ordered_fields_for_description(category.get("fields") or [])
+    ordered_fields = _ordered_fields_for_description(_fields_for_category(category))
     return [_field_response(field, index) for index, field in enumerate(ordered_fields, start=1)]
 
 
@@ -2100,11 +2253,82 @@ def _format_field_description(field: dict[str, Any], values: list[str]) -> str:
     return label
 
 
+def is_banco_conjunto(data: Any) -> bool:
+    """Identifica o conjunto sem depender da antiga categoria 20 - CJ-BCO."""
+    group_code = _selected_group_code([], data)
+    if group_code == CONJUNTO_BANCO_GROUP_CODE:
+        return True
+    if not data or not hasattr(data, "get"):
+        return False
+    raw = data.get("cj_sufixo")
+    values = raw if isinstance(raw, list) else [raw]
+    return any(normalize_label(option_label(value)) == "CJ" for value in values if clean_text(value))
+
+
+def _conjunto_value(fields_by_key: dict[str, dict[str, Any]], data: Any, key: str) -> list[str]:
+    field = fields_by_key.get(key)
+    return _serialize_field_values(field, data) if field else []
+
+
+def _conjunto_label(fields_by_key: dict[str, dict[str, Any]], data: Any, key: str) -> str:
+    values = _conjunto_value(fields_by_key, data, key)
+    return " / ".join(option_label(value) for value in values).strip()
+
+
+def _conjunto_encosto(value: str) -> str:
+    normalized = normalize_label(value)
+    if normalized in {"FIXO", "FIXOS"}:
+        return "FIXOS"
+    if normalized in {"RECLINAVEL", "REC"}:
+        return "REC"
+    return value.strip()
+
+
+def _build_conjunto_banco_descriptions(fields: list[dict[str, Any]], data: Any) -> dict[str, str]:
+    by_key = {field["key"]: field for field in fields}
+    encosto = _conjunto_encosto(_conjunto_label(by_key, data, "cj_encosto"))
+    primary_parts = [f"CJ BANCOS {encosto}".strip()]
+    for key in ("cj_fornecedor", "cj_linha", "cj_layout", "cj_tipo_cinto"):
+        value = _conjunto_label(by_key, data, key)
+        if value:
+            primary_parts.append(value)
+
+    revestimento = _conjunto_label(by_key, data, "cj_tipo_revestimento")
+    detalhe_revestimento = _conjunto_label(by_key, data, "cj_detalhe_revestimento")
+    if revestimento:
+        primary_parts.append(" ".join(part for part in (revestimento, detalhe_revestimento) if part))
+    elif detalhe_revestimento:
+        primary_parts.append(detalhe_revestimento)
+
+    for value in _conjunto_value(by_key, data, "cj_especificidade"):
+        label = option_label(value)
+        if label:
+            primary_parts.append(label)
+
+    acessibilidade = _conjunto_label(by_key, data, "cj_acessibilidade")
+    if acessibilidade and normalize_label(acessibilidade) not in {"NA", "N A"}:
+        primary_parts.append(acessibilidade)
+
+    primary = " - ".join(part for part in primary_parts if part).strip(" -")
+    secondary_parts = []
+    acessibilidade_secundaria = _conjunto_label(by_key, data, "cj_acessibilidade_secundaria")
+    if acessibilidade_secundaria:
+        secondary_parts.append(f"ACESSIBILIDADE: {acessibilidade_secundaria}")
+    observacao = _conjunto_label(by_key, data, "cj_observacao")
+    if observacao:
+        secondary_parts.append(observacao)
+    secondary = compose_secondary_description(primary, " | ".join(secondary_parts))
+    return {"primaria": primary, "secundaria": secondary, "sufixo": "CJ"}
+
+
 def build_descriptions(
     fields: list[dict[str, Any]],
     data: Any,
     category_key_value: str = "",
 ) -> dict[str, str]:
+    if clean_text(category_key_value) in {DEFAULT_CATEGORY_KEY, LEGACY_CJ_BCO_CATEGORY_KEY} and is_banco_conjunto(data):
+        return _build_conjunto_banco_descriptions(fields, data)
+
     primary_parts: list[str] = []
     secondary_parts: list[str] = []
     secondary_codes: list[str] = []
@@ -2148,6 +2372,8 @@ def _has_any_option_code(values: list[str], allowed_codes: set[str]) -> bool:
 
 
 def _validate_banco_dependencies(fields: list[dict[str, Any]], data: Any) -> None:
+    if is_banco_conjunto(data):
+        return
     values_by_key = _field_values_by_key(fields, data)
     pre_fixo_values = values_by_key.get("pre_fixo", [])
     veiculo_values = values_by_key.get("veiculo", [])
@@ -2297,11 +2523,19 @@ def _visible_field_keys(fields: list[dict[str, Any]], category_key_value: str, d
             hide_matches[target_key].append(matches)
 
     visible: set[str] = set()
+    conjunto = clean_text(category_key_value) in {DEFAULT_CATEGORY_KEY, LEGACY_CJ_BCO_CATEGORY_KEY} and is_banco_conjunto(data)
     for field in fields:
         field_key = field["key"]
         show_ok = any(show_matches[field_key]) if show_matches[field_key] else True
         hide_hit = any(hide_matches[field_key])
-        if show_ok and not hide_hit:
+        banco_mode = clean_text(field.get("banco_mode"))
+        mode_ok = (
+            not banco_mode
+            or banco_mode == "conjunto_trigger"
+            or (banco_mode == "conjunto" and conjunto)
+            or (banco_mode == "insumo" and not conjunto)
+        )
+        if show_ok and not hide_hit and mode_ok:
             visible.add(field_key)
     return visible
 
@@ -2315,6 +2549,8 @@ def _validate_visible_field_requirements(
     missing_fields: list[str] = []
     for field in fields:
         if field["key"] not in visible_keys:
+            continue
+        if not field.get("required", True):
             continue
         if _serialize_field_values(field, data):
             continue
@@ -2892,7 +3128,7 @@ def save_banco_registration(form_data: Any) -> dict[str, str]:
 
 def _find_field(catalog: dict[str, Any], category_key_value: str, field_key_value: str) -> dict[str, Any]:
     category = _find_category(catalog, category_key_value)
-    for field in category.get("fields") or []:
+    for field in _fields_for_category(category):
         if field["key"] == field_key_value:
             return field
     raise ValueError("Campo nÃ£o encontrado.")
@@ -2917,7 +3153,23 @@ def _format_option_value(value: str, options: list[str], existing_value: str = "
     return normalize_option_text(f"{code}- {text}")
 
 
+def _ensure_catalog_managed_field(field_key_value: str) -> None:
+    """Evita salvar alteracoes aparentes em campos tecnicos definidos no codigo.
+
+    Os campos ``cj_*`` compoem a estrutura padrao do conjunto de bancos. Eles
+    sao anexados ao catalogo em tempo de execucao, portanto alterar as opcoes
+    pela tela administrativa nao seria persistente. A lista deve ser alterada
+    por uma evolucao controlada do cadastro, nao por uma configuracao que se
+    perderia no proximo carregamento.
+    """
+    if clean_text(field_key_value).lower().startswith("cj_"):
+        raise ValueError(
+            "Os campos tecnicos de conjunto de bancos sao padronizados e nao podem ser alterados por esta tela."
+        )
+
+
 def add_field_option(category_key_value: str, field_key_value: str, option_value: str) -> dict[str, str]:
+    _ensure_catalog_managed_field(field_key_value)
     catalog = load_catalog()
     field = _find_field(catalog, category_key_value, field_key_value)
     raw_option = clean_text(option_value)
@@ -2941,6 +3193,7 @@ def add_field_option(category_key_value: str, field_key_value: str, option_value
 
 
 def update_field_option(category_key_value: str, field_key_value: str, row_value: int, option_value: str) -> dict[str, str]:
+    _ensure_catalog_managed_field(field_key_value)
     catalog = load_catalog()
     field = _find_field(catalog, category_key_value, field_key_value)
     options = field.setdefault("options", [])
@@ -3054,6 +3307,7 @@ def update_field_options(
     row_values: list[int],
     option_values: list[str],
 ) -> dict[str, Any]:
+    _ensure_catalog_managed_field(field_key_value)
     catalog = load_catalog()
     field = _find_field(catalog, category_key_value, field_key_value)
     options = field.setdefault("options", [])
@@ -3104,6 +3358,7 @@ def update_field_options(
 
 
 def delete_field_option(category_key_value: str, field_key_value: str, row_value: int) -> dict[str, str]:
+    _ensure_catalog_managed_field(field_key_value)
     catalog = load_catalog()
     field = _find_field(catalog, category_key_value, field_key_value)
     options = field.setdefault("options", [])
