@@ -241,7 +241,11 @@
                 block.classList.toggle("hidden", !visible);
                 block.querySelectorAll("input, select, textarea").forEach((control) => {
                     control.disabled = !visible;
-                    control.required = visible && block.dataset.fieldRequired === "true";
+                    // Os dados compartilhados (fornecedor, linha etc.) são
+                    // obrigatórios no banco unitário, mas mantêm o mesmo
+                    // comportamento flexível já existente nos conjuntos.
+                    const optionalInConjunto = conjunto && mode === "shared";
+                    control.required = visible && !optionalInConjunto && block.dataset.fieldRequired === "true";
                 });
             });
         };

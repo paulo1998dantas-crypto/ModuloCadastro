@@ -33,12 +33,12 @@ class UnificacaoBancosTests(unittest.TestCase):
         data = {
             "grupo_codigo": "30",
             "cj_sufixo": "CJ",
-            "cj_encosto": "RECLINAVEL",
-            "cj_fornecedor": "MC",
-            "cj_linha": "LB",
+            "encosto": "2- RECLINAVEL",
+            "fornecedor": "1- MC",
+            "linha": "1- LB",
             "cj_layout": "3,2,3",
-            "cj_tipo_cinto": "3P",
-            "cj_tipo_revestimento": "TECIDO",
+            "tipo_cinto": "2- 3P",
+            "tipo_revestimento": "1- TECIDO",
             "cj_especificidade": ["E/S/ J"],
             "cj_acessibilidade_secundaria": "N/A",
         }
@@ -67,6 +67,8 @@ class UnificacaoBancosTests(unittest.TestCase):
         )
 
         self.assertIn("cj_layout", conjunto)
+        self.assertIn("fornecedor", conjunto)
+        self.assertIn("linha", conjunto)
         self.assertNotIn("pre_fixo", conjunto)
         self.assertIn("pre_fixo", insumo)
         self.assertNotIn("cj_layout", insumo)
@@ -79,12 +81,12 @@ class UnificacaoBancosTests(unittest.TestCase):
         data = {
             "grupo_codigo": "30",
             "cj_sufixo": "CJ",
-            "cj_encosto": "RECLINAVEL",
-            "cj_fornecedor": "MC REC",
-            "cj_linha": "LB",
+            "encosto": "2- RECLINAVEL",
+            "fornecedor": "1- MC REC",
+            "linha": "1- LB",
             "cj_layout": "4;3;3;3",
-            "cj_tipo_cinto": "2P",
-            "cj_tipo_revestimento": "TECIDO",
+            "tipo_cinto": "1- 2P",
+            "tipo_revestimento": "1- TECIDO",
             "cj_especificidade": ["4L REC BJD", "ESJ"],
             "cj_acessibilidade": "FOCA",
         }
@@ -94,6 +96,14 @@ class UnificacaoBancosTests(unittest.TestCase):
             description["primaria"],
             "CJ BANCOS REC - MC - LB - 4,3,3,3 - 2P - TECIDO - BJD - E/S/ J - 4L REC - FOCA",
         )
+
+    def test_campos_compartilhados_nao_sao_duplicados_no_conjunto(self):
+        keys = {field["key"] for field in self.fields}
+        self.assertNotIn("cj_fornecedor", keys)
+        self.assertNotIn("cj_linha", keys)
+        self.assertNotIn("cj_encosto", keys)
+        self.assertNotIn("cj_tipo_cinto", keys)
+        self.assertNotIn("cj_tipo_revestimento", keys)
 
     def test_categoria_legacy_e_resolvida_para_bancos(self):
         catalog = {

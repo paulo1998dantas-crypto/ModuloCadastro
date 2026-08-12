@@ -653,9 +653,18 @@ PN_GROUP_DEFAULT_LABELS = {
 
 # Os conjuntos de bancos usam a mesma categoria 20 dos bancos unitarios, mas
 # pertencem ao grupo 30 (CONJUNTO / KIT) e, portanto, possuem uma composicao
-# tecnica diferente. Estes campos sao acrescentados em tempo de execucao para
-# manter a compatibilidade do catalogo ja publicado no Supabase durante a
-# transicao da antiga categoria 20 - CJ-BCO.
+# tecnica diferente. Os campos que representam a mesma informacao do banco
+# unitario (fornecedor, linha, encosto, cinto e revestimento) continuam sendo
+# os campos canônicos da categoria 20. Aqui permanecem apenas os atributos que
+# existem exclusivamente na montagem de um conjunto.
+CONJUNTO_BANCO_SHARED_FIELDS = {
+    "fornecedor",
+    "linha",
+    "encosto",
+    "tipo_cinto",
+    "tipo_revestimento",
+}
+
 CONJUNTO_BANCO_FIELDS = [
     {
         "key": "cj_sufixo",
@@ -668,64 +677,14 @@ CONJUNTO_BANCO_FIELDS = [
         "required": False,
     },
     {
-        "key": "cj_encosto",
-        "label": "ENCOSTO",
-        "scope": "primaria",
-        "selection_mode": SELECTION_MODE_UNITARIA,
-        "description_order": 2,
-        "options": ["FIXO", "RECLINAVEL", "INTERICO"],
-        "banco_mode": "conjunto",
-        "required": False,
-    },
-    {
-        "key": "cj_fornecedor",
-        "label": "FORNECEDOR",
-        "scope": "primaria",
-        "selection_mode": SELECTION_MODE_UNITARIA,
-        "description_order": 3,
-        "options": ["MC", "CS", "MD", "STF", "INC", "JL", "ORI"],
-        "banco_mode": "conjunto",
-        "required": False,
-    },
-    {
-        "key": "cj_linha",
-        "label": "LINHA",
-        "scope": "primaria",
-        "selection_mode": SELECTION_MODE_UNITARIA,
-        "description_order": 4,
-        "options": ["LB", "LE", "LS", "LL", "ORI"],
-        "banco_mode": "conjunto",
-        "required": False,
-    },
-    {
         "key": "cj_layout",
         "label": "LAYOUT",
         "scope": "primaria",
         "selection_mode": SELECTION_MODE_UNITARIA,
-        "description_order": 5,
+        "description_order": 4,
         "options": [],
         "banco_mode": "conjunto",
         "free_text": True,
-        "required": False,
-    },
-    {
-        "key": "cj_tipo_cinto",
-        "label": "TIPO DO CINTO",
-        "scope": "primaria",
-        "selection_mode": SELECTION_MODE_UNITARIA,
-        "description_order": 6,
-        "options": ["2P", "3P"],
-        "banco_mode": "conjunto",
-        "required": False,
-    },
-    {
-        "key": "cj_tipo_revestimento",
-        "label": "TIPO REVESTIMENTO",
-        "scope": "primaria",
-        "selection_mode": SELECTION_MODE_UNITARIA,
-        "description_order": 7,
-        "options": ["TECIDO", "COURVIN", "MISTO"],
-        "banco_mode": "conjunto",
         "required": False,
     },
     {
@@ -733,7 +692,7 @@ CONJUNTO_BANCO_FIELDS = [
         "label": "ESPECIFICIDADE",
         "scope": "primaria",
         "selection_mode": SELECTION_MODE_MULTIPLA,
-        "description_order": 8,
+        "description_order": 7,
         "options": ["NORMAL", "TRILHO", "BJD", "E/S/ J", "PME 1A", "PME 2A", "PME 3A", "EXECUTIVO", "4L REC"],
         "banco_mode": "conjunto",
         "required": False,
@@ -743,7 +702,7 @@ CONJUNTO_BANCO_FIELDS = [
         "label": "ACESSIBILIDADE",
         "scope": "primaria",
         "selection_mode": SELECTION_MODE_UNITARIA,
-        "description_order": 9,
+        "description_order": 8,
         "options": ["FOCA", "ELEVITTA", "PLATAFORMA BI-PARTIDA", "PLATAFORMA FECHADA"],
         "banco_mode": "conjunto",
         "required": False,
@@ -1777,10 +1736,11 @@ def _fields_for_category(category: dict[str, Any]) -> list[dict[str, Any]]:
     if category.get("key") != DEFAULT_CATEGORY_KEY:
         return fields
 
-    # A serie 1020 continua com os campos atuais; a serie 3020 recebe os
-    # campos de conjunto somente quando o grupo 30/CJ estiver selecionado.
+    # A serie 1020 continua com os campos atuais; a serie 3020 recebe somente
+    # os atributos exclusivos de conjunto. Os campos tecnicos equivalentes
+    # continuam unicos e compartilhados pelos dois grupos.
     for field in fields:
-        field["banco_mode"] = "insumo"
+        field["banco_mode"] = "shared" if field["key"] in CONJUNTO_BANCO_SHARED_FIELDS else "insumo"
     fields.extend(deepcopy(CONJUNTO_BANCO_FIELDS))
     return fields
 
@@ -2320,19 +2280,19 @@ def _normalizar_especificidades_conjunto(values: list[str]) -> list[str]:
 
 def _build_conjunto_banco_descriptions(fields: list[dict[str, Any]], data: Any) -> dict[str, str]:
     by_key = {field["key"]: field for field in fields}
-    encosto = _conjunto_encosto(_conjunto_label(by_key, data, "cj_encosto"))
+    encosto = _conjunto_encosto(_conjunto_label(by_key, data, "encosto"))
     primary_parts = [f"CJ BANCOS {encosto}".strip()]
-    fornecedor = _normalizar_fornecedor_conjunto(_conjunto_label(by_key, data, "cj_fornecedor"))
+    fornecedor = _normalizar_fornecedor_conjunto(_conjunto_label(by_key, data, "fornecedor"))
     if fornecedor:
         primary_parts.append(fornecedor)
-    for key in ("cj_linha", "cj_layout", "cj_tipo_cinto"):
+    for key in ("linha", "cj_layout", "tipo_cinto"):
         value = _conjunto_label(by_key, data, key)
         if key == "cj_layout":
             value = _normalizar_layout_conjunto(value)
         if value:
             primary_parts.append(value)
 
-    revestimento = _conjunto_label(by_key, data, "cj_tipo_revestimento")
+    revestimento = _conjunto_label(by_key, data, "tipo_revestimento")
     if revestimento:
         primary_parts.append(revestimento)
 
@@ -2565,6 +2525,7 @@ def _visible_field_keys(fields: list[dict[str, Any]], category_key_value: str, d
         mode_ok = (
             not banco_mode
             or banco_mode == "conjunto_trigger"
+            or banco_mode == "shared"
             or (banco_mode == "conjunto" and conjunto)
             or (banco_mode == "insumo" and not conjunto)
         )
@@ -2582,6 +2543,10 @@ def _validate_visible_field_requirements(
     missing_fields: list[str] = []
     for field in fields:
         if field["key"] not in visible_keys:
+            continue
+        # Nos conjuntos, os mesmos campos são exibidos de forma compartilhada,
+        # mas preservam a flexibilidade anterior da montagem técnica.
+        if is_banco_conjunto(data) and clean_text(field.get("banco_mode")) == "shared":
             continue
         if not field.get("required", True):
             continue
