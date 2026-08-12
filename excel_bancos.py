@@ -729,22 +729,11 @@ CONJUNTO_BANCO_FIELDS = [
         "required": False,
     },
     {
-        "key": "cj_detalhe_revestimento",
-        "label": "DETALHE DO REVESTIMENTO",
-        "scope": "primaria",
-        "selection_mode": SELECTION_MODE_UNITARIA,
-        "description_order": 8,
-        "options": [],
-        "banco_mode": "conjunto",
-        "free_text": True,
-        "required": False,
-    },
-    {
         "key": "cj_especificidade",
         "label": "ESPECIFICIDADE",
         "scope": "primaria",
         "selection_mode": SELECTION_MODE_MULTIPLA,
-        "description_order": 9,
+        "description_order": 8,
         "options": ["NORMAL", "TRILHO", "BJD", "E/S/ J", "PME 1A", "PME 2A", "PME 3A", "EXECUTIVO", "4L REC"],
         "banco_mode": "conjunto",
         "required": False,
@@ -754,7 +743,7 @@ CONJUNTO_BANCO_FIELDS = [
         "label": "ACESSIBILIDADE",
         "scope": "primaria",
         "selection_mode": SELECTION_MODE_UNITARIA,
-        "description_order": 10,
+        "description_order": 9,
         "options": ["FOCA", "ELEVITTA", "PLATAFORMA BI-PARTIDA", "PLATAFORMA FECHADA"],
         "banco_mode": "conjunto",
         "required": False,
@@ -2284,26 +2273,70 @@ def _conjunto_encosto(value: str) -> str:
     return value.strip()
 
 
+CONJUNTO_ESPECIFICIDADE_ORDEM = (
+    "NORMAL",
+    "TRILHO",
+    "BJD",
+    "E/S/ J",
+    "PME 1A",
+    "PME 2A",
+    "PME 3A",
+    "EXECUTIVO",
+    "4L REC",
+)
+
+
+def _normalizar_fornecedor_conjunto(value: str) -> str:
+    """Normaliza residuos de descricoes antigas sem inventar fornecedor."""
+    normalized = normalize_label(value)
+    if normalized in {"MC REC", "MC RECLINAVEL"}:
+        return "MC"
+    return value.strip()
+
+
+def _normalizar_layout_conjunto(value: str) -> str:
+    return " ".join(value.replace(";", ",").split())
+
+
+def _normalizar_especificidades_conjunto(values: list[str]) -> list[str]:
+    """Converte aliases legados, separa especificidades coladas e preserva ordem canonica."""
+    aliases = {
+        "ESJ": "E/S/ J",
+        "E/S/J": "E/S/ J",
+        "E S J": "E/S/ J",
+        "E/S/ J": "E/S/ J",
+    }
+    encontrados: set[str] = set()
+    for raw_value in values:
+        normalized = normalize_label(option_label(raw_value))
+        if not normalized:
+            continue
+        normalized = normalize_label(aliases.get(normalized, normalized))
+        for especificidade in CONJUNTO_ESPECIFICIDADE_ORDEM:
+            if normalized == normalize_label(especificidade) or normalize_label(especificidade) in normalized:
+                encontrados.add(especificidade)
+    return [item for item in CONJUNTO_ESPECIFICIDADE_ORDEM if item in encontrados]
+
+
 def _build_conjunto_banco_descriptions(fields: list[dict[str, Any]], data: Any) -> dict[str, str]:
     by_key = {field["key"]: field for field in fields}
     encosto = _conjunto_encosto(_conjunto_label(by_key, data, "cj_encosto"))
     primary_parts = [f"CJ BANCOS {encosto}".strip()]
-    for key in ("cj_fornecedor", "cj_linha", "cj_layout", "cj_tipo_cinto"):
+    fornecedor = _normalizar_fornecedor_conjunto(_conjunto_label(by_key, data, "cj_fornecedor"))
+    if fornecedor:
+        primary_parts.append(fornecedor)
+    for key in ("cj_linha", "cj_layout", "cj_tipo_cinto"):
         value = _conjunto_label(by_key, data, key)
+        if key == "cj_layout":
+            value = _normalizar_layout_conjunto(value)
         if value:
             primary_parts.append(value)
 
     revestimento = _conjunto_label(by_key, data, "cj_tipo_revestimento")
-    detalhe_revestimento = _conjunto_label(by_key, data, "cj_detalhe_revestimento")
     if revestimento:
-        primary_parts.append(" ".join(part for part in (revestimento, detalhe_revestimento) if part))
-    elif detalhe_revestimento:
-        primary_parts.append(detalhe_revestimento)
+        primary_parts.append(revestimento)
 
-    for value in _conjunto_value(by_key, data, "cj_especificidade"):
-        label = option_label(value)
-        if label:
-            primary_parts.append(label)
+    primary_parts.extend(_normalizar_especificidades_conjunto(_conjunto_value(by_key, data, "cj_especificidade")))
 
     acessibilidade = _conjunto_label(by_key, data, "cj_acessibilidade")
     if acessibilidade and normalize_label(acessibilidade) not in {"NA", "N A"}:

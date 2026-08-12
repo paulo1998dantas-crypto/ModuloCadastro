@@ -71,6 +71,30 @@ class UnificacaoBancosTests(unittest.TestCase):
         self.assertIn("pre_fixo", insumo)
         self.assertNotIn("cj_layout", insumo)
 
+    def test_conjunto_nao_expoe_detalhe_de_revestimento(self):
+        keys = {field["key"] for field in self.fields}
+        self.assertNotIn("cj_detalhe_revestimento", keys)
+
+    def test_descricao_normaliza_campos_legados_e_ordem_tecnica(self):
+        data = {
+            "grupo_codigo": "30",
+            "cj_sufixo": "CJ",
+            "cj_encosto": "RECLINAVEL",
+            "cj_fornecedor": "MC REC",
+            "cj_linha": "LB",
+            "cj_layout": "4;3;3;3",
+            "cj_tipo_cinto": "2P",
+            "cj_tipo_revestimento": "TECIDO",
+            "cj_especificidade": ["4L REC BJD", "ESJ"],
+            "cj_acessibilidade": "FOCA",
+        }
+
+        description = excel_bancos.build_descriptions(self.fields, data, "bancos")
+        self.assertEqual(
+            description["primaria"],
+            "CJ BANCOS REC - MC - LB - 4,3,3,3 - 2P - TECIDO - BJD - E/S/ J - 4L REC - FOCA",
+        )
+
     def test_categoria_legacy_e_resolvida_para_bancos(self):
         catalog = {
             "categories": [

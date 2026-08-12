@@ -118,11 +118,16 @@
                     <h2 class="mb-4 text-sm font-black uppercase tracking-wide text-blue-700">Descricao primaria</h2>
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {% for field in ordered_fields if field.scope == 'primaria' %}
-                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}">
+                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-banco-mode="{{ field.banco_mode or '' }}" data-field-required="{{ 'true' if field.required else 'false' }}">
                             <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
                             {% if selected_category.key != 'bancos' %}
                             <input name="{{ field.key }}" list="options-{{ field.key }}" value="{{ field.selected_value or (field.selected_values|join(' | ')) }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
                             <datalist id="options-{{ field.key }}">
+                                {% for option in field.options %}<option value="{{ option }}"></option>{% endfor %}
+                            </datalist>
+                            {% elif field.free_text %}
+                            <input name="{{ field.key }}" list="options-{{ field.scope }}-{{ field.key }}" value="{{ field.selected_value or (field.selected_values|join(' | ')) }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Digite livremente ou escolha uma sugestao...">
+                            <datalist id="options-{{ field.scope }}-{{ field.key }}">
                                 {% for option in field.options %}<option value="{{ option }}"></option>{% endfor %}
                             </datalist>
                             {% elif field.selection_mode == 'multipla' %}
@@ -144,11 +149,16 @@
                     <h2 class="mb-4 text-sm font-black uppercase tracking-wide text-emerald-700">Descricao secundaria</h2>
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {% for field in ordered_fields if field.scope == 'secundaria' %}
-                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}">
+                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-banco-mode="{{ field.banco_mode or '' }}" data-field-required="{{ 'true' if field.required else 'false' }}">
                             <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
                             {% if selected_category.key != 'bancos' %}
                             <input name="{{ field.key }}" list="options-{{ field.key }}" value="{{ field.selected_value or (field.selected_values|join(' | ')) }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
                             <datalist id="options-{{ field.key }}">
+                                {% for option in field.options %}<option value="{{ option }}"></option>{% endfor %}
+                            </datalist>
+                            {% elif field.free_text %}
+                            <input name="{{ field.key }}" list="options-{{ field.scope }}-{{ field.key }}" value="{{ field.selected_value or (field.selected_values|join(' | ')) }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Digite livremente ou escolha uma sugestao...">
+                            <datalist id="options-{{ field.scope }}-{{ field.key }}">
                                 {% for option in field.options %}<option value="{{ option }}"></option>{% endfor %}
                             </datalist>
                             {% elif field.selection_mode == 'multipla' %}
@@ -207,6 +217,34 @@
         const replaceBomYes = document.getElementById("replace-bom-yes");
         const replaceBomNo = document.getElementById("replace-bom-no");
         const replaceBomCancel = document.getElementById("replace-bom-cancel");
+        const fieldBlocks = Array.from(document.querySelectorAll("[data-field-block]"));
+        const isBanco = {{ 'true' if selected_category.key == 'bancos' else 'false' }};
+
+        const bancoConjuntoAtivo = () => {
+            if (!isBanco) return false;
+            const sufixoBlock = fieldBlocks.find((block) => block.dataset.fieldKey === "cj_sufixo");
+            const sufixo = sufixoBlock ? sufixoBlock.querySelector("select, input") : null;
+            return groupSelect.value === "30" || Boolean(sufixo && String(sufixo.value || "").trim().toUpperCase() === "CJ");
+        };
+
+        const updateBancoMode = () => {
+            if (!isBanco) return;
+            const conjunto = bancoConjuntoAtivo();
+            const sufixoBlock = fieldBlocks.find((block) => block.dataset.fieldKey === "cj_sufixo");
+            const sufixo = sufixoBlock ? sufixoBlock.querySelector("select, input") : null;
+            if (conjunto && groupSelect.value !== "30") groupSelect.value = "30";
+            if (conjunto && sufixo && !sufixo.value) sufixo.value = "CJ";
+
+            fieldBlocks.forEach((block) => {
+                const mode = block.dataset.bancoMode;
+                const visible = mode !== "insumo" ? (mode !== "conjunto" || conjunto) : !conjunto;
+                block.classList.toggle("hidden", !visible);
+                block.querySelectorAll("input, select, textarea").forEach((control) => {
+                    control.disabled = !visible;
+                    control.required = visible && block.dataset.fieldRequired === "true";
+                });
+            });
+        };
 
         const structureChanged = () => categorySelect.value !== editForm.dataset.originalCategory
             || groupSelect.value !== editForm.dataset.originalGroup;
@@ -228,7 +266,18 @@
         });
         groupSelect.addEventListener("change", () => {
             bomReplacementChoice.value = "";
+            if (isBanco && groupSelect.value !== "30") {
+                const sufixoBlock = fieldBlocks.find((block) => block.dataset.fieldKey === "cj_sufixo");
+                const sufixo = sufixoBlock ? sufixoBlock.querySelector("select, input") : null;
+                if (sufixo) sufixo.value = "";
+            }
+            updateBancoMode();
             syncMigrationWarning();
+        });
+        fieldBlocks.forEach((block) => {
+            block.querySelectorAll("select, input, textarea").forEach((control) => {
+                control.addEventListener("change", updateBancoMode);
+            });
         });
         editForm.addEventListener("submit", (event) => {
             if (!structureChanged() || bomReplacementChoice.value) {
@@ -250,6 +299,7 @@
             bomReplacementModal.classList.add("hidden");
             bomReplacementModal.classList.remove("flex");
         });
+        updateBancoMode();
         syncMigrationWarning();
     </script>
 </body>
