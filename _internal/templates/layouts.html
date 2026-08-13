@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestão de Layout | JI Montadora</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-900">
+  <header class="bg-slate-950 px-6 py-5 text-white shadow">
+    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-wider text-amber-300">Módulo de Cadastro</p>
+        <h1 class="text-3xl font-bold">Gestão de Layout</h1>
+        <p class="mt-1 text-sm text-slate-300">Biblioteca dos PDFs usados na emissão de Ordens de Serviço.</p>
+      </div>
+      <nav class="flex flex-wrap gap-2 text-sm font-semibold">
+        <a href="/cadastros" class="rounded-lg bg-slate-800 px-4 py-2 hover:bg-slate-700">Cadastros</a>
+        <a href="/bom" class="rounded-lg bg-slate-800 px-4 py-2 hover:bg-slate-700">B.O.M.</a>
+        <a href="/suprimentos" class="rounded-lg bg-slate-800 px-4 py-2 hover:bg-slate-700">Suprimentos</a>
+        <a href="/opcoes" class="rounded-lg bg-slate-800 px-4 py-2 hover:bg-slate-700">Opções</a>
+        <a href="/layouts" class="rounded-lg bg-white px-4 py-2 text-slate-950">Gestão de Layout</a>
+        <a href="/logout" class="rounded-lg bg-slate-800 px-4 py-2 hover:bg-slate-700">Sair</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-7xl p-6">
+    {% if sucesso %}<div class="mb-4 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-900">{{ sucesso }}</div>{% endif %}
+    {% if erro %}<div class="mb-4 rounded-lg border border-rose-300 bg-rose-50 px-4 py-3 text-rose-900">{{ erro }}</div>{% endif %}
+
+    <section class="mb-5 rounded-xl border border-sky-200 bg-sky-50 p-5 text-sky-950">
+      <h2 class="font-bold">Como os layouts são controlados</h2>
+      <p class="mt-1 text-sm">Envie o PDF ao emitir ou reemitir a O.S. no módulo Suprimentos. Um arquivo com o mesmo conteúdo é reutilizado automaticamente; aqui é possível consultar o PDF e alterar apenas o nome de exibição.</p>
+      <p class="mt-2 text-sm font-semibold">Layouts já vinculados a O.S. não são excluídos para preservar a rastreabilidade documental.</p>
+    </section>
+
+    <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+        <div>
+          <h2 class="text-lg font-bold">Arquivos cadastrados</h2>
+          <p class="text-sm text-slate-600">{{ layouts|length }} layout(s) na biblioteca.</p>
+        </div>
+        <a href="/layouts" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-50">Atualizar</a>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-left text-sm">
+          <thead class="bg-slate-100 text-xs uppercase text-slate-600">
+            <tr>
+              <th class="px-4 py-3">Nome de exibição</th>
+              <th class="px-4 py-3">Arquivo original</th>
+              <th class="px-4 py-3">Tamanho</th>
+              <th class="px-4 py-3">Uso em O.S.</th>
+              <th class="px-4 py-3">Atualizado</th>
+              <th class="px-4 py-3">Ações</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            {% for layout in layouts %}
+            <tr class="align-top hover:bg-slate-50">
+              <td class="min-w-80 px-4 py-3">
+                <form method="post" action="/layouts/{{ layout.id }}/renomear" class="flex min-w-80 gap-2">
+                  <input name="nome_exibicao" value="{{ layout.nome_exibicao or layout.nome_original }}" required maxlength="255" class="w-full rounded-md border border-slate-300 px-3 py-2" aria-label="Nome do layout">
+                  <button class="rounded-md bg-blue-600 px-3 py-2 font-semibold text-white hover:bg-blue-700">Salvar</button>
+                </form>
+              </td>
+              <td class="max-w-xs break-words px-4 py-4 text-slate-600">{{ layout.nome_original }}</td>
+              <td class="whitespace-nowrap px-4 py-4">{{ (layout.tamanho_bytes / 1024)|round(1) }} KB</td>
+              <td class="whitespace-nowrap px-4 py-4"><span class="rounded-full bg-slate-100 px-2 py-1 font-semibold">{{ layout.uso_os or 0 }} O.S.</span></td>
+              <td class="whitespace-nowrap px-4 py-4 text-slate-600">{{ layout.updated_at or layout.created_at }}</td>
+              <td class="px-4 py-3"><a href="/layouts/{{ layout.id }}/visualizar" target="_blank" rel="noopener" class="inline-block rounded-md border border-slate-300 px-3 py-2 font-semibold hover:bg-slate-100">Visualizar PDF</a></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="px-5 py-10 text-center text-slate-500">Nenhum layout foi enviado ainda. Envie o PDF durante a emissão de uma O.S.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

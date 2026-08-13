@@ -23,6 +23,9 @@ REGISTRATIONS_TABLE = "cadastro_registros"
 DRAFTS_TABLE = "cadastro_rascunhos"
 BOM_HEADERS_TABLE = "cadastro_bom_cabecalhos"
 BOM_COMPONENTS_TABLE = "cadastro_bom_componentes"
+LAYOUTS_TABLE = "layout_arquivos"
+DOCUMENTOS_TABLE = "suprimentos_documentos"
+LAYOUTS_BUCKET = "os-layouts"
 EXPORT_DIR = Path(tempfile.gettempdir()) / "modulo-cadastro-exports"
 ALL_CATEGORIES_KEY = "__all__"
 REVIEW_PARENT_PREFIX = "REVISAO-"
@@ -91,7 +94,13 @@ def status() -> dict[str, Any]:
         "enabled": enabled(),
         "configured": configured(),
         "url": _supabase_url(),
-        "tables": [REGISTRATIONS_TABLE, DRAFTS_TABLE, BOM_HEADERS_TABLE, BOM_COMPONENTS_TABLE],
+        "tables": [
+            REGISTRATIONS_TABLE,
+            DRAFTS_TABLE,
+            BOM_HEADERS_TABLE,
+            BOM_COMPONENTS_TABLE,
+            LAYOUTS_TABLE,
+        ],
     }
 
 
@@ -161,6 +170,87 @@ def _request(
         raise SupabaseStoreError(f"Erro Supabase {exc.code}: {body}") from exc
     except urllib.error.URLError as exc:
         raise SupabaseStoreError(f"Não foi possível conectar ao Supabase: {exc}") from exc
+
+
+def _storage_request(path: str) -> tuple[bytes, dict[str, str]]:
+    """Baixa um PDF privado da biblioteca de layouts pelo backend."""
+    _ensure_configured()
+    object_path = urllib.parse.quote(path.lstrip("/"), safe="/")
+    request = urllib.request.Request(
+        f"{_supabase_url()}/storage/v1/object/{LAYOUTS_BUCKET}/{object_path}",
+        headers=_headers(),
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            return response.read(), dict(response.headers.items())
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise SupabaseStoreError(f"Erro ao baixar layout {exc.code}: {body}") from exc
+    except urllib.error.URLError as exc:
+        raise SupabaseStoreError(f"Não foi possível baixar o layout: {exc}") from exc
+
+
+def list_layouts() -> list[dict[str, Any]]:
+    """Lista layouts e a quantidade de O.S. que os referencia."""
+    layouts = _request_all(
+        LAYOUTS_TABLE,
+        [("select", "id,nome_original,nome_exibicao,mime_type,tamanho_bytes,criado_por,created_at,updated_at")],
+    )
+    documentos = _request_all(
+        DOCUMENTOS_TABLE,
+        [("select", "layout_arquivo_id"), ("layout_arquivo_id", "not.is.null")],
+    )
+    usos: dict[str, int] = {}
+    for documento in documentos:
+        layout_id = clean_text(documento.get("layout_arquivo_id"))
+        if layout_id:
+            usos[layout_id] = usos.get(layout_id, 0) + 1
+    for layout in layouts:
+        layout["uso_os"] = usos.get(clean_text(layout.get("id")), 0)
+    return sorted(layouts, key=lambda item: clean_text(item.get("updated_at")), reverse=True)
+
+
+def get_layout(layout_id: str) -> dict[str, Any] | None:
+    rows = _request(
+        "GET",
+        LAYOUTS_TABLE,
+        [
+            ("select", "id,storage_bucket,storage_path,nome_original,nome_exibicao,mime_type,tamanho_bytes"),
+            ("id", f"eq.{clean_text(layout_id)}"),
+            ("limit", "1"),
+        ],
+    ) or []
+    return rows[0] if rows else None
+
+
+def rename_layout(layout_id: str, nome_exibicao: str) -> dict[str, Any]:
+    nome = clean_text(nome_exibicao)
+    if not nome:
+        raise SupabaseStoreError("Informe um nome para o layout.")
+    rows = _request(
+        "PATCH",
+        LAYOUTS_TABLE,
+        [("id", f"eq.{clean_text(layout_id)}")],
+        {"nome_exibicao": nome},
+        prefer="return=representation",
+    ) or []
+    if not rows:
+        raise SupabaseStoreError("Layout não encontrado.")
+    return rows[0]
+
+
+def download_layout(layout_id: str) -> tuple[bytes, dict[str, Any]]:
+    layout = get_layout(layout_id)
+    if not layout:
+        raise SupabaseStoreError("Layout não encontrado.")
+    if clean_text(layout.get("storage_bucket")) != LAYOUTS_BUCKET:
+        raise SupabaseStoreError("O layout informado não pertence à biblioteca de O.S.")
+    storage_path = clean_text(layout.get("storage_path"))
+    if not storage_path:
+        raise SupabaseStoreError("O layout não possui arquivo armazenado.")
+    content, _response_headers = _storage_request(storage_path)
+    return content, layout
 
 
 def _request_all(table: str, params: list[tuple[str, str]], limit: int = 10000) -> list[dict[str, Any]]:

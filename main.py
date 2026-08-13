@@ -717,11 +717,72 @@ def _render_opcoes_page(request: Request, categoria: str = "", sucesso: str = ""
     )
 
 
+def _render_layouts_page(request: Request, sucesso: str = "", erro: str = ""):
+    """Biblioteca privada de layouts PDF usados na emissão de O.S."""
+    layouts = []
+    if not _supabase_mode():
+        erro = erro or "A Gestão de Layout requer o modo Supabase ativo."
+    else:
+        try:
+            layouts = supabase_store.list_layouts()
+        except Exception as exc:
+            erro = erro or str(exc)
+    return templates.TemplateResponse(
+        request=request,
+        name="layouts.html",
+        context={
+            "request": request,
+            "layouts": layouts,
+            "sucesso": sucesso,
+            "erro": erro,
+            "active_page": "layouts",
+        },
+    )
+
+
 @app.get("/", response_class=HTMLResponse)
 async def home():
     if _supabase_mode():
         return RedirectResponse(url="/cadastros", status_code=303)
     return RedirectResponse(url="/cadastro/bancos", status_code=303)
+
+
+@app.get("/layouts", response_class=HTMLResponse)
+async def layouts_page(request: Request, sucesso: str = "", erro: str = ""):
+    return _render_layouts_page(request, sucesso=sucesso, erro=erro)
+
+
+@app.post("/layouts/{layout_id}/renomear")
+async def rename_layout(layout_id: str, nome_exibicao: str = Form(...)):
+    try:
+        if not _supabase_mode():
+            raise ValueError("A Gestão de Layout requer o modo Supabase ativo.")
+        supabase_store.rename_layout(layout_id, nome_exibicao)
+        return RedirectResponse(
+            url=f"/layouts?sucesso={quote('Nome do layout atualizado.')}",
+            status_code=303,
+        )
+    except Exception as exc:
+        return RedirectResponse(url=f"/layouts?erro={quote(str(exc))}", status_code=303)
+
+
+@app.get("/layouts/{layout_id}/visualizar")
+async def view_layout(layout_id: str):
+    try:
+        if not _supabase_mode():
+            raise ValueError("A Gestão de Layout requer o modo Supabase ativo.")
+        content, layout = supabase_store.download_layout(layout_id)
+        filename = str(layout.get("nome_exibicao") or layout.get("nome_original") or "layout.pdf")
+        return Response(
+            content=content,
+            media_type=str(layout.get("mime_type") or "application/pdf"),
+            headers={
+                "Content-Disposition": f"inline; filename*=UTF-8''{quote(filename)}",
+                "Cache-Control": "private, no-store",
+            },
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.get("/login", response_class=HTMLResponse)
