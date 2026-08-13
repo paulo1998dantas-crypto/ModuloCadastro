@@ -79,7 +79,7 @@ class SharedRbacTest(unittest.TestCase):
             )
 
     def test_legacy_bridge_keeps_admin_and_engineering_access(self):
-        for role in ("ADM", "ADMIN", "ENGENHARIA"):
+        for role in ("ADM", "ADMIN", "ENGENHARIA", "PCP"):
             user = {
                 "id": 7,
                 "username": role.lower(),
@@ -96,6 +96,23 @@ class SharedRbacTest(unittest.TestCase):
                 self.assertIsNotNone(
                     main._authenticate_shared_user(role.lower(), "senha")
                 )
+
+    def test_pcp_has_read_access_but_not_write_access(self):
+        request = SimpleNamespace(
+            state=SimpleNamespace(
+                erp_access={"active": True, "roles": ["PCP"], "permissions": ["cadastro.access"]}
+            )
+        )
+        self.assertTrue(main._cadastro_access_allowed(request.state.erp_access))
+        self.assertFalse(main._cadastro_write_allowed(request))
+
+    def test_engineering_can_maintain_cadastro(self):
+        request = SimpleNamespace(
+            state=SimpleNamespace(
+                erp_access={"active": True, "roles": ["ENGENHARIA"], "permissions": ["cadastro.access"]}
+            )
+        )
+        self.assertTrue(main._cadastro_write_allowed(request))
 
     def test_session_payload_contains_auth_version_and_redirect_is_local(self):
         with patch.object(main, "_session_secret", return_value=b"test-secret"):

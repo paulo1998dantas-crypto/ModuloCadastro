@@ -182,6 +182,29 @@ def _cadastro_access_allowed(access: dict[str, object] | None) -> bool:
     return "ADMIN" in roles or "cadastro.access" in permissions
 
 
+def _cadastro_write_allowed(request: Request) -> bool:
+    """Whether the signed-in profile may alter shared master data.
+
+    ``cadastro.access`` grants consultation only. PCP may consult SKU, B.O.M.
+    and supplier data while planning, but master-data maintenance remains with
+    Engenharia and ADMIN.
+    """
+    access = getattr(request.state, "erp_access", None)
+    if isinstance(access, dict):
+        if not bool(access.get("active", False)):
+            return False
+        roles = {str(value).upper() for value in (access.get("roles") or [])}
+        return bool({"ADMIN", "ENGENHARIA"} & roles)
+
+    # Compatibility for the legacy shared-login bridge during the RBAC cutover.
+    session = _read_session_payload(request)
+    user = _shared_user_lookup(str(session.get("u") or ""))
+    role = str((user or {}).get("role") or "").strip().upper()
+    if role == "ADM":
+        role = "ADMIN"
+    return role in {"ADMIN", "ENGENHARIA"}
+
+
 def _cadastro_delete_allowed(request: Request) -> bool:
     """Hard deletion is deliberately restricted to the ADMIN profile.
 
@@ -213,7 +236,7 @@ def _legacy_cadastro_access_allowed(user: dict[str, object] | None) -> bool:
     role = str(user.get("role") or "").strip().upper()
     if role == "ADM":
         role = "ADMIN"
-    return role in {"ADMIN", "ENGENHARIA"}
+    return role in {"ADMIN", "ENGENHARIA", "PCP"}
 
 
 def _shared_rbac_schema_status() -> dict[str, object]:
@@ -516,6 +539,17 @@ async def require_login_middleware(request: Request, call_next):
                 response.delete_cookie(SESSION_COOKIE)
                 return response
             request.state.erp_access = access
+        request.state.cadastro_can_write = _cadastro_write_allowed(request)
+        request.state.cadastro_read_only = not request.state.cadastro_can_write
+        if (
+            request.method.upper() in {"POST", "PUT", "PATCH", "DELETE"}
+            and not request.state.cadastro_can_write
+            and not request.url.path.startswith("/api/ponte/")
+        ):
+            message = "Perfil PCP possui acesso somente para consulta no Módulo Cadastro."
+            if request.url.path.startswith("/api/"):
+                return JSONResponse({"ok": False, "error": message}, status_code=403)
+            return HTMLResponse(message, status_code=403)
         if (
             bridge_store.save_via_bridge()
             and _persistence_required()

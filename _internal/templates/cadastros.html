@@ -18,11 +18,15 @@
             </div>
             <nav class="flex flex-wrap gap-2">
                 <a href="/cadastros?categoria={{ selected_category.key }}" class="rounded-lg px-4 py-2 text-sm font-bold bg-white text-slate-950">Cadastros</a>
+                {% if request.state.cadastro_can_write %}
                 <a href="/cadastro/bancos?categoria={{ nav_category_key }}" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Cadastrar</a>
+                {% endif %}
                 <a href="/bom" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">B.O.M.</a>
                 <a href="/suprimentos" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Suprimentos</a>
+                {% if request.state.cadastro_can_write %}
                 <a href="/opcoes?categoria={{ nav_category_key }}" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Opcoes</a>
                 <a href="/layouts" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Gestão de Layout</a>
+                {% endif %}
                 <a href="/logout" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Sair</a>
             </nav>
         </div>
@@ -144,7 +148,9 @@
                         <tr class="{% if inactive %}bg-slate-100 text-slate-500 hover:bg-slate-200{% elif missing_unit %}bg-amber-50 hover:bg-amber-100{% else %}odd:bg-white even:bg-slate-50 hover:bg-blue-50{% endif %}">
                             <td class="whitespace-nowrap border border-slate-200 px-2 py-1">
                                 <div class="flex flex-col items-start gap-1">
+                                    {% if request.state.cadastro_can_write %}
                                     <a href="/cadastros/{{ item.id }}/editar" class="inline-flex border border-blue-700 bg-blue-700 px-2 py-1 text-[11px] font-black uppercase text-white hover:bg-blue-600">Editar</a>
+                                    {% endif %}
                                     {% if can_delete_records %}
                                     <form method="post" action="/cadastros/{{ item.id }}/excluir" onsubmit="return confirm('Excluir definitivamente o cadastro {{ item.sku }}? A exclusao so sera permitida se nao houver saldo, B.O.M., pedidos, recebimentos ou historico operacional.');">
                                         <input type="hidden" name="categoria" value="{{ selected_category.key if not all_categories else '' }}">
