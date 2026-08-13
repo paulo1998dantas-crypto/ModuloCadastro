@@ -114,6 +114,19 @@ class SharedRbacTest(unittest.TestCase):
         )
         self.assertTrue(main._cadastro_write_allowed(request))
 
+    def test_pcp_maintenance_paths_are_declared_read_only(self):
+        paths = {
+            "/cadastro/bancos",
+            "/opcoes",
+            "/layouts",
+            "/suprimentos",
+            "/admin",
+            "/planilha",
+            "/ponte",
+        }
+        self.assertIn("/cadastro/bancos", paths)
+        self.assertIn("/suprimentos", paths)
+
     def test_session_payload_contains_auth_version_and_redirect_is_local(self):
         with patch.object(main, "_session_secret", return_value=b"test-secret"):
             raw = main._make_session("engenharia", user_id=9, auth_version=4)

@@ -541,6 +541,26 @@ async def require_login_middleware(request: Request, call_next):
             request.state.erp_access = access
         request.state.cadastro_can_write = _cadastro_write_allowed(request)
         request.state.cadastro_read_only = not request.state.cadastro_can_write
+        if request.state.cadastro_read_only and request.method.upper() == "GET":
+            maintenance_paths = (
+                "/cadastro/bancos",
+                "/opcoes",
+                "/layouts",
+                "/suprimentos",
+                "/admin",
+                "/planilha",
+                "/ponte",
+            )
+            is_registration_edit = (
+                request.url.path.startswith("/cadastros/")
+                and request.url.path.endswith("/editar")
+            )
+            if request.url.path in maintenance_paths or is_registration_edit:
+                return RedirectResponse(
+                    url="/cadastros?erro="
+                    + quote("Perfil PCP possui acesso somente para consulta no Módulo Cadastro."),
+                    status_code=303,
+                )
         if (
             request.method.upper() in {"POST", "PUT", "PATCH", "DELETE"}
             and not request.state.cadastro_can_write
