@@ -916,10 +916,27 @@
             if (currentCategoryKey !== "bancos") {
                 return false;
             }
-            const sufixoBlock = fieldBlocks.find((block) => block.dataset.fieldKey === "cj_sufixo");
-            const sufixoSelecionado = selectedControlValues(sufixoBlock)
+            const prefixoBlock = fieldBlocks.find((block) => block.dataset.fieldKey === "pre_fixo");
+            const prefixoSelecionado = selectedControlValues(prefixoBlock)
                 .some((value) => normalizeOptionValue(value) === "CJ");
-            return (groupSelect && groupSelect.value === "30") || sufixoSelecionado;
+            return (groupSelect && groupSelect.value === "30") || prefixoSelecionado;
+        };
+
+        const bancoPrefixoControl = () => {
+            const block = fieldBlocks.find((item) => item.dataset.fieldKey === "pre_fixo");
+            return block ? block.querySelector("select, input") : null;
+        };
+
+        const setBancoPrefixoCJ = () => {
+            const control = bancoPrefixoControl();
+            if (!control) return;
+            if (control.tagName === "SELECT") {
+                const option = Array.from(control.options)
+                    .find((item) => normalizeOptionValue(item.value) === "CJ");
+                control.value = option ? option.value : "8- CJ";
+            } else {
+                control.value = "8- CJ";
+            }
         };
 
         const updateBancoMode = () => {
@@ -928,13 +945,12 @@
                 return visibility;
             }
             const conjunto = bancoConjuntoAtivo();
-            const sufixoBlock = fieldBlocks.find((block) => block.dataset.fieldKey === "cj_sufixo");
-            const sufixoSelect = sufixoBlock ? sufixoBlock.querySelector("select") : null;
             if (conjunto && groupSelect && groupSelect.value !== "30") {
                 groupSelect.value = "30";
             }
-            if (conjunto && sufixoSelect && !sufixoSelect.value) {
-                sufixoSelect.value = "CJ";
+            if (conjunto && !selectedControlValues(fieldBlocks.find((block) => block.dataset.fieldKey === "pre_fixo"))
+                .some((value) => normalizeOptionValue(value) === "CJ")) {
+                setBancoPrefixoCJ();
             }
             const especificidadeBlock = fieldBlocks.find((block) => block.dataset.fieldKey === "especificidade");
             const especificidadeSelect = especificidadeBlock ? especificidadeBlock.querySelector("select") : null;
@@ -1023,7 +1039,14 @@
 
         fieldBlocks.forEach((block) => {
             block.querySelectorAll("select").forEach((select) => {
-                select.addEventListener("change", updateConditionalFields);
+                select.addEventListener("change", () => {
+                    if (currentCategoryKey === "bancos" && block.dataset.fieldKey === "pre_fixo" && groupSelect) {
+                        const isCJ = normalizeOptionValue(select.value) === "CJ";
+                        if (isCJ) groupSelect.value = "30";
+                        else if (groupSelect.value === "30") groupSelect.value = "10";
+                    }
+                    updateConditionalFields();
+                });
             });
             block.querySelectorAll("input:not([type='hidden']), textarea").forEach((input) => {
                 input.addEventListener("change", updateConditionalFields);
@@ -1036,7 +1059,17 @@
             });
         });
         if (groupSelect) {
-            groupSelect.addEventListener("change", updateConditionalFields);
+            groupSelect.addEventListener("change", () => {
+                if (currentCategoryKey === "bancos") {
+                    const prefixo = bancoPrefixoControl();
+                    if (groupSelect.value === "30") {
+                        setBancoPrefixoCJ();
+                    } else if (prefixo && normalizeOptionValue(prefixo.value) === "CJ") {
+                        prefixo.value = "";
+                    }
+                }
+                updateConditionalFields();
+            });
         }
 
         const isBlockFilled = (block) => {

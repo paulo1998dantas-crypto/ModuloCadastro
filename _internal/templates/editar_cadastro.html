@@ -224,18 +224,34 @@
 
         const bancoConjuntoAtivo = () => {
             if (!isBanco) return false;
-            const sufixoBlock = fieldBlocks.find((block) => block.dataset.fieldKey === "cj_sufixo");
-            const sufixo = sufixoBlock ? sufixoBlock.querySelector("select, input") : null;
-            return groupSelect.value === "30" || Boolean(sufixo && String(sufixo.value || "").trim().toUpperCase() === "CJ");
+            const prefixoBlock = fieldBlocks.find((block) => block.dataset.fieldKey === "pre_fixo");
+            const prefixo = prefixoBlock ? prefixoBlock.querySelector("select, input") : null;
+            const prefixoLabel = String(prefixo && prefixo.value || "").replace(/^\s*\d+\s*[-–—]\s*/, "").trim().toUpperCase();
+            return groupSelect.value === "30" || prefixoLabel === "CJ";
+        };
+
+        const bancoPrefixoControl = () => {
+            const block = fieldBlocks.find((item) => item.dataset.fieldKey === "pre_fixo");
+            return block ? block.querySelector("select, input") : null;
+        };
+
+        const setBancoPrefixoCJ = () => {
+            const control = bancoPrefixoControl();
+            if (!control) return;
+            if (control.tagName === "SELECT") {
+                const option = Array.from(control.options).find((item) => String(item.value || "")
+                    .replace(/^\s*\d+\s*[-–—]\s*/, "").trim().toUpperCase() === "CJ");
+                control.value = option ? option.value : "8- CJ";
+            } else {
+                control.value = "8- CJ";
+            }
         };
 
         const updateBancoMode = () => {
             if (!isBanco) return;
             const conjunto = bancoConjuntoAtivo();
-            const sufixoBlock = fieldBlocks.find((block) => block.dataset.fieldKey === "cj_sufixo");
-            const sufixo = sufixoBlock ? sufixoBlock.querySelector("select, input") : null;
             if (conjunto && groupSelect.value !== "30") groupSelect.value = "30";
-            if (conjunto && sufixo && !sufixo.value) sufixo.value = "CJ";
+            if (conjunto) setBancoPrefixoCJ();
 
             const especificidadeBlock = fieldBlocks.find((block) => block.dataset.fieldKey === "especificidade");
             const especificidadeSelect = especificidadeBlock ? especificidadeBlock.querySelector("select") : null;
@@ -288,17 +304,27 @@
         });
         groupSelect.addEventListener("change", () => {
             bomReplacementChoice.value = "";
-            if (isBanco && groupSelect.value !== "30") {
-                const sufixoBlock = fieldBlocks.find((block) => block.dataset.fieldKey === "cj_sufixo");
-                const sufixo = sufixoBlock ? sufixoBlock.querySelector("select, input") : null;
-                if (sufixo) sufixo.value = "";
+            if (isBanco) {
+                const prefixo = bancoPrefixoControl();
+                if (groupSelect.value === "30") setBancoPrefixoCJ();
+                else if (prefixo && String(prefixo.value || "").replace(/^\s*\d+\s*[-–—]\s*/, "").trim().toUpperCase() === "CJ") {
+                    prefixo.value = "";
+                }
             }
             updateBancoMode();
             syncMigrationWarning();
         });
         fieldBlocks.forEach((block) => {
             block.querySelectorAll("select, input, textarea").forEach((control) => {
-                control.addEventListener("change", updateBancoMode);
+                control.addEventListener("change", () => {
+                    if (isBanco && block.dataset.fieldKey === "pre_fixo") {
+                        const isCJ = String(control.value || "").replace(/^\s*\d+\s*[-–—]\s*/, "").trim().toUpperCase() === "CJ";
+                        if (isCJ) groupSelect.value = "30";
+                        else if (groupSelect.value === "30") groupSelect.value = "10";
+                    }
+                    updateBancoMode();
+                    syncMigrationWarning();
+                });
             });
         });
         editForm.addEventListener("submit", (event) => {

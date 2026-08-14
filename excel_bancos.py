@@ -658,6 +658,7 @@ PN_GROUP_DEFAULT_LABELS = {
 # os campos canônicos da categoria 20. Aqui permanecem apenas os atributos que
 # existem exclusivamente na montagem de um conjunto.
 CONJUNTO_BANCO_SHARED_FIELDS = {
+    "pre_fixo",
     "fornecedor",
     "linha",
     "encosto",
@@ -685,20 +686,11 @@ CONJUNTO_BANCO_ESPECIFICIDADE_OPTIONS = [
 # novos salvamentos usam exclusivamente as chaves canonicas, sem duplicar
 # conceitos entre banco unitario e conjunto.
 CONJUNTO_BANCO_LEGACY_FIELD_ALIASES = {
+    "pre_fixo": "cj_sufixo",
     "especificidade": "cj_especificidade",
 }
 
 CONJUNTO_BANCO_FIELDS = [
-    {
-        "key": "cj_sufixo",
-        "label": "SUFIXO",
-        "scope": "primaria",
-        "selection_mode": SELECTION_MODE_UNITARIA,
-        "description_order": 1,
-        "options": ["CJ"],
-        "banco_mode": "conjunto_trigger",
-        "required": False,
-    },
     {
         "key": "cj_layout",
         "label": "LAYOUT",
@@ -1755,6 +1747,12 @@ def _fields_for_category(category: dict[str, Any]) -> list[dict[str, Any]]:
     # continuam unicos e compartilhados pelos dois grupos.
     for field in fields:
         field["banco_mode"] = "shared" if field["key"] in CONJUNTO_BANCO_SHARED_FIELDS else "insumo"
+        if field["key"] == "pre_fixo":
+            # PRE-FIXO e o conceito canonico para bancos unitarios e conjuntos.
+            # O antigo campo cj_sufixo permanece apenas como alias de leitura.
+            field["label"] = "PRÉ-FIXO"
+            if not any(option_identity(option) == "CJ" for option in (field.get("options") or [])):
+                field["options"] = list(field.get("options") or []) + ["8- CJ"]
         if field["key"] == "especificidade":
             conjunto_only = [
                 option for option in CONJUNTO_BANCO_ESPECIFICIDADE_OPTIONS if option not in (field.get("options") or [])
@@ -2155,21 +2153,28 @@ def pn_group_code(fields: list[dict[str, Any]], data: Any) -> str:
         return explicit_group
 
     prefix_field = _find_field_by_normalized_label(fields, {"PREFIXO", "PRE FIXO", "PRÉ FIXO"})
-    if prefix_field is None:
-        return "10"
-    prefix_map = _pn_group_prefix_map()
-    for value in _selected_option_labels(prefix_field, data):
-        normalized = normalize_label(value)
-        if normalized in prefix_map:
-            return prefix_map[normalized]
-        for known_prefix, group_code in prefix_map.items():
-            if normalized.startswith(f"{known_prefix} ") or normalized.startswith(known_prefix):
-                return group_code
+    if prefix_field is not None:
+        prefix_map = _pn_group_prefix_map()
+        for value in _selected_option_labels(prefix_field, data):
+            normalized = normalize_label(value)
+            if normalized in prefix_map:
+                return prefix_map[normalized]
+            else:
+                for known_prefix, group_code in prefix_map.items():
+                    if normalized.startswith(f"{known_prefix} ") or normalized.startswith(known_prefix):
+                        return group_code
     return "10"
 
 
 def pn_code_prefix(category: dict[str, Any], fields: list[dict[str, Any]], data: Any) -> str:
-    return f"{pn_group_code(fields, data)}{pn_category_code(category)}"
+    category_code = pn_category_code(category)
+    group_code = pn_group_code(fields, data)
+    # Na categoria 20, o PRE-FIXO CJ e o proprio identificador funcional do
+    # grupo CONJUNTO. A regra fica restrita a Bancos para nao mudar a
+    # precedencia entre grupo e prefixo das demais categorias.
+    if category_code == "20" and is_banco_conjunto(data):
+        group_code = CONJUNTO_BANCO_GROUP_CODE
+    return f"{group_code}{category_code}"
 
 
 def _distancia_pe_order(value: Any) -> tuple[int, int, str]:
@@ -2230,9 +2235,12 @@ def is_banco_conjunto(data: Any) -> bool:
         return True
     if not data or not hasattr(data, "get"):
         return False
-    raw = data.get("cj_sufixo")
-    values = raw if isinstance(raw, list) else [raw]
-    return any(normalize_label(option_label(value)) == "CJ" for value in values if clean_text(value))
+    for field_key in ("pre_fixo", "cj_sufixo"):
+        raw = data.get(field_key)
+        values = raw if isinstance(raw, list) else [raw]
+        if any(normalize_label(option_label(value)) == "CJ" for value in values if clean_text(value)):
+            return True
+    return False
 
 
 def _conjunto_value(fields_by_key: dict[str, dict[str, Any]], data: Any, key: str) -> list[str]:
@@ -2615,7 +2623,6 @@ def _visible_field_keys(fields: list[dict[str, Any]], category_key_value: str, d
         banco_mode = clean_text(field.get("banco_mode"))
         mode_ok = (
             not banco_mode
-            or banco_mode == "conjunto_trigger"
             or banco_mode == "shared"
             or (banco_mode == "conjunto" and conjunto)
             or (banco_mode == "insumo" and not conjunto)

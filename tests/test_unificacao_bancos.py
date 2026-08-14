@@ -14,7 +14,7 @@ class UnificacaoBancosTests(unittest.TestCase):
             excel_bancos.pn_code_prefix(
                 category,
                 self.fields,
-                {"grupo_codigo": "30", "cj_sufixo": "CJ"},
+                {"grupo_codigo": "30", "pre_fixo": "8- CJ"},
             ),
             "3020",
         )
@@ -33,7 +33,7 @@ class UnificacaoBancosTests(unittest.TestCase):
     def test_descricao_do_conjunto_nao_mistura_campos_de_insumo(self):
         data = {
             "grupo_codigo": "30",
-            "cj_sufixo": "CJ",
+            "pre_fixo": "8- CJ",
             "encosto": "2- RECLINAVEL",
             "fornecedor": "1- MC",
             "linha": "1- LB",
@@ -59,7 +59,7 @@ class UnificacaoBancosTests(unittest.TestCase):
         conjunto = excel_bancos._visible_field_keys(
             self.fields,
             "bancos",
-            {"grupo_codigo": "30", "cj_sufixo": "CJ"},
+            {"grupo_codigo": "30", "pre_fixo": "8- CJ"},
         )
         insumo = excel_bancos._visible_field_keys(
             self.fields,
@@ -74,8 +74,10 @@ class UnificacaoBancosTests(unittest.TestCase):
         self.assertIn("tipo_costura", conjunto)
         self.assertIn("cor_da_linha", conjunto)
         self.assertIn("cor_do_revestimento", conjunto)
-        self.assertNotIn("pre_fixo", conjunto)
+        self.assertIn("pre_fixo", conjunto)
         self.assertIn("pre_fixo", insumo)
+        self.assertNotIn("cj_sufixo", conjunto)
+        self.assertNotIn("cj_sufixo", insumo)
         self.assertNotIn("cj_layout", insumo)
         self.assertNotIn("cj_acessibilidade", insumo)
 
@@ -105,6 +107,8 @@ class UnificacaoBancosTests(unittest.TestCase):
 
     def test_campos_compartilhados_nao_sao_duplicados_no_conjunto(self):
         keys = {field["key"] for field in self.fields}
+        self.assertIn("pre_fixo", keys)
+        self.assertNotIn("cj_sufixo", keys)
         self.assertNotIn("cj_fornecedor", keys)
         self.assertNotIn("cj_linha", keys)
         self.assertNotIn("cj_encosto", keys)
@@ -225,6 +229,41 @@ class UnificacaoBancosTests(unittest.TestCase):
             },
         )
         self.assertEqual(groups["especificidade"], ["11- E/S/J", "EXECUTIVO"])
+
+    def test_prefixo_cj_e_unico_e_aciona_grupo_conjunto(self):
+        prefix_fields = [field for field in self.fields if field["key"] == "pre_fixo"]
+        self.assertEqual(len(prefix_fields), 1)
+        self.assertNotIn("cj_sufixo", {field["key"] for field in self.fields})
+        self.assertIn("8- CJ", prefix_fields[0]["options"])
+
+        data = {"grupo_codigo": "10", "pre_fixo": "8- CJ"}
+        self.assertTrue(excel_bancos.is_banco_conjunto(data))
+        self.assertEqual(
+            excel_bancos.pn_code_prefix(
+                {"label": "20 - BANCOS", "sheet_name": "20 - BANCOS"},
+                self.fields,
+                data,
+            ),
+            "3020",
+        )
+
+    def test_registro_legado_cj_sufixo_abre_com_prefixo_canonico(self):
+        groups = supabase_store._groups_from_record(
+            self.fields,
+            {
+                "form_values": {"grupo_codigo": ["30"], "cj_sufixo": ["CJ"]},
+                "field_values": {},
+            },
+        )
+        self.assertEqual(groups["pre_fixo"], ["8- CJ"])
+
+    def test_salvamento_do_grupo_conjunto_persiste_prefixo_canonico(self):
+        groups = supabase_store._field_groups(
+            self.fields,
+            {"grupo_codigo": "30", "pre_fixo": ""},
+        )
+        self.assertEqual(groups["grupo_codigo"], ["30"])
+        self.assertEqual(groups["pre_fixo"], ["8- CJ"])
 
     def test_banco_unitario_preserva_regra_e_descricao_existente(self):
         data = {

@@ -323,11 +323,16 @@ def _next_sku(category: dict[str, Any], fields: list[dict[str, Any]], form_data:
 
 def _field_groups(fields: list[dict[str, Any]], form_data: Any) -> dict[str, list[str]]:
     groups: dict[str, list[str]] = {}
-    group_code = excel_bancos._pn_group_code(form_data.get(excel_bancos.PN_GROUP_FORM_KEY) if hasattr(form_data, "get") else "")
+    is_bank_category = any(field.get("key") == "cj_layout" for field in fields)
+    group_code = excel_bancos.pn_group_code(fields, form_data)
+    if is_bank_category and excel_bancos.is_banco_conjunto(form_data):
+        group_code = excel_bancos.CONJUNTO_BANCO_GROUP_CODE
     if group_code:
         groups[excel_bancos.PN_GROUP_FORM_KEY] = [group_code]
     for field in fields:
         values = excel_bancos._serialize_field_values(field, form_data)
+        if is_bank_category and field.get("key") == "pre_fixo" and group_code == excel_bancos.CONJUNTO_BANCO_GROUP_CODE:
+            values = ["8- CJ"]
         groups[field["key"]] = values
     return groups
 
@@ -872,16 +877,25 @@ def _groups_from_record(fields: list[dict[str, Any]], record: dict[str, Any]) ->
         if (raw is None or raw == [] or raw == "") and legacy_key:
             raw = form_values.get(legacy_key)
         if isinstance(raw, list) and raw:
-            groups[field_key] = [clean_text(value) for value in raw if clean_text(value)]
+            values = [clean_text(value) for value in raw if clean_text(value)]
+            if field_key == "pre_fixo" and any(excel_bancos.option_identity(value) == "CJ" for value in values):
+                values = ["8- CJ"]
+            groups[field_key] = values
             continue
         if clean_text(raw):
-            groups[field_key] = [clean_text(raw)]
+            value = clean_text(raw)
+            if field_key == "pre_fixo" and excel_bancos.option_identity(value) == "CJ":
+                value = "8- CJ"
+            groups[field_key] = [value]
             continue
         saved = clean_text(field_values.get(field_key))
         if not saved and legacy_key:
             saved = clean_text(field_values.get(legacy_key))
         if saved:
-            groups[field_key] = [value.strip() for value in saved.split("|") if value.strip()]
+            values = [value.strip() for value in saved.split("|") if value.strip()]
+            if field_key == "pre_fixo" and any(excel_bancos.option_identity(value) == "CJ" for value in values):
+                values = ["8- CJ"]
+            groups[field_key] = values
     return groups
 
 
