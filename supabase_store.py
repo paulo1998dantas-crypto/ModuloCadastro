@@ -671,8 +671,16 @@ def delete_registration(registration_id: int | str) -> dict[str, Any]:
     return result
 
 
-def _safe_filter_value(value: str) -> str:
-    return clean_text(value).replace("*", "").replace(",", " ")
+def _safe_filter_value(value: str, field_key: str = "") -> str:
+    sanitized = clean_text(value).replace("*", "")
+    if clean_text(field_key) == "cj_layout":
+        # O layout e armazenado com virgulas (por exemplo, ``3,2,3``).
+        # Remover a virgula aqui fazia a consulta procurar ``3 2 3`` e
+        # retornar zero linhas mesmo com o cadastro corretamente estruturado.
+        if sanitized.startswith("(") and sanitized.endswith(")"):
+            sanitized = sanitized[1:-1].strip()
+        sanitized = re.sub(r"\s*[,;]\s*", ",", sanitized)
+    return sanitized
 
 
 def all_categories_key(value: str) -> bool:
@@ -757,7 +765,7 @@ def list_registrations(
     if missing_unit:
         params.append(("unidade", "eq."))
     for key, value in (filters or {}).items():
-        value = _safe_filter_value(value)
+        value = _safe_filter_value(value, key)
         if key and value:
             params.append((f"field_values->>{key}", f"ilike.*{value}*"))
     fallback_without_active = False
