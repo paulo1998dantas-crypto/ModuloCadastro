@@ -116,9 +116,9 @@
             <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                     <h2 class="mb-4 text-sm font-black uppercase tracking-wide text-blue-700">Descricao primaria</h2>
-                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div id="edit-primary-field-grid" class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {% for field in ordered_fields if field.scope == 'primaria' %}
-                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-banco-mode="{{ field.banco_mode or '' }}" data-field-required="{{ 'true' if field.required else 'false' }}">
+                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-description-order="{{ field.description_order }}" data-banco-mode="{{ field.banco_mode or '' }}" data-field-required="{{ 'true' if field.required else 'false' }}">
                             <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
                             {% if selected_category.key != 'bancos' %}
                             <input name="{{ field.key }}" list="options-{{ field.key }}" value="{{ field.selected_value or (field.selected_values|join(' | ')) }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
@@ -148,9 +148,9 @@
 
                 <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                     <h2 class="mb-4 text-sm font-black uppercase tracking-wide text-emerald-700">Descricao secundaria</h2>
-                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div id="edit-secondary-field-grid" class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {% for field in ordered_fields if field.scope == 'secundaria' %}
-                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-banco-mode="{{ field.banco_mode or '' }}" data-field-required="{{ 'true' if field.required else 'false' }}">
+                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-description-order="{{ field.description_order }}" data-banco-mode="{{ field.banco_mode or '' }}" data-field-required="{{ 'true' if field.required else 'false' }}">
                             <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
                             {% if selected_category.key != 'bancos' %}
                             <input name="{{ field.key }}" list="options-{{ field.key }}" value="{{ field.selected_value or (field.selected_values|join(' | ')) }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
@@ -221,6 +221,85 @@
         const replaceBomCancel = document.getElementById("replace-bom-cancel");
         const fieldBlocks = Array.from(document.querySelectorAll("[data-field-block]"));
         const isBanco = {{ 'true' if selected_category.key == 'bancos' else 'false' }};
+        const configuredRules = {{ conditional_rules | tojson }};
+        const scopeContainers = {
+            primaria: document.getElementById("edit-primary-field-grid"),
+            secundaria: document.getElementById("edit-secondary-field-grid"),
+        };
+        const originalFieldIndexes = new Map(fieldBlocks.map((block, index) => [block, index]));
+
+        const normalizeText = (value) => {
+            return (value || "")
+                .trim()
+                .replace(/\([^)]*\)/g, "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toUpperCase()
+                .replace(/[^A-Z0-9]+/g, " ")
+                .trim();
+        };
+
+        const normalizeOptionValue = (value) => {
+            return normalizeText((value || "").replace(/^\s*\d+\s*[-–—]\s*/, "")).replace(/\s+/g, "");
+        };
+
+        const findBlock = (label, scope) => {
+            const labels = Array.isArray(label) ? label : [label];
+            return fieldBlocks.find((block) => {
+                return labels.some((candidate) => normalizeText(block.dataset.fieldLabel) === normalizeText(candidate))
+                    && block.dataset.fieldScope === scope;
+            });
+        };
+
+        const getSelectedTokens = (block) => {
+            const select = block.querySelector("select");
+            if (select) {
+                if (select.multiple) {
+                    return Array.from(select.selectedOptions).map((option) => normalizeOptionValue(option.value));
+                }
+                return select.value ? [normalizeOptionValue(select.value)] : [];
+            }
+            return Array.from(block.querySelectorAll("input:not([type='hidden']), textarea"))
+                .flatMap((input) => (input.value || "").split("|"))
+                .map((value) => normalizeOptionValue(value))
+                .filter(Boolean);
+        };
+
+        const getSelectedPrefixes = (block) => {
+            const select = block.querySelector("select");
+            const values = select
+                ? (select.multiple
+                    ? Array.from(select.selectedOptions).map((option) => option.value || "")
+                    : (select.value ? [select.value] : []))
+                : Array.from(block.querySelectorAll("input:not([type='hidden']), textarea"))
+                    .flatMap((input) => (input.value || "").split("|"));
+            return values.map((value) => {
+                const match = value.match(/^\s*(\d+)/);
+                return match ? match[1] : "";
+            }).filter(Boolean);
+        };
+
+        const toggleBlock = (block, visible) => {
+            block.classList.toggle("hidden", !visible);
+            block.querySelectorAll("input, select, textarea").forEach((control) => {
+                control.disabled = !visible;
+                control.required = isBanco && visible && block.dataset.fieldRequired !== "false";
+            });
+        };
+
+        const arrangeFieldsByScope = (effectiveScopes) => {
+            ["primaria", "secundaria"].forEach((scope) => {
+                const container = scopeContainers[scope];
+                if (!container) return;
+                fieldBlocks
+                    .filter((block) => effectiveScopes.get(block) === scope)
+                    .sort((left, right) => {
+                        const orderDifference = Number(left.dataset.descriptionOrder || 0) - Number(right.dataset.descriptionOrder || 0);
+                        return orderDifference || originalFieldIndexes.get(left) - originalFieldIndexes.get(right);
+                    })
+                    .forEach((block) => container.appendChild(block));
+            });
+        };
 
         const bancoConjuntoAtivo = () => {
             if (!isBanco) return false;
@@ -248,7 +327,8 @@
         };
 
         const updateBancoMode = () => {
-            if (!isBanco) return;
+            const visibility = new Map(fieldBlocks.map((block) => [block, true]));
+            if (!isBanco) return visibility;
             const conjunto = bancoConjuntoAtivo();
             if (conjunto && groupSelect.value !== "30") groupSelect.value = "30";
             if (conjunto) setBancoPrefixoCJ();
@@ -275,13 +355,57 @@
 
             fieldBlocks.forEach((block) => {
                 const mode = block.dataset.bancoMode;
-                const visible = mode !== "insumo" ? (mode !== "conjunto" || conjunto) : !conjunto;
-                block.classList.toggle("hidden", !visible);
-                block.querySelectorAll("input, select, textarea").forEach((control) => {
-                    control.disabled = !visible;
-                    control.required = visible && block.dataset.fieldRequired === "true";
+                if (mode === "insumo") visibility.set(block, !conjunto);
+                else if (mode === "conjunto") visibility.set(block, conjunto);
+            });
+            return visibility;
+        };
+
+        const updateConditionalFields = () => {
+            const visibilityRules = new Map(fieldBlocks.map((block) => [block, { show: [], hide: [] }]));
+            const effectiveScopes = new Map(fieldBlocks.map((block) => [block, block.dataset.fieldScope]));
+            const bancoModeVisibility = updateBancoMode();
+
+            configuredRules.forEach((rule) => {
+                const sourceBlock = findBlock(rule.sourceLabel, rule.sourceScope);
+                if (!sourceBlock) return;
+                const selectedTokens = rule.matchBy === "prefix"
+                    ? getSelectedPrefixes(sourceBlock)
+                    : getSelectedTokens(sourceBlock);
+                const matches = selectedTokens.some((token) => {
+                    return rule.values.some((value) => token === value || token.startsWith(value));
+                });
+                const action = rule.action || (rule.mode === "showWhen" ? "show" : "hide");
+
+                if (action === "set_primary" || action === "set_secondary") {
+                    if (matches) {
+                        rule.targets.forEach((target) => {
+                            const targetBlock = findBlock(target.label, target.scope);
+                            if (targetBlock) {
+                                effectiveScopes.set(targetBlock, action === "set_primary" ? "primaria" : "secundaria");
+                            }
+                        });
+                    }
+                    return;
+                }
+
+                rule.targets.forEach((target) => {
+                    const targetBlock = findBlock(target.label, target.scope);
+                    if (!targetBlock) return;
+                    const targetRules = visibilityRules.get(targetBlock);
+                    if (action === "show" || rule.mode === "showWhen") targetRules.show.push(matches);
+                    else targetRules.hide.push(matches);
                 });
             });
+
+            fieldBlocks.forEach((block) => {
+                const targetRules = visibilityRules.get(block);
+                const showOk = targetRules.show.length ? targetRules.show.some(Boolean) : true;
+                const hideHit = targetRules.hide.some(Boolean);
+                toggleBlock(block, Boolean(bancoModeVisibility.get(block)) && showOk && !hideHit);
+                block.dataset.effectiveScope = effectiveScopes.get(block);
+            });
+            arrangeFieldsByScope(effectiveScopes);
         };
 
         const structureChanged = () => categorySelect.value !== editForm.dataset.originalCategory
@@ -311,7 +435,7 @@
                     prefixo.value = "";
                 }
             }
-            updateBancoMode();
+            updateConditionalFields();
             syncMigrationWarning();
         });
         fieldBlocks.forEach((block) => {
@@ -322,7 +446,7 @@
                         if (isCJ) groupSelect.value = "30";
                         else if (groupSelect.value === "30") groupSelect.value = "10";
                     }
-                    updateBancoMode();
+                    updateConditionalFields();
                     syncMigrationWarning();
                 });
             });
@@ -347,7 +471,7 @@
             bomReplacementModal.classList.add("hidden");
             bomReplacementModal.classList.remove("flex");
         });
-        updateBancoMode();
+        updateConditionalFields();
         syncMigrationWarning();
     </script>
 </body>
