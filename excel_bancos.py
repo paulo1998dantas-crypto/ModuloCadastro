@@ -2275,6 +2275,7 @@ CONJUNTO_ESPECIFICIDADE_ORDEM = (
     "PME 1A",
     "PME 2A",
     "PME 3A",
+    "MASTER - PME",
     "EXECUTIVO",
     "4L REC",
 )
@@ -2310,17 +2311,6 @@ def _normalizar_especificidades_conjunto(values: list[str]) -> list[str]:
             if normalized == normalize_label(especificidade) or normalize_label(especificidade) in normalized:
                 encontrados.add(especificidade)
     return [item for item in CONJUNTO_ESPECIFICIDADE_ORDEM if item in encontrados]
-
-
-def _especificidades_legadas_conjunto(values: list[str]) -> list[str]:
-    """Mantem residuos historicos fora da descricao primaria padronizada."""
-    legadas: list[str] = []
-    for raw_value in values:
-        label = option_label(raw_value).strip()
-        normalized = normalize_label(label)
-        if normalized == "MASTER PME" and "MASTER - PME" not in legadas:
-            legadas.append("MASTER - PME")
-    return legadas
 
 
 def _cor_revestimento_conjunto(value: str) -> str:
@@ -2370,19 +2360,11 @@ def _build_conjunto_banco_descriptions(fields: list[dict[str, Any]], data: Any) 
         if value:
             primary_parts.append(value)
 
+    # Nos conjuntos, cor, costura e linha identificam tecnicamente o produto
+    # final. O revestimento completo pertence à descrição primária somente no
+    # grupo 30; nos bancos unitários (grupo 10) os escopos existentes continuam
+    # inalterados.
     revestimento = _conjunto_label(by_key, data, "tipo_revestimento")
-    if revestimento:
-        primary_parts.append(revestimento)
-
-    especificidades = _conjunto_value(by_key, data, "especificidade")
-    primary_parts.extend(_normalizar_especificidades_conjunto(especificidades))
-
-    acessibilidade = _conjunto_label(by_key, data, "cj_acessibilidade")
-    if acessibilidade and normalize_label(acessibilidade) not in {"NA", "N A"}:
-        primary_parts.append(acessibilidade)
-
-    primary = " - ".join(part for part in primary_parts if part).strip(" -")
-    secondary_parts = []
     cor_revestimento = _conjunto_label(by_key, data, "cor_do_revestimento")
     tipo_costura = _conjunto_label(by_key, data, "tipo_costura")
     cor_linha = _conjunto_label(by_key, data, "cor_da_linha")
@@ -2395,11 +2377,21 @@ def _build_conjunto_banco_descriptions(fields: list[dict[str, Any]], data: Any) 
         )
         if value
     ]
-    if detalhe_revestimento:
-        secondary_parts.append(f"REVESTIMENTO: {'/'.join(detalhe_revestimento)}")
-    especificidades_legadas = _especificidades_legadas_conjunto(especificidades)
-    if especificidades_legadas:
-        secondary_parts.append(f"ESPECIFICIDADE LEGADA: {' / '.join(especificidades_legadas)}")
+    revestimento_completo = " ".join(
+        value for value in (revestimento, "/".join(detalhe_revestimento)) if value
+    )
+    if revestimento_completo:
+        primary_parts.append(revestimento_completo)
+
+    especificidades = _conjunto_value(by_key, data, "especificidade")
+    primary_parts.extend(_normalizar_especificidades_conjunto(especificidades))
+
+    acessibilidade = _conjunto_label(by_key, data, "cj_acessibilidade")
+    if acessibilidade and normalize_label(acessibilidade) not in {"NA", "N A"}:
+        primary_parts.append(acessibilidade)
+
+    primary = " - ".join(part for part in primary_parts if part).strip(" -")
+    secondary_parts = []
     acessibilidade_secundaria = _conjunto_label(by_key, data, "cj_acessibilidade_secundaria")
     if acessibilidade_secundaria:
         secondary_parts.append(f"ACESSIBILIDADE: {acessibilidade_secundaria}")

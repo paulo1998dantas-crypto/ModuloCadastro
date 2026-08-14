@@ -112,7 +112,7 @@ class UnificacaoBancosTests(unittest.TestCase):
         self.assertNotIn("cj_tipo_revestimento", keys)
         self.assertNotIn("cj_especificidade", keys)
 
-    def test_linha_executiva_usa_detalhes_canonicos_na_descricao_secundaria(self):
+    def test_linha_executiva_usa_detalhes_canonicos_na_descricao_primaria(self):
         data = {
             "grupo_codigo": "30",
             "cj_sufixo": "CJ",
@@ -129,14 +129,14 @@ class UnificacaoBancosTests(unittest.TestCase):
         }
 
         description = excel_bancos.build_descriptions(self.fields, data, "bancos")
-        primaria = "CJ BANCOS REC - CS - LE - 3,3 - 3P - COURVIN - E/S/ J - EXECUTIVO"
-        self.assertEqual(description["primaria"], primaria)
-        self.assertEqual(
-            description["secundaria"],
-            f"{primaria} | REVESTIMENTO: MARROM/DIAMANTE/LINHA DOURADA",
+        primaria = (
+            "CJ BANCOS REC - CS - LE - 3,3 - 3P - "
+            "COURVIN MARROM/DIAMANTE/LINHA DOURADA - E/S/ J - EXECUTIVO"
         )
+        self.assertEqual(description["primaria"], primaria)
+        self.assertEqual(description["secundaria"], primaria)
 
-    def test_especificidade_legada_do_conjunto_fica_na_secundaria(self):
+    def test_toda_especificidade_do_conjunto_fica_na_primaria(self):
         data = {
             "grupo_codigo": "30",
             "cj_sufixo": "CJ",
@@ -153,13 +153,68 @@ class UnificacaoBancosTests(unittest.TestCase):
         }
 
         description = excel_bancos.build_descriptions(self.fields, data, "bancos")
-        primaria = "CJ BANCOS REC - STF - LE - 4,2-1,2-1,3 - 3P - COURVIN - EXECUTIVO"
-        self.assertEqual(description["primaria"], primaria)
-        self.assertEqual(
-            description["secundaria"],
-            f"{primaria} | REVESTIMENTO: PRETO/ST02/LINHA BRANCA | "
-            "ESPECIFICIDADE LEGADA: MASTER - PME",
+        primaria = (
+            "CJ BANCOS REC - STF - LE - 4,2-1,2-1,3 - 3P - "
+            "COURVIN PRETO/ST02/LINHA BRANCA - MASTER - PME - EXECUTIVO"
         )
+        self.assertEqual(description["primaria"], primaria)
+        self.assertEqual(description["secundaria"], primaria)
+
+    def test_conjuntos_le_executivos_sao_recompostos_pelos_campos(self):
+        cases = [
+            (
+                "30200032",
+                "3,3",
+                "2- CS",
+                "3- CAPA LE MARROM",
+                "4- CS COSTURA BOOMERANG",
+                "6- COR LINHA DOURADO",
+                ["11- E/S/J", "EXECUTIVO"],
+                "CJ BANCOS REC - CS - LE - 3,3 - 3P - COURVIN "
+                "MARROM/BOOMERANG/LINHA DOURADA - E/S/ J - EXECUTIVO",
+            ),
+            (
+                "30200036",
+                "3,3",
+                "2- CS",
+                "5- CAPA LE PRETA/CINZA",
+                "3- CS COSTURA DIAMANTE",
+                "7- COR LINHA CINZA",
+                ["11- E/S/J", "EXECUTIVO"],
+                "CJ BANCOS REC - CS - LE - 3,3 - 3P - COURVIN "
+                "PRETO/CINZA/DIAMANTE/LINHA CINZA - E/S/ J - EXECUTIVO",
+            ),
+            (
+                "30200039",
+                "3,2-1",
+                "2- CS",
+                "4- CAPA LE PRETA",
+                "4- CS COSTURA BOOMERANG",
+                "4- COR LINHA PRETA",
+                ["11- E/S/J", "EXECUTIVO"],
+                "CJ BANCOS REC - CS - LE - 3,2-1 - 3P - COURVIN "
+                "PRETO/BOOMERANG/LINHA PRETA - E/S/ J - EXECUTIVO",
+            ),
+        ]
+        for sku, layout, fornecedor, cor, costura, linha, especificidade, esperado in cases:
+            with self.subTest(sku=sku):
+                data = {
+                    "grupo_codigo": "30",
+                    "cj_sufixo": "CJ",
+                    "encosto": "2- RECLINAVEL",
+                    "fornecedor": fornecedor,
+                    "linha": "2- LE",
+                    "cj_layout": layout,
+                    "tipo_cinto": "2- 3P",
+                    "tipo_revestimento": "2- COURVIN",
+                    "especificidade": especificidade,
+                    "cor_do_revestimento": cor,
+                    "tipo_costura": costura,
+                    "cor_da_linha": linha,
+                }
+                description = excel_bancos.build_descriptions(self.fields, data, "bancos")
+                self.assertEqual(description["primaria"], esperado)
+                self.assertEqual(description["secundaria"], esperado)
 
     def test_edicao_le_chave_legada_sem_duplicar_o_campo(self):
         groups = supabase_store._groups_from_record(
