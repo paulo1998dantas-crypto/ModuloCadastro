@@ -1,6 +1,7 @@
 import unittest
 
 import excel_bancos
+import supabase_store
 
 
 class UnificacaoBancosTests(unittest.TestCase):
@@ -39,7 +40,7 @@ class UnificacaoBancosTests(unittest.TestCase):
             "cj_layout": "3,2,3",
             "tipo_cinto": "2- 3P",
             "tipo_revestimento": "1- TECIDO",
-            "cj_especificidade": ["E/S/ J"],
+            "especificidade": ["11- E/S/J"],
             "cj_acessibilidade_secundaria": "N/A",
         }
         description = excel_bancos.build_descriptions(self.fields, data, "bancos")
@@ -50,7 +51,7 @@ class UnificacaoBancosTests(unittest.TestCase):
         )
         self.assertEqual(
             description["secundaria"],
-            "CJ BANCOS REC - MC - LB - 3,2,3 - 3P - TECIDO - E/S/ J ACESSIBILIDADE: N/A",
+            "CJ BANCOS REC - MC - LB - 3,2,3 - 3P - TECIDO - E/S/ J | ACESSIBILIDADE: N/A",
         )
         self.assertEqual(description["sufixo"], "CJ")
 
@@ -69,9 +70,14 @@ class UnificacaoBancosTests(unittest.TestCase):
         self.assertIn("cj_layout", conjunto)
         self.assertIn("fornecedor", conjunto)
         self.assertIn("linha", conjunto)
+        self.assertIn("especificidade", conjunto)
+        self.assertIn("tipo_costura", conjunto)
+        self.assertIn("cor_da_linha", conjunto)
+        self.assertIn("cor_do_revestimento", conjunto)
         self.assertNotIn("pre_fixo", conjunto)
         self.assertIn("pre_fixo", insumo)
         self.assertNotIn("cj_layout", insumo)
+        self.assertNotIn("cj_acessibilidade", insumo)
 
     def test_conjunto_nao_expoe_detalhe_de_revestimento(self):
         keys = {field["key"] for field in self.fields}
@@ -87,7 +93,7 @@ class UnificacaoBancosTests(unittest.TestCase):
             "cj_layout": "4;3;3;3",
             "tipo_cinto": "1- 2P",
             "tipo_revestimento": "1- TECIDO",
-            "cj_especificidade": ["4L REC BJD", "ESJ"],
+            "especificidade": ["4L REC BJD", "ESJ"],
             "cj_acessibilidade": "FOCA",
         }
 
@@ -104,6 +110,87 @@ class UnificacaoBancosTests(unittest.TestCase):
         self.assertNotIn("cj_encosto", keys)
         self.assertNotIn("cj_tipo_cinto", keys)
         self.assertNotIn("cj_tipo_revestimento", keys)
+        self.assertNotIn("cj_especificidade", keys)
+
+    def test_linha_executiva_usa_detalhes_canonicos_na_descricao_secundaria(self):
+        data = {
+            "grupo_codigo": "30",
+            "cj_sufixo": "CJ",
+            "encosto": "2- RECLINAVEL",
+            "fornecedor": "2- CS",
+            "linha": "2- LE",
+            "cj_layout": "3,3",
+            "tipo_cinto": "2- 3P",
+            "tipo_revestimento": "2- COURVIN",
+            "especificidade": ["11- E/S/J", "EXECUTIVO"],
+            "cor_do_revestimento": "3- CAPA LE MARROM",
+            "tipo_costura": "3- CS COSTURA DIAMANTE",
+            "cor_da_linha": "6- COR LINHA DOURADO",
+        }
+
+        description = excel_bancos.build_descriptions(self.fields, data, "bancos")
+        primaria = "CJ BANCOS REC - CS - LE - 3,3 - 3P - COURVIN - E/S/ J - EXECUTIVO"
+        self.assertEqual(description["primaria"], primaria)
+        self.assertEqual(
+            description["secundaria"],
+            f"{primaria} | REVESTIMENTO: MARROM/DIAMANTE/LINHA DOURADA",
+        )
+
+    def test_especificidade_legada_do_conjunto_fica_na_secundaria(self):
+        data = {
+            "grupo_codigo": "30",
+            "cj_sufixo": "CJ",
+            "encosto": "2- RECLINAVEL",
+            "fornecedor": "4- STF",
+            "linha": "2- LE",
+            "cj_layout": "4,2-1,2-1,3",
+            "tipo_cinto": "2- 3P",
+            "tipo_revestimento": "2- COURVIN",
+            "especificidade": ["EXECUTIVO", "MASTER - PME"],
+            "cor_do_revestimento": "4- CAPA LE PRETA",
+            "tipo_costura": "7- COSTURA ST02 STF",
+            "cor_da_linha": "3- COR LINHA BRANCA",
+        }
+
+        description = excel_bancos.build_descriptions(self.fields, data, "bancos")
+        primaria = "CJ BANCOS REC - STF - LE - 4,2-1,2-1,3 - 3P - COURVIN - EXECUTIVO"
+        self.assertEqual(description["primaria"], primaria)
+        self.assertEqual(
+            description["secundaria"],
+            f"{primaria} | REVESTIMENTO: PRETO/ST02/LINHA BRANCA | "
+            "ESPECIFICIDADE LEGADA: MASTER - PME",
+        )
+
+    def test_edicao_le_chave_legada_sem_duplicar_o_campo(self):
+        groups = supabase_store._groups_from_record(
+            self.fields,
+            {
+                "form_values": {"cj_especificidade": ["11- E/S/J", "EXECUTIVO"]},
+                "field_values": {},
+            },
+        )
+        self.assertEqual(groups["especificidade"], ["11- E/S/J", "EXECUTIVO"])
+
+    def test_banco_unitario_preserva_regra_e_descricao_existente(self):
+        data = {
+            "grupo_codigo": "10",
+            "pre_fixo": "1- BCO",
+            "encosto": "2- RECLINAVEL",
+            "lotacao": "3- 3 L",
+            "especificidade": "1- NORMAL",
+            "fornecedor": "1- MC",
+            "linha": "1- LB",
+            "tipo_cinto": "2- 3P",
+            "tipo_revestimento": "2- COURVIN",
+        }
+        description = excel_bancos.build_descriptions(self.fields, data, "bancos")
+        self.assertTrue(description["primaria"].startswith("BCO"))
+        self.assertNotIn("CJ BANCOS", description["primaria"])
+        excel_bancos._validate_banco_dependencies(self.fields, data)
+
+        data["especificidade"] = ["1- NORMAL", "3- BJD"]
+        with self.assertRaisesRegex(ValueError, "somente uma ESPECIFICIDADE"):
+            excel_bancos._validate_banco_dependencies(self.fields, data)
 
     def test_categoria_legacy_e_resolvida_para_bancos(self):
         catalog = {

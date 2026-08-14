@@ -661,8 +661,31 @@ CONJUNTO_BANCO_SHARED_FIELDS = {
     "fornecedor",
     "linha",
     "encosto",
+    "especificidade",
     "tipo_cinto",
     "tipo_revestimento",
+    "tipo_costura",
+    "cor_da_linha",
+    "cor_do_revestimento",
+}
+
+# O mesmo campo ESPECIFICIDADE atende banco unitario e conjunto. No grupo 10
+# ele continua unitario e com as opcoes originais; no grupo 30 a interface
+# libera selecao multipla e acrescenta somente os valores tecnicos de conjunto.
+CONJUNTO_BANCO_ESPECIFICIDADE_OPTIONS = [
+    "PME 1A",
+    "PME 2A",
+    "PME 3A",
+    "EXECUTIVO",
+    "4L REC",
+    "MASTER - PME",
+]
+
+# Compatibilidade de leitura com os conjuntos migrados antes da unificacao. Os
+# novos salvamentos usam exclusivamente as chaves canonicas, sem duplicar
+# conceitos entre banco unitario e conjunto.
+CONJUNTO_BANCO_LEGACY_FIELD_ALIASES = {
+    "especificidade": "cj_especificidade",
 }
 
 CONJUNTO_BANCO_FIELDS = [
@@ -685,16 +708,6 @@ CONJUNTO_BANCO_FIELDS = [
         "options": [],
         "banco_mode": "conjunto",
         "free_text": True,
-        "required": False,
-    },
-    {
-        "key": "cj_especificidade",
-        "label": "ESPECIFICIDADE",
-        "scope": "primaria",
-        "selection_mode": SELECTION_MODE_MULTIPLA,
-        "description_order": 7,
-        "options": ["NORMAL", "TRILHO", "BJD", "E/S/ J", "PME 1A", "PME 2A", "PME 3A", "EXECUTIVO", "4L REC"],
-        "banco_mode": "conjunto",
         "required": False,
     },
     {
@@ -1725,6 +1738,7 @@ def _field_response(field: dict[str, Any], index: int) -> dict[str, Any]:
         "letter": get_column_letter(column),
         "options": options,
         "option_rows": [{"row": option_index, "value": value} for option_index, value in enumerate(options, start=1)],
+        "conjunto_only_options": list(field.get("conjunto_only_options") or []),
         "banco_mode": clean_text(field.get("banco_mode")),
         "free_text": bool(field.get("free_text")),
         "required": bool(field.get("required", True)),
@@ -1741,6 +1755,13 @@ def _fields_for_category(category: dict[str, Any]) -> list[dict[str, Any]]:
     # continuam unicos e compartilhados pelos dois grupos.
     for field in fields:
         field["banco_mode"] = "shared" if field["key"] in CONJUNTO_BANCO_SHARED_FIELDS else "insumo"
+        if field["key"] == "especificidade":
+            conjunto_only = [
+                option for option in CONJUNTO_BANCO_ESPECIFICIDADE_OPTIONS if option not in (field.get("options") or [])
+            ]
+            field["selection_mode"] = SELECTION_MODE_MULTIPLA
+            field["options"] = list(field.get("options") or []) + conjunto_only
+            field["conjunto_only_options"] = conjunto_only
     fields.extend(deepcopy(CONJUNTO_BANCO_FIELDS))
     return fields
 
@@ -2216,7 +2237,20 @@ def is_banco_conjunto(data: Any) -> bool:
 
 def _conjunto_value(fields_by_key: dict[str, dict[str, Any]], data: Any, key: str) -> list[str]:
     field = fields_by_key.get(key)
-    return _serialize_field_values(field, data) if field else []
+    values = _serialize_field_values(field, data) if field else []
+    if values or not data or not hasattr(data, "get"):
+        return values
+    legacy_key = CONJUNTO_BANCO_LEGACY_FIELD_ALIASES.get(key)
+    if not legacy_key:
+        return values
+    legacy_raw = data.get(legacy_key)
+    if isinstance(legacy_raw, list):
+        return [clean_text(value) for value in legacy_raw if clean_text(value)]
+    if hasattr(data, "getlist"):
+        legacy_values = [clean_text(value) for value in data.getlist(legacy_key) if clean_text(value)]
+        if legacy_values:
+            return legacy_values
+    return [clean_text(legacy_raw)] if clean_text(legacy_raw) else []
 
 
 def _conjunto_label(fields_by_key: dict[str, dict[str, Any]], data: Any, key: str) -> str:
@@ -2278,6 +2312,50 @@ def _normalizar_especificidades_conjunto(values: list[str]) -> list[str]:
     return [item for item in CONJUNTO_ESPECIFICIDADE_ORDEM if item in encontrados]
 
 
+def _especificidades_legadas_conjunto(values: list[str]) -> list[str]:
+    """Mantem residuos historicos fora da descricao primaria padronizada."""
+    legadas: list[str] = []
+    for raw_value in values:
+        label = option_label(raw_value).strip()
+        normalized = normalize_label(label)
+        if normalized == "MASTER PME" and "MASTER - PME" not in legadas:
+            legadas.append("MASTER - PME")
+    return legadas
+
+
+def _cor_revestimento_conjunto(value: str) -> str:
+    label = option_label(value).strip()
+    normalized = normalize_label(label)
+    aliases = {
+        "CAPA LE MARROM": "MARROM",
+        "CAPA LE PRETA": "PRETO",
+        "CAPA LE PRETA CINZA": "PRETO/CINZA",
+    }
+    return aliases.get(normalized, label)
+
+
+def _tipo_costura_conjunto(value: str) -> str:
+    label = option_label(value).strip()
+    normalized = normalize_label(label)
+    aliases = {
+        "CS COSTURA DIAMANTE": "DIAMANTE",
+        "CS COSTURA BOOMERANG": "BOOMERANG",
+        "CS COSTURA RETILINEA": "RETILINEA",
+        "COSTURA ST02 STF": "ST02",
+    }
+    return aliases.get(normalized, label)
+
+
+def _cor_linha_conjunto(value: str) -> str:
+    label = option_label(value).strip()
+    normalized = normalize_label(label)
+    if normalized.startswith("COR LINHA "):
+        label = label[len("COR LINHA ") :].strip()
+    if normalize_label(label) == "DOURADO":
+        label = "DOURADA"
+    return f"LINHA {label}".strip()
+
+
 def _build_conjunto_banco_descriptions(fields: list[dict[str, Any]], data: Any) -> dict[str, str]:
     by_key = {field["key"]: field for field in fields}
     encosto = _conjunto_encosto(_conjunto_label(by_key, data, "encosto"))
@@ -2296,7 +2374,8 @@ def _build_conjunto_banco_descriptions(fields: list[dict[str, Any]], data: Any) 
     if revestimento:
         primary_parts.append(revestimento)
 
-    primary_parts.extend(_normalizar_especificidades_conjunto(_conjunto_value(by_key, data, "cj_especificidade")))
+    especificidades = _conjunto_value(by_key, data, "especificidade")
+    primary_parts.extend(_normalizar_especificidades_conjunto(especificidades))
 
     acessibilidade = _conjunto_label(by_key, data, "cj_acessibilidade")
     if acessibilidade and normalize_label(acessibilidade) not in {"NA", "N A"}:
@@ -2304,13 +2383,31 @@ def _build_conjunto_banco_descriptions(fields: list[dict[str, Any]], data: Any) 
 
     primary = " - ".join(part for part in primary_parts if part).strip(" -")
     secondary_parts = []
+    cor_revestimento = _conjunto_label(by_key, data, "cor_do_revestimento")
+    tipo_costura = _conjunto_label(by_key, data, "tipo_costura")
+    cor_linha = _conjunto_label(by_key, data, "cor_da_linha")
+    detalhe_revestimento = [
+        value
+        for value in (
+            _cor_revestimento_conjunto(cor_revestimento) if cor_revestimento else "",
+            _tipo_costura_conjunto(tipo_costura) if tipo_costura else "",
+            _cor_linha_conjunto(cor_linha) if cor_linha else "",
+        )
+        if value
+    ]
+    if detalhe_revestimento:
+        secondary_parts.append(f"REVESTIMENTO: {'/'.join(detalhe_revestimento)}")
+    especificidades_legadas = _especificidades_legadas_conjunto(especificidades)
+    if especificidades_legadas:
+        secondary_parts.append(f"ESPECIFICIDADE LEGADA: {' / '.join(especificidades_legadas)}")
     acessibilidade_secundaria = _conjunto_label(by_key, data, "cj_acessibilidade_secundaria")
     if acessibilidade_secundaria:
         secondary_parts.append(f"ACESSIBILIDADE: {acessibilidade_secundaria}")
     observacao = _conjunto_label(by_key, data, "cj_observacao")
     if observacao:
         secondary_parts.append(observacao)
-    secondary = compose_secondary_description(primary, " | ".join(secondary_parts))
+    secondary_detail = " | ".join(secondary_parts)
+    secondary = compose_secondary_description(primary, f"| {secondary_detail}" if secondary_detail else "")
     return {"primaria": primary, "secundaria": secondary, "sufixo": "CJ"}
 
 
@@ -2368,6 +2465,8 @@ def _validate_banco_dependencies(fields: list[dict[str, Any]], data: Any) -> Non
     if is_banco_conjunto(data):
         return
     values_by_key = _field_values_by_key(fields, data)
+    if len(values_by_key.get("especificidade", [])) > 1:
+        raise ValueError("Selecione somente uma ESPECIFICIDADE para o banco unitario.")
     pre_fixo_values = values_by_key.get("pre_fixo", [])
     veiculo_values = values_by_key.get("veiculo", [])
 
@@ -2543,10 +2642,6 @@ def _validate_visible_field_requirements(
     missing_fields: list[str] = []
     for field in fields:
         if field["key"] not in visible_keys:
-            continue
-        # Nos conjuntos, os mesmos campos são exibidos de forma compartilhada,
-        # mas preservam a flexibilidade anterior da montagem técnica.
-        if is_banco_conjunto(data) and clean_text(field.get("banco_mode")) == "shared":
             continue
         if not field.get("required", True):
             continue

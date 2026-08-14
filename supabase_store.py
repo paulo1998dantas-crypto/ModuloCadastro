@@ -866,13 +866,22 @@ def _groups_from_record(fields: list[dict[str, Any]], record: dict[str, Any]) ->
     field_values = record.get("field_values") if isinstance(record.get("field_values"), dict) else {}
     groups: dict[str, list[str]] = {}
     for field in fields:
-        raw = form_values.get(field["key"])
+        field_key = field["key"]
+        raw = form_values.get(field_key)
+        legacy_key = excel_bancos.CONJUNTO_BANCO_LEGACY_FIELD_ALIASES.get(field_key)
+        if (raw is None or raw == [] or raw == "") and legacy_key:
+            raw = form_values.get(legacy_key)
         if isinstance(raw, list) and raw:
-            groups[field["key"]] = [clean_text(value) for value in raw if clean_text(value)]
+            groups[field_key] = [clean_text(value) for value in raw if clean_text(value)]
             continue
-        saved = clean_text(field_values.get(field["key"]))
+        if clean_text(raw):
+            groups[field_key] = [clean_text(raw)]
+            continue
+        saved = clean_text(field_values.get(field_key))
+        if not saved and legacy_key:
+            saved = clean_text(field_values.get(legacy_key))
         if saved:
-            groups[field["key"]] = [value.strip() for value in saved.split("|") if value.strip()]
+            groups[field_key] = [value.strip() for value in saved.split("|") if value.strip()]
     return groups
 
 

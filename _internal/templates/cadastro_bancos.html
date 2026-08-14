@@ -153,10 +153,10 @@
                             {% elif field.selection_mode == 'multipla' %}
                             <select name="{{ field.key }}" multiple size="6" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
                                 {% for option in field.options %}
-                                <option value="{{ option }}" {% if option in field.selected_values %}selected{% endif %}>{{ option }}</option>
+                                <option value="{{ option }}" data-conjunto-only="{{ 'true' if option in field.conjunto_only_options else 'false' }}" {% if option in field.selected_values %}selected{% endif %}>{{ option }}</option>
                                 {% endfor %}
                             </select>
-                            <span class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Seleção múltipla: use `Ctrl` para marcar mais de uma opção.</span>
+                            <span data-multiple-hint class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Seleção múltipla: use `Ctrl` para marcar mais de uma opção.</span>
                             {% else %}
                             <select name="{{ field.key }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
                                 <option value="">Selecione...</option>
@@ -198,10 +198,10 @@
                             {% elif field.selection_mode == 'multipla' %}
                             <select name="{{ field.key }}" multiple size="6" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
                                 {% for option in field.options %}
-                                <option value="{{ option }}" {% if option in field.selected_values %}selected{% endif %}>{{ option }}</option>
+                                <option value="{{ option }}" data-conjunto-only="{{ 'true' if option in field.conjunto_only_options else 'false' }}" {% if option in field.selected_values %}selected{% endif %}>{{ option }}</option>
                                 {% endfor %}
                             </select>
-                            <span class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Seleção múltipla: use `Ctrl` para marcar mais de uma opção.</span>
+                            <span data-multiple-hint class="block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Seleção múltipla: use `Ctrl` para marcar mais de uma opção.</span>
                             {% else %}
                             <select name="{{ field.key }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
                                 <option value="">Selecione...</option>
@@ -935,6 +935,25 @@
             }
             if (conjunto && sufixoSelect && !sufixoSelect.value) {
                 sufixoSelect.value = "CJ";
+            }
+            const especificidadeBlock = fieldBlocks.find((block) => block.dataset.fieldKey === "especificidade");
+            const especificidadeSelect = especificidadeBlock ? especificidadeBlock.querySelector("select") : null;
+            if (especificidadeSelect) {
+                especificidadeSelect.multiple = conjunto;
+                especificidadeSelect.size = conjunto ? 6 : 1;
+                Array.from(especificidadeSelect.options).forEach((option) => {
+                    const conjuntoOnly = option.dataset.conjuntoOnly === "true";
+                    option.disabled = !conjunto && conjuntoOnly;
+                    option.hidden = !conjunto && conjuntoOnly;
+                    if (!conjunto && conjuntoOnly) option.selected = false;
+                });
+                if (!conjunto) {
+                    Array.from(especificidadeSelect.selectedOptions).slice(1).forEach((option) => {
+                        option.selected = false;
+                    });
+                }
+                const hint = especificidadeBlock.querySelector("[data-multiple-hint]");
+                if (hint) hint.classList.toggle("hidden", !conjunto);
             }
             fieldBlocks.forEach((block) => {
                 const mode = block.dataset.bancoMode;
