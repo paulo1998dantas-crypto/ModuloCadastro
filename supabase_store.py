@@ -1434,6 +1434,44 @@ def _registration_by_sku(sku: str) -> dict[str, Any] | None:
     return rows[0] if rows else None
 
 
+def _set_catalog_bom_preference(parent_sku: str, possui_bom: bool) -> int:
+    """Synchronize the derived B.O.M. marker for every catalog row of a SKU.
+
+    ``possui_bom`` is not a manual business choice: it mirrors whether the SKU
+    is the parent of a persisted B.O.M.  Keeping the stored value synchronized
+    makes the catalog list fast and prevents the legacy ``NÃO DEFINIDO`` state
+    from returning after B.O.M. maintenance.
+    """
+    sku = clean_text(parent_sku)
+    if not sku:
+        return 0
+    rows = _request(
+        "GET",
+        REGISTRATIONS_TABLE,
+        [
+            ("select", "id,form_values"),
+            ("sku", f"eq.{sku}"),
+            ("limit", "10000"),
+        ],
+    ) or []
+    updated = 0
+    for row in rows:
+        form_values = row.get("form_values") if isinstance(row.get("form_values"), dict) else {}
+        if form_values.get(excel_bancos.BOM_FORM_KEY) is possui_bom:
+            continue
+        payload = dict(form_values)
+        payload[excel_bancos.BOM_FORM_KEY] = possui_bom
+        _request(
+            "PATCH",
+            REGISTRATIONS_TABLE,
+            [("id", f"eq.{row['id']}")],
+            payload={"form_values": payload},
+            prefer="return=minimal",
+        )
+        updated += 1
+    return updated
+
+
 def _bom_header_by_parent(parent_sku: str) -> dict[str, Any] | None:
     rows = _request(
         "GET",
@@ -1554,6 +1592,7 @@ def save_bom(
     if not component_payloads:
         raise SupabaseStoreError("Informe pelo menos um componente valido para a B.O.M.")
     _request("POST", BOM_COMPONENTS_TABLE, payload=component_payloads, prefer="return=minimal")
+    _set_catalog_bom_preference(parent_sku, True)
     return {"bom": header, "components_count": len(component_payloads)}
 
 
@@ -1845,6 +1884,12 @@ def update_bom(
     if not component_payloads:
         raise SupabaseStoreError("Informe pelo menos um componente valido para a B.O.M.")
     _request("POST", BOM_COMPONENTS_TABLE, payload=component_payloads, prefer="return=minimal")
+    _set_catalog_bom_preference(effective_parent_sku, True)
+    if current_parent_sku != effective_parent_sku:
+        _set_catalog_bom_preference(
+            current_parent_sku,
+            bool(_bom_header_by_parent(current_parent_sku)),
+        )
     return {**header, "components": component_payloads}
 
 
@@ -1853,8 +1898,13 @@ def delete_bom(bom_id: int | str) -> dict[str, Any]:
     rows = _request("GET", BOM_HEADERS_TABLE, [("select", "*"), ("id", f"eq.{bom_id}"), ("limit", "1")]) or []
     if not rows:
         raise SupabaseStoreError("B.O.M. nao encontrada.")
+    parent_sku = clean_text(rows[0].get("parent_sku"))
     _request("DELETE", BOM_COMPONENTS_TABLE, [("bom_id", f"eq.{bom_id}")])
     _request("DELETE", BOM_HEADERS_TABLE, [("id", f"eq.{bom_id}")])
+    _set_catalog_bom_preference(
+        parent_sku,
+        bool(_bom_header_by_parent(parent_sku)),
+    )
     return rows[0]
 
 

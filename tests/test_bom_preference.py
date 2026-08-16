@@ -43,6 +43,33 @@ class BomPreferenceTests(unittest.TestCase):
 
         self.assertFalse(supabase_store._stored_bom_preference(row))
 
+    def test_syncs_stored_marker_for_every_catalog_duplicate(self):
+        rows = [
+            {"id": 11, "form_values": {}},
+            {"id": 12, "form_values": {"possui_bom": False}},
+        ]
+
+        with patch.object(supabase_store, "_request", side_effect=[rows, None, None]) as request:
+            updated = supabase_store._set_catalog_bom_preference("30200033", True)
+
+        self.assertEqual(updated, 2)
+        patches = [call for call in request.call_args_list if call.args[0] == "PATCH"]
+        self.assertEqual([call.kwargs["payload"] for call in patches], [
+            {"form_values": {"possui_bom": True}},
+            {"form_values": {"possui_bom": True}},
+        ])
+
+    def test_sync_skips_already_correct_marker(self):
+        with patch.object(
+            supabase_store,
+            "_request",
+            return_value=[{"id": 11, "form_values": {"possui_bom": True}}],
+        ) as request:
+            updated = supabase_store._set_catalog_bom_preference("30200033", True)
+
+        self.assertEqual(updated, 0)
+        self.assertEqual(request.call_count, 1)
+
 
 class BomUpdateReviewTests(unittest.TestCase):
     def test_update_duplicate_review_normalizes_parent_sku_when_available(self):
