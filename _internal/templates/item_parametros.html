@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Lead time e custo — {{ record.sku }}</title>
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-900">
+    {% include "_portal_back.html" %}
+    <header class="bg-slate-950 text-white shadow-sm">
+        <div class="mx-auto max-w-6xl px-5 py-5">
+            <p class="text-xs font-black uppercase tracking-wide text-yellow-400">Módulo de Cadastro</p>
+            <div class="mt-1 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 class="text-2xl font-black">Lead time e custo do item</h1>
+                    <p class="mt-1 text-sm text-slate-300">Parâmetro padrão para planejamento e MRP. Não movimenta estoque.</p>
+                </div>
+                <a href="/cadastros?categoria={{ record.category_key }}" class="rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-black hover:bg-slate-700">Voltar aos cadastros</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="mx-auto max-w-6xl space-y-4 p-4 md:p-6">
+        {% if sucesso %}
+        <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{{ sucesso }}</div>
+        {% endif %}
+        {% if erro %}
+        <div class="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-bold text-rose-700">{{ erro }}</div>
+        {% endif %}
+
+        <section class="grid gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-[170px_1fr_130px]">
+            <div>
+                <p class="text-[11px] font-black uppercase text-slate-500">PN / SKU</p>
+                <p class="mt-1 font-mono text-xl font-black text-blue-800">{{ record.sku }}</p>
+            </div>
+            <div>
+                <p class="text-[11px] font-black uppercase text-slate-500">Descrição</p>
+                <p class="mt-1 text-sm font-bold">{{ record.descricao_primaria }}</p>
+            </div>
+            <div>
+                <p class="text-[11px] font-black uppercase text-slate-500">Unidade</p>
+                <p class="mt-1 text-lg font-black">{{ record.unidade or '—' }}</p>
+            </div>
+        </section>
+
+        <form method="post" action="/cadastros/{{ record.id }}/parametros" class="space-y-4">
+            <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                    <label class="block w-full max-w-sm space-y-1">
+                        <span class="text-xs font-black uppercase text-slate-600">Origem de fabricação</span>
+                        <select id="origin" name="origem_fabricacao" required class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-bold outline-none focus:ring-2 focus:ring-blue-500" {% if not can_write %}disabled{% endif %}>
+                            <option value="">Selecione...</option>
+                            <option value="EXTERNA" {% if parameter.origem_fabricacao == 'EXTERNA' %}selected{% endif %}>Fabricação externa / item comprado</option>
+                            <option value="INTERNA" {% if parameter.origem_fabricacao == 'INTERNA' %}selected{% endif %}>Fabricação interna</option>
+                        </select>
+                    </label>
+                    <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                        Todos os tempos são informados em <strong>dias úteis</strong>.
+                    </div>
+                </div>
+            </section>
+
+            <section id="external-fields" class="hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="mb-4">
+                    <h2 class="text-lg font-black">Lead time externo</h2>
+                    <p class="text-sm text-slate-500">Do fornecimento até a disponibilização para uso.</p>
+                </div>
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {% set external_fields = [
+                        ('fornecimento_dias', 'Fornecimento'),
+                        ('transporte_dias', 'Transporte'),
+                        ('recebimento_dias', 'Recebimento'),
+                        ('inspecao_recebimento_dias', 'Inspeção de recebimento'),
+                        ('estocagem_dias', 'Estocagem'),
+                        ('expedicao_dias', 'Tempo de expedição'),
+                        ('montagem_kit_dias', 'Montagem do kit')
+                    ] %}
+                    {% for key, label in external_fields %}
+                    <label class="space-y-1">
+                        <span class="text-xs font-black uppercase text-slate-600">{{ label }}</span>
+                        <input type="number" min="0" step="0.001" name="{{ key }}" value="{{ parameter.get(key, 0) }}" class="lead-field h-11 w-full rounded-lg border border-slate-300 px-3 text-right font-mono outline-none focus:ring-2 focus:ring-blue-500" {% if not can_write %}disabled{% endif %}>
+                    </label>
+                    {% endfor %}
+                </div>
+                <div class="mt-4 flex justify-end">
+                    <div class="rounded-lg bg-slate-900 px-4 py-3 text-white">
+                        <span class="text-xs font-bold uppercase text-slate-300">Lead time externo total</span>
+                        <strong id="external-total" class="ml-3 text-xl">0</strong> dias úteis
+                    </div>
+                </div>
+            </section>
+
+            <section id="internal-fields" class="hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="mb-4">
+                    <h2 class="text-lg font-black">Lead time interno</h2>
+                    <p class="text-sm text-slate-500">Tempo padrão da preparação à liberação do item.</p>
+                </div>
+                <div class="grid gap-3 sm:grid-cols-3">
+                    {% set internal_fields = [
+                        ('setup_dias', 'Setup'),
+                        ('producao_dias', 'Produção'),
+                        ('liberacao_dias', 'Liberação')
+                    ] %}
+                    {% for key, label in internal_fields %}
+                    <label class="space-y-1">
+                        <span class="text-xs font-black uppercase text-slate-600">{{ label }}</span>
+                        <input type="number" min="0" step="0.001" name="{{ key }}" value="{{ parameter.get(key, 0) }}" class="lead-field h-11 w-full rounded-lg border border-slate-300 px-3 text-right font-mono outline-none focus:ring-2 focus:ring-blue-500" {% if not can_write %}disabled{% endif %}>
+                    </label>
+                    {% endfor %}
+                </div>
+                <div class="mt-4 flex justify-end">
+                    <div class="rounded-lg bg-slate-900 px-4 py-3 text-white">
+                        <span class="text-xs font-bold uppercase text-slate-300">Lead time interno total</span>
+                        <strong id="internal-total" class="ml-3 text-xl">0</strong> dias úteis
+                    </div>
+                </div>
+            </section>
+
+            <section id="cost-fields" class="hidden grid gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-2">
+                <div>
+                    <h2 class="text-lg font-black">Preço de compra parametrizado</h2>
+                    <p class="mb-3 text-sm text-slate-500">Valor de referência definido pela Engenharia/Administração.</p>
+                    <label class="space-y-1">
+                        <span class="text-xs font-black uppercase text-slate-600">Preço de compra</span>
+                        <div class="flex max-w-sm rounded-lg border border-slate-300 bg-white focus-within:ring-2 focus-within:ring-blue-500">
+                            <span class="flex items-center border-r border-slate-300 px-3 font-bold text-slate-500">R$</span>
+                            <input type="number" min="0" step="0.0001" name="preco_compra" value="{{ parameter.get('preco_compra') if parameter.get('preco_compra') is not none else '' }}" class="h-11 min-w-0 flex-1 rounded-r-lg px-3 text-right font-mono outline-none" {% if not can_write %}disabled{% endif %}>
+                        </div>
+                    </label>
+                </div>
+                <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                    <p class="text-xs font-black uppercase text-emerald-700">Preço médio das 10 últimas entradas confirmadas</p>
+                    {% if average_cost.get('preco_medio') is not none %}
+                    <p class="mt-2 text-3xl font-black text-emerald-900">R$ {{ '%.4f'|format(average_cost.preco_medio|float) }}</p>
+                    <p class="mt-2 text-sm text-emerald-800">
+                        {{ average_cost.entradas_consideradas }} entrada(s), {{ average_cost.quantidade_total }} unidade(s) aprovadas.
+                    </p>
+                    {% else %}
+                    <p class="mt-2 text-sm font-bold text-emerald-800">Sem entrada confirmada com quantidade aprovada e valor real positivo.</p>
+                    {% endif %}
+                    <p class="mt-3 text-xs text-emerald-700">Indicador consultivo calculado no Estoque. Não altera custo nem saldo.</p>
+                </div>
+            </section>
+
+            {% if can_write %}
+            <div class="flex justify-end">
+                <button type="submit" class="rounded-lg bg-blue-700 px-6 py-3 text-sm font-black text-white shadow-sm hover:bg-blue-600">Salvar parâmetros</button>
+            </div>
+            {% else %}
+            <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-800">Seu perfil possui acesso somente para consulta.</div>
+            {% endif %}
+        </form>
+    </main>
+
+    <script>
+        const origin = document.getElementById("origin");
+        const external = document.getElementById("external-fields");
+        const internal = document.getElementById("internal-fields");
+        const costs = document.getElementById("cost-fields");
+
+        const sum = (selector) => [...document.querySelectorAll(selector)]
+            .reduce((total, input) => total + (Number(input.value) || 0), 0);
+
+        const refreshTotals = () => {
+            document.getElementById("external-total").textContent = sum("#external-fields .lead-field").toLocaleString("pt-BR", {maximumFractionDigits: 3});
+            document.getElementById("internal-total").textContent = sum("#internal-fields .lead-field").toLocaleString("pt-BR", {maximumFractionDigits: 3});
+        };
+
+        const refreshOrigin = () => {
+            const isExternal = origin.value === "EXTERNA";
+            const isInternal = origin.value === "INTERNA";
+            external.classList.toggle("hidden", !isExternal);
+            internal.classList.toggle("hidden", !isInternal);
+            costs.classList.toggle("hidden", !isExternal);
+            refreshTotals();
+        };
+
+        origin.addEventListener("change", refreshOrigin);
+        document.querySelectorAll(".lead-field").forEach(input => input.addEventListener("input", refreshTotals));
+        refreshOrigin();
+    </script>
+</body>
+</html>

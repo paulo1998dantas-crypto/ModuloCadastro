@@ -7,6 +7,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from decimal import Decimal, InvalidOperation
 from io import BytesIO
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,6 +25,7 @@ DRAFTS_TABLE = "cadastro_rascunhos"
 BOM_HEADERS_TABLE = "cadastro_bom_cabecalhos"
 BOM_COMPONENTS_TABLE = "cadastro_bom_componentes"
 LAYOUTS_TABLE = "layout_arquivos"
+ITEM_PARAMETERS_TABLE = "cadastro_item_parametros"
 DOCUMENTOS_TABLE = "suprimentos_documentos"
 LAYOUTS_BUCKET = "os-layouts"
 EXPORT_DIR = Path(tempfile.gettempdir()) / "modulo-cadastro-exports"
@@ -100,6 +102,7 @@ def status() -> dict[str, Any]:
             BOM_HEADERS_TABLE,
             BOM_COMPONENTS_TABLE,
             LAYOUTS_TABLE,
+            ITEM_PARAMETERS_TABLE,
         ],
     }
 
@@ -170,6 +173,181 @@ def _request(
         raise SupabaseStoreError(f"Erro Supabase {exc.code}: {body}") from exc
     except urllib.error.URLError as exc:
         raise SupabaseStoreError(f"Não foi possível conectar ao Supabase: {exc}") from exc
+
+
+EXTERNAL_TIME_FIELDS = (
+    "fornecimento_dias",
+    "transporte_dias",
+    "recebimento_dias",
+    "inspecao_recebimento_dias",
+    "estocagem_dias",
+    "expedicao_dias",
+    "montagem_kit_dias",
+)
+INTERNAL_TIME_FIELDS = (
+    "setup_dias",
+    "producao_dias",
+    "liberacao_dias",
+)
+
+
+def _nonnegative_decimal(
+    value: Any,
+    label: str,
+    *,
+    nullable: bool = False,
+    places: str = "0.001",
+) -> str | None:
+    raw = clean_text(value).replace("R$", "").replace(" ", "")
+    if nullable and not raw:
+        return None
+    if not raw:
+        raw = "0"
+    if "," in raw and "." in raw:
+        raw = raw.replace(".", "").replace(",", ".")
+    else:
+        raw = raw.replace(",", ".")
+    try:
+        number = Decimal(raw)
+    except (InvalidOperation, ValueError) as exc:
+        raise SupabaseStoreError(f"{label}: informe um número válido.") from exc
+    if not number.is_finite() or number < 0:
+        raise SupabaseStoreError(f"{label}: informe um valor maior ou igual a zero.")
+    return format(number.quantize(Decimal(places)), "f")
+
+
+def get_item_parameter(registration_id: int | str) -> dict[str, Any] | None:
+    rows = _request(
+        "GET",
+        ITEM_PARAMETERS_TABLE,
+        [
+            ("select", "*"),
+            ("registration_id", f"eq.{clean_text(registration_id)}"),
+            ("limit", "1"),
+        ],
+    ) or []
+    return rows[0] if rows else None
+
+
+def item_parameter_summary() -> dict[str, dict[str, Any]]:
+    """Return a compact map without making one request per catalog row.
+
+    The empty fallback keeps the catalog usable while the additive migration is
+    being staged, but the parameter screen itself still reports a missing table.
+    """
+    try:
+        rows = _request_all(
+            ITEM_PARAMETERS_TABLE,
+            [("select", "registration_id,sku,origem_fabricacao,source_hash,updated_at")],
+        )
+    except SupabaseStoreError as exc:
+        if "cadastro_item_parametros" in str(exc) and (
+            "PGRST205" in str(exc) or "does not exist" in str(exc)
+        ):
+            return {}
+        raise
+    return {clean_text(row.get("registration_id")): row for row in rows}
+
+
+def get_item_average_cost(sku: str, limit: int = 10) -> dict[str, Any]:
+    result = _request(
+        "POST",
+        "rpc/cadastro_calcular_preco_medio",
+        payload={"p_sku": clean_text(sku), "p_limite": max(1, min(int(limit), 100))},
+    )
+    if isinstance(result, list):
+        result = result[0] if result else {}
+    return result if isinstance(result, dict) else {}
+
+
+def save_item_parameter(
+    registration: dict[str, Any],
+    values: dict[str, Any],
+    actor: str,
+    *,
+    source_type: str = "MANUAL",
+    source_file: str = "",
+    source_sheet: str = "",
+    source_row: int | None = None,
+    source_hash: str = "",
+) -> dict[str, Any]:
+    origin = clean_text(values.get("origem_fabricacao")).upper()
+    if origin not in {"INTERNA", "EXTERNA"}:
+        raise SupabaseStoreError("Selecione fabricação INTERNA ou EXTERNA.")
+
+    payload: dict[str, Any] = {
+        "registration_id": int(registration["id"]),
+        "sku": clean_text(registration.get("sku")),
+        "origem_fabricacao": origin,
+        "unidade_tempo": "DIA_UTIL",
+        "updated_by": clean_text(actor) or "sistema:cadastro",
+        "source_type": clean_text(source_type).upper() or "MANUAL",
+        "source_file": clean_text(source_file),
+        "source_sheet": clean_text(source_sheet),
+        "source_row": int(source_row) if source_row else None,
+        "source_hash": clean_text(source_hash),
+    }
+    labels = {
+        "fornecimento_dias": "Fornecimento",
+        "transporte_dias": "Transporte",
+        "recebimento_dias": "Recebimento",
+        "inspecao_recebimento_dias": "Inspeção de recebimento",
+        "estocagem_dias": "Estocagem",
+        "expedicao_dias": "Tempo de expedição",
+        "montagem_kit_dias": "Tempo de montagem do kit",
+        "setup_dias": "Setup",
+        "producao_dias": "Produção",
+        "liberacao_dias": "Liberação",
+    }
+    active_fields = EXTERNAL_TIME_FIELDS if origin == "EXTERNA" else INTERNAL_TIME_FIELDS
+    inactive_fields = INTERNAL_TIME_FIELDS if origin == "EXTERNA" else EXTERNAL_TIME_FIELDS
+    for field in active_fields:
+        payload[field] = _nonnegative_decimal(values.get(field), labels[field])
+    for field in inactive_fields:
+        payload[field] = "0.000"
+    payload["preco_compra"] = (
+        _nonnegative_decimal(
+            values.get("preco_compra"),
+            "Preço de compra",
+            nullable=True,
+            places="0.0001",
+        )
+        if origin == "EXTERNA"
+        else None
+    )
+
+    rows = _request(
+        "POST",
+        ITEM_PARAMETERS_TABLE,
+        [("on_conflict", "registration_id")],
+        payload=payload,
+        prefer="resolution=merge-duplicates,return=representation",
+    ) or []
+    return rows[0] if rows else payload
+
+
+def _reassign_item_parameter(
+    old_registration_id: int | str,
+    new_registration_id: int | str,
+    new_sku: str,
+) -> bool:
+    try:
+        rows = _request(
+            "PATCH",
+            ITEM_PARAMETERS_TABLE,
+            [("registration_id", f"eq.{clean_text(old_registration_id)}")],
+            payload={"registration_id": int(new_registration_id), "sku": clean_text(new_sku)},
+            prefer="return=representation",
+        ) or []
+    except SupabaseStoreError as exc:
+        # The catalog migration must remain backward-compatible while this
+        # additive table is being staged in production.
+        if "cadastro_item_parametros" in str(exc) and (
+            "PGRST205" in str(exc) or "does not exist" in str(exc)
+        ):
+            return False
+        raise
+    return bool(rows)
 
 
 def _storage_request(path: str) -> tuple[bytes, dict[str, str]]:
@@ -1136,6 +1314,7 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
         raise SupabaseStoreError("Nao foi possivel criar o cadastro substituto.")
     new_record = new_rows[0]
 
+    parameter_reassigned = False
     try:
         migrated = (
             _apply_bom_sku_migration(snapshots, old_sku, new_record)
@@ -1164,8 +1343,18 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
         )
         if not old_rows:
             raise SupabaseStoreError("Nao foi possivel inativar o SKU anterior.")
+        parameter_reassigned = _reassign_item_parameter(
+            registration_id,
+            new_record["id"],
+            new_sku,
+        )
     except Exception as exc:
         rollback_errors = []
+        if parameter_reassigned:
+            try:
+                _reassign_item_parameter(new_record["id"], registration_id, old_sku)
+            except Exception as rollback_exc:
+                rollback_errors.append(f"Parametros do item: {rollback_exc}")
         if replace_bom_references:
             try:
                 _restore_bom_references(snapshots)

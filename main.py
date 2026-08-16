@@ -1479,6 +1479,9 @@ async def cadastros_page(
             include_inactive=include_inactive,
             limit=1000,
         )
+        parameter_summary = supabase_store.item_parameter_summary()
+        for item in items:
+            item["item_parameter"] = parameter_summary.get(str(item.get("id")))
         unit_pending_count = supabase_store.count_registrations_without_unit(
             selected_category["key"],
             include_inactive=include_inactive,
@@ -1554,6 +1557,72 @@ async def cadastros_exportar(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         filename=output.name,
     )
+
+
+@app.get("/cadastros/{registration_id}/parametros", response_class=HTMLResponse)
+async def cadastro_item_parametros_page(
+    request: Request,
+    registration_id: int,
+    sucesso: str = "",
+    erro: str = "",
+):
+    if not _supabase_mode():
+        return RedirectResponse(url="/cadastros", status_code=303)
+    try:
+        record = supabase_store.get_registration(registration_id)
+        if not record:
+            raise ValueError("Cadastro não encontrado.")
+        parameter = supabase_store.get_item_parameter(registration_id) or {}
+        average_cost = supabase_store.get_item_average_cost(record.get("sku") or "", limit=10)
+        return templates.TemplateResponse(
+            request=request,
+            name="item_parametros.html",
+            context={
+                "request": request,
+                "record": record,
+                "parameter": parameter,
+                "average_cost": average_cost,
+                "can_write": bool(getattr(request.state, "cadastro_can_write", False)),
+                "sucesso": sucesso,
+                "erro": erro,
+                "active_page": "cadastros",
+            },
+        )
+    except Exception as exc:
+        return RedirectResponse(url=f"/cadastros?erro={quote(str(exc))}", status_code=303)
+
+
+@app.post("/cadastros/{registration_id}/parametros")
+async def cadastro_item_parametros_save(request: Request, registration_id: int):
+    if not _supabase_mode():
+        return RedirectResponse(url="/cadastros", status_code=303)
+    if not _cadastro_write_allowed(request):
+        return HTMLResponse(
+            "Somente ADMIN e ENGENHARIA podem alterar parâmetros de item.",
+            status_code=403,
+        )
+    form_data = await request.form()
+    try:
+        record = supabase_store.get_registration(registration_id)
+        if not record:
+            raise ValueError("Cadastro não encontrado.")
+        supabase_store.save_item_parameter(
+            record,
+            dict(form_data),
+            _read_session(request) or "sistema:cadastro",
+        )
+        return RedirectResponse(
+            url=(
+                f"/cadastros/{registration_id}/parametros?sucesso="
+                + quote("Parâmetros de lead time e custo salvos.")
+            ),
+            status_code=303,
+        )
+    except Exception as exc:
+        return RedirectResponse(
+            url=f"/cadastros/{registration_id}/parametros?erro={quote(str(exc))}",
+            status_code=303,
+        )
 
 
 @app.get("/bom", response_class=HTMLResponse)
