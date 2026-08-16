@@ -132,7 +132,7 @@
                 <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                     <p class="text-xs font-black uppercase text-emerald-700">Preço médio das 10 últimas entradas confirmadas</p>
                     {% if average_cost.get('preco_medio') is not none %}
-                    <p class="mt-2 text-3xl font-black text-emerald-900">R$ {{ '%.4f'|format(average_cost.preco_medio|float) }}</p>
+                    <p class="mt-2 text-3xl font-black text-emerald-900">R$ {{ ('%.2f'|format(average_cost.preco_medio|float))|replace('.', ',') }}</p>
                     <p class="mt-2 text-sm text-emerald-800">
                         {{ average_cost.entradas_consideradas }} entrada(s), {{ average_cost.quantidade_total }} unidade(s) aprovadas.
                     </p>
