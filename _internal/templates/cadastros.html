@@ -150,7 +150,7 @@
                             <td class="whitespace-nowrap border border-slate-200 px-2 py-1">
                                 <div class="flex flex-col items-start gap-1">
                                     <a href="/cadastros/{{ item.id }}/parametros" class="inline-flex border px-2 py-1 text-[11px] font-black uppercase {% if item.item_parameter %}border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-600{% else %}border-amber-500 bg-amber-50 text-amber-800 hover:bg-amber-100{% endif %}">
-                                        {% if item.item_parameter %}Lead time{% else %}Parametrizar{% endif %}
+                                        Parâmetros
                                     </a>
                                     {% if request.state.cadastro_can_write %}
                                     <a href="/cadastros/{{ item.id }}/editar" class="inline-flex border border-blue-700 bg-blue-700 px-2 py-1 text-[11px] font-black uppercase text-white hover:bg-blue-600">Editar</a>
