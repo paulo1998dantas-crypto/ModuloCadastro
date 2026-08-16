@@ -1281,6 +1281,10 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
             payload=payload,
             prefer="return=representation",
         )
+        # The B.O.M. indicator is derived from persisted B.O.M. headers, not
+        # from an edit-screen choice. This prevents a normal catalog edit from
+        # changing a valid item's marker back to an inconsistent value.
+        _set_catalog_bom_preference(new_sku, bool(_bom_header_by_parent(new_sku)))
         return rows[0] if rows else {**current, **payload}
 
     if clean_text(form_data.get("confirmar_migracao")) != "1":
@@ -1384,6 +1388,8 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
             ) from exc
         raise
 
+    _set_catalog_bom_preference(old_sku, bool(_bom_header_by_parent(old_sku)))
+    _set_catalog_bom_preference(new_sku, bool(_bom_header_by_parent(new_sku)))
     return {
         **new_record,
         "migrated": True,
