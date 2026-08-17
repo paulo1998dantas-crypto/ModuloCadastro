@@ -351,6 +351,7 @@
             <div class="grid grid-cols-1 gap-6 p-5 xl:grid-cols-[1.1fr_0.9fr]">
                 <form method="post" action="/regras/adicionar" id="conditional-rule-form" class="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <input type="hidden" name="category_key" value="{{ selected_category.key }}">
+                    <input type="hidden" name="rule_key" id="conditional-rule-key" value="">
                     <label class="space-y-1 md:col-span-2">
                         <span class="block text-xs font-bold uppercase text-slate-500">Campo origem</span>
                         <select name="source_field_key" id="conditional-source-field" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" required>
@@ -392,8 +393,9 @@
                             <option value="secundaria" selected>Secundária</option>
                         </select>
                     </label>
-                    <div class="md:col-span-2 flex justify-end">
-                        <button type="submit" class="rounded-lg bg-blue-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-blue-700">Salvar regra</button>
+                    <div class="md:col-span-2 flex justify-end gap-2">
+                        <button type="button" id="conditional-rule-cancel" class="hidden rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-700">Cancelar edição</button>
+                        <button type="submit" id="conditional-rule-submit" class="rounded-lg bg-blue-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-blue-700">Salvar regra</button>
                     </div>
                 </form>
 
@@ -415,6 +417,9 @@
                     <div class="grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-white p-4 lg:grid-cols-[1fr_auto] lg:items-center">
                         <div class="space-y-1">
                             <p class="text-sm font-black text-slate-900">{{ rule.source_field_label }} = {{ rule.source_value_labels | join(', ') }}</p>
+                            <span class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-black uppercase {% if rule.origin == 'system' %}bg-amber-100 text-amber-800{% else %}bg-emerald-100 text-emerald-800{% endif %}">
+                                {% if rule.origin == 'system' %}Padrão do sistema{% else %}Configurada{% endif %}
+                            </span>
                             <p class="text-sm text-slate-600">
                                 {% if rule.action == 'show' %}Exibe
                                 {% elif rule.action == 'set_primary' %}Torna primário
@@ -426,11 +431,18 @@
                                 {% elif rule.target_field_scope %}<span class="text-slate-500">({{ rule.target_field_scope }})</span>{% endif %}
                             </p>
                         </div>
-                        <form method="post" action="/regras/excluir" onsubmit="return confirm('Excluir esta regra?')">
-                            <input type="hidden" name="category_key" value="{{ selected_category.key }}">
-                            <input type="hidden" name="rule_key" value="{{ rule.key }}">
-                            <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-rose-700">Excluir</button>
-                        </form>
+                        <div class="flex gap-2">
+                            <button type="button"
+                                class="conditional-rule-edit rounded-lg border border-blue-300 bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-700"
+                                data-rule='{{ rule | tojson | forceescape }}'>Editar</button>
+                            {% if rule.origin == 'catalog' %}
+                            <form method="post" action="/regras/excluir" onsubmit="return confirm('Excluir esta regra?')">
+                                <input type="hidden" name="category_key" value="{{ selected_category.key }}">
+                                <input type="hidden" name="rule_key" value="{{ rule.key }}">
+                                <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-rose-700">Excluir</button>
+                            </form>
+                            {% endif %}
+                        </div>
                     </div>
                     {% endfor %}
                 </div>
@@ -565,6 +577,10 @@
         const conditionalTargetLabel = document.getElementById("conditional-target-label");
         const conditionalAction = document.getElementById("conditional-action");
         const conditionalTargetScope = document.getElementById("conditional-target-scope");
+        const conditionalRuleForm = document.getElementById("conditional-rule-form");
+        const conditionalRuleKey = document.getElementById("conditional-rule-key");
+        const conditionalRuleSubmit = document.getElementById("conditional-rule-submit");
+        const conditionalRuleCancel = document.getElementById("conditional-rule-cancel");
 
         const renderSourceOptions = () => {
             if (!conditionalSourceField || !conditionalSourceValue) {
@@ -617,6 +633,44 @@
         if (conditionalAction) {
             conditionalAction.addEventListener("change", syncTargetLabelState);
         }
+
+        const resetConditionalRuleForm = () => {
+            conditionalRuleForm?.reset();
+            if (conditionalRuleKey) conditionalRuleKey.value = "";
+            if (conditionalRuleSubmit) conditionalRuleSubmit.textContent = "Salvar regra";
+            conditionalRuleCancel?.classList.add("hidden");
+            renderSourceOptions();
+            syncTargetLabelState();
+        };
+
+        document.querySelectorAll(".conditional-rule-edit").forEach((button) => {
+            button.addEventListener("click", () => {
+                const rule = JSON.parse(button.dataset.rule || "{}");
+                if (conditionalRuleKey) conditionalRuleKey.value = rule.key || "";
+                if (conditionalSourceField) conditionalSourceField.value = rule.source_field_key || "";
+                renderSourceOptions();
+                if (conditionalSourceValue) {
+                    const sourceLabels = rule.source_value_labels || rule.source_values || [];
+                    conditionalSourceValue.value = sourceLabels[0] || "";
+                    if (!conditionalSourceValue.value && rule.source_values?.length) {
+                        const wanted = normalizeOptionLabel(rule.source_values[0]);
+                        const match = Array.from(conditionalSourceValue.options).find(
+                            (option) => normalizeOptionLabel(option.value) === wanted,
+                        );
+                        if (match) conditionalSourceValue.value = match.value;
+                    }
+                }
+                if (conditionalAction) conditionalAction.value = rule.action || "hide";
+                if (conditionalTargetField) conditionalTargetField.value = rule.target_field_key || "";
+                if (conditionalTargetLabel) conditionalTargetLabel.value = rule.target_field_key ? "" : (rule.target_field_label || "");
+                if (conditionalTargetScope) conditionalTargetScope.value = rule.target_field_scope || "secundaria";
+                syncTargetLabelState();
+                if (conditionalRuleSubmit) conditionalRuleSubmit.textContent = "Atualizar regra";
+                conditionalRuleCancel?.classList.remove("hidden");
+                conditionalRuleForm?.scrollIntoView({ behavior: "smooth", block: "center" });
+            });
+        });
+        conditionalRuleCancel?.addEventListener("click", resetConditionalRuleForm);
     </script>
 </body>
 </html>

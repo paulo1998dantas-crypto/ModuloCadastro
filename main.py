@@ -2074,6 +2074,7 @@ async def campos_reordenar_post(
 @app.post("/regras/adicionar")
 async def regras_adicionar_post(
     category_key: str = Form(...),
+    rule_key: str = Form(""),
     source_field_key: str = Form(...),
     source_value: str = Form(...),
     target_field_key: str = Form(""),
@@ -2089,6 +2090,7 @@ async def regras_adicionar_post(
             target_field_key,
             target_field_label,
             action,
+            rule_key,
         )
         if not excel_bancos.clean_text(target_field_key) and excel_bancos.clean_text(target_field_label):
             catalog = excel_bancos.load_catalog()
@@ -2102,7 +2104,7 @@ async def regras_adicionar_post(
                         excel_bancos.save_catalog(catalog)
                         break
         return RedirectResponse(
-            url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote('Regra condicional criada.')}",
+            url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote('Regra condicional salva.')}",
             status_code=303,
         )
     except Exception as exc:

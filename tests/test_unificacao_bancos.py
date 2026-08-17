@@ -140,6 +140,83 @@ class UnificacaoBancosTests(unittest.TestCase):
         self.assertEqual(description["primaria"], primaria)
         self.assertEqual(description["secundaria"], primaria)
 
+    def test_linha_lb_mantem_detalhes_de_revestimento_somente_na_secundaria(self):
+        data = {
+            "grupo_codigo": "30",
+            "pre_fixo": "8- CJ",
+            "encosto": "2- RECLINAVEL",
+            "fornecedor": "1- MC",
+            "linha": "1- LB",
+            "cj_layout": "4,3,3,3",
+            "tipo_cinto": "2- 3P",
+            "tipo_revestimento": "1- TECIDO",
+            "especificidade": ["3- BJD"],
+            "cor_do_revestimento": "1- CAPA LB PADRAO JI",
+            "tipo_costura": "1- COSTURA LB",
+            "cor_da_linha": "1- COR LINHA LB",
+            "cj_acessibilidade": "1- N/A",
+        }
+
+        description = excel_bancos.build_descriptions(self.fields, data, "bancos")
+        primaria = "CJ BANCOS REC - MC - LB - 4,3,3,3 - 3P - TECIDO - BJD"
+        self.assertEqual(description["primaria"], primaria)
+        self.assertEqual(
+            description["secundaria"],
+            primaria + " | REVESTIMENTO: CAPA LB PADRAO JI/COSTURA LB/LINHA LB | ACESSIBILIDADE: N/A",
+        )
+
+    def test_acessibilidade_do_conjunto_e_unica_numerada_e_condicional(self):
+        accessibility_fields = [field for field in self.fields if field["key"] == "cj_acessibilidade"]
+        self.assertEqual(len(accessibility_fields), 1)
+        self.assertNotIn("cj_acessibilidade_secundaria", {field["key"] for field in self.fields})
+        self.assertEqual(
+            accessibility_fields[0]["options"],
+            [
+                "1- N/A",
+                "2- FOCA",
+                "3- ELEVITTA",
+                "4- PLATAFORMA BI-PARTIDA",
+                "5- PLATAFORMA FECHADA",
+            ],
+        )
+
+        base = {
+            "grupo_codigo": "30",
+            "pre_fixo": "8- CJ",
+            "encosto": "2- RECLINAVEL",
+            "fornecedor": "1- MC",
+            "linha": "1- LB",
+            "cj_layout": "3,3",
+            "tipo_cinto": "2- 3P",
+            "tipo_revestimento": "1- TECIDO",
+        }
+        description_na = excel_bancos.build_descriptions(
+            self.fields, {**base, "cj_acessibilidade": "1- N/A"}, "bancos"
+        )
+        self.assertNotIn(" - N/A", description_na["primaria"])
+        self.assertIn("ACESSIBILIDADE: N/A", description_na["secundaria"])
+
+        description_foca = excel_bancos.build_descriptions(
+            self.fields, {**base, "cj_acessibilidade": "2- FOCA"}, "bancos"
+        )
+        self.assertTrue(description_foca["primaria"].endswith(" - FOCA"))
+
+    def test_regras_condicionais_do_sistema_sao_expostas_em_opcoes(self):
+        rules = excel_bancos.get_conditional_rules("bancos")
+        for target in ("cor_do_revestimento", "tipo_costura", "cor_da_linha"):
+            matching = [
+                rule
+                for rule in rules
+                if rule["source_field_key"] == "linha"
+                and rule["target_field_key"] == target
+                and rule["action"] == "set_primary"
+                and "LE" in rule["source_value_labels"][0]
+            ]
+            self.assertEqual(len(matching), 1)
+            self.assertIn(matching[0]["origin"], {"system", "catalog"})
+        accessibility = [rule for rule in rules if rule["key"] == "cond_acessibilidade_na_secundaria"]
+        self.assertEqual(len(accessibility), 1)
+
     def test_toda_especificidade_do_conjunto_fica_na_primaria(self):
         data = {
             "grupo_codigo": "30",

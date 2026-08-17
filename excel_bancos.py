@@ -54,6 +54,42 @@ _PRODUCT_CATALOG_CACHE: tuple[Path, float, list[dict[str, str]]] | None = None
 
 DEFAULT_CONDITIONAL_RULES = [
     {
+        "key": "cond_linha_executiva_cor_revestimento",
+        "source_field_key": "linha",
+        "source_values": ["2- LE"],
+        "target_field_key": "cor_do_revestimento",
+        "target_field_label": "COR DO REVESTIMENTO",
+        "target_field_scope": "secundaria",
+        "action": "set_primary",
+    },
+    {
+        "key": "cond_linha_executiva_tipo_costura",
+        "source_field_key": "linha",
+        "source_values": ["2- LE"],
+        "target_field_key": "tipo_costura",
+        "target_field_label": "TIPO COSTURA",
+        "target_field_scope": "secundaria",
+        "action": "set_primary",
+    },
+    {
+        "key": "cond_linha_executiva_cor_linha",
+        "source_field_key": "linha",
+        "source_values": ["2- LE"],
+        "target_field_key": "cor_da_linha",
+        "target_field_label": "COR DA LINHA",
+        "target_field_scope": "secundaria",
+        "action": "set_primary",
+    },
+    {
+        "key": "cond_acessibilidade_na_secundaria",
+        "source_field_key": "cj_acessibilidade",
+        "source_values": ["1- N/A"],
+        "target_field_key": "cj_acessibilidade",
+        "target_field_label": "ACESSIBILIDADE",
+        "target_field_scope": "primaria",
+        "action": "set_secondary",
+    },
+    {
         "key": "cond_pre_fixo_veiculo",
         "source_field_key": "pre_fixo",
         "source_values": ["4- BCO CARONA ORIGINAL", "5- BCO MOTORISTA ORIGINAL", "6- BCO ORIGINAL"],
@@ -688,6 +724,7 @@ CONJUNTO_BANCO_ESPECIFICIDADE_OPTIONS = [
 CONJUNTO_BANCO_LEGACY_FIELD_ALIASES = {
     "pre_fixo": "cj_sufixo",
     "especificidade": "cj_especificidade",
+    "cj_acessibilidade": "cj_acessibilidade_secundaria",
 }
 
 CONJUNTO_BANCO_FIELDS = [
@@ -708,17 +745,13 @@ CONJUNTO_BANCO_FIELDS = [
         "scope": "primaria",
         "selection_mode": SELECTION_MODE_UNITARIA,
         "description_order": 8,
-        "options": ["FOCA", "ELEVITTA", "PLATAFORMA BI-PARTIDA", "PLATAFORMA FECHADA"],
-        "banco_mode": "conjunto",
-        "required": False,
-    },
-    {
-        "key": "cj_acessibilidade_secundaria",
-        "label": "ACESSIBILIDADE (DETALHE)",
-        "scope": "secundaria",
-        "selection_mode": SELECTION_MODE_UNITARIA,
-        "description_order": 1,
-        "options": ["N/A"],
+        "options": [
+            "1- N/A",
+            "2- FOCA",
+            "3- ELEVITTA",
+            "4- PLATAFORMA BI-PARTIDA",
+            "5- PLATAFORMA FECHADA",
+        ],
         "banco_mode": "conjunto",
         "required": False,
     },
@@ -1775,11 +1808,11 @@ def get_banco_fields_for_display(category_key_value: str) -> list[dict[str, Any]
     return [_field_response(field, index) for index, field in enumerate(ordered_fields, start=1)]
 
 
-def get_conditional_rules(category_key_value: str) -> list[dict[str, Any]]:
-    catalog = load_catalog()
-    category = _find_category(catalog, category_key_value)
-    fields = category.get("fields") or []
-    rules = category.get("conditional_rules") or []
+def _resolve_conditional_rules(
+    fields: list[dict[str, Any]],
+    rules: list[dict[str, Any]],
+    origin: str,
+) -> list[dict[str, Any]]:
     field_map = {field["key"]: _field_response(field, index) for index, field in enumerate(fields)}
     token_map = {
         field["key"]: {rule_option_token(option): option for option in (field.get("options") or [])}
@@ -1787,29 +1820,89 @@ def get_conditional_rules(category_key_value: str) -> list[dict[str, Any]]:
     }
     resolved: list[dict[str, Any]] = []
     for rule in rules:
-        source_field = field_map.get(rule["source_field_key"])
-        target_field = field_map.get(rule["target_field_key"])
+        source_key = clean_text(rule.get("source_field_key"))
+        target_key = clean_text(rule.get("target_field_key"))
+        source_field = field_map.get(source_key)
+        target_field = field_map.get(target_key)
         source_value_labels = [
-            token_map.get(rule["source_field_key"], {}).get(value, value) for value in (rule.get("source_values") or [])
+            token_map.get(source_key, {}).get(rule_option_token(value), value)
+            for value in (rule.get("source_values") or [])
         ]
         resolved.append(
             {
-                "key": rule["key"],
-                "source_field_key": rule["source_field_key"],
-                "source_field_label": rule["source_field_label"],
-                "source_field_scope": rule["source_field_scope"],
+                "key": clean_text(rule.get("key")) or uuid.uuid4().hex[:12],
+                "source_field_key": source_key,
+                "source_field_label": (
+                    source_field["label"] if source_field else clean_text(rule.get("source_field_label")) or source_key
+                ),
+                "source_field_scope": (
+                    source_field["scope"] if source_field else clean_text(rule.get("source_field_scope")) or "primaria"
+                ),
                 "source_values": list(rule.get("source_values") or []),
                 "source_value_labels": source_value_labels,
-                "target_field_key": rule["target_field_key"],
-                "target_field_label": rule["target_field_label"],
-                "target_field_scope": rule["target_field_scope"],
-                "action": rule["action"],
+                "target_field_key": target_key,
+                "target_field_label": (
+                    target_field["label"] if target_field else clean_text(rule.get("target_field_label")) or target_key
+                ),
+                "target_field_scope": (
+                    target_field["scope"] if target_field else clean_text(rule.get("target_field_scope")) or "secundaria"
+                ),
+                "action": clean_text(rule.get("action")).lower() or "hide",
                 "match_by": rule.get("match_by", "option"),
                 "source_field": source_field,
                 "target_field": target_field,
+                "origin": origin,
             }
         )
     return resolved
+
+
+def _conditional_rule_signature(rule: dict[str, Any]) -> tuple[str, str, str, str, tuple[str, ...]]:
+    return (
+        clean_text(rule.get("source_field_key")),
+        clean_text(rule.get("target_field_key")),
+        rule_option_token(clean_text(rule.get("target_field_label"))),
+        clean_text(rule.get("action")).lower(),
+        tuple(sorted(rule_option_token(value) for value in (rule.get("source_values") or []))),
+    )
+
+
+def get_conditional_rules(category_key_value: str) -> list[dict[str, Any]]:
+    """Retorna regras efetivas, inclusive padrões do sistema visíveis em Opções.
+
+    Regras salvas no catálogo substituem regras padrão com a mesma chave ou a
+    mesma combinação de origem, alvo, ação e valores. Assim, uma condição pode
+    ser administrada pela interface sem duplicar ou esconder o comportamento
+    que antes existia apenas no código.
+    """
+    catalog = load_catalog()
+    category = _find_category(catalog, category_key_value)
+    fields = _fields_for_category(category)
+    system_rules = (
+        _resolve_conditional_rules(fields, DEFAULT_CONDITIONAL_RULES, "system")
+        if category.get("key") == DEFAULT_CATEGORY_KEY
+        else []
+    )
+    catalog_rules = _resolve_conditional_rules(fields, category.get("conditional_rules") or [], "catalog")
+
+    merged: list[dict[str, Any]] = []
+    positions_by_key: dict[str, int] = {}
+    positions_by_signature: dict[tuple[str, str, str, str, tuple[str, ...]], int] = {}
+    for rule in system_rules + catalog_rules:
+        rule_key = clean_text(rule.get("key"))
+        signature = _conditional_rule_signature(rule)
+        position = positions_by_key.get(rule_key) if rule_key else None
+        if position is None:
+            position = positions_by_signature.get(signature)
+        if position is None:
+            position = len(merged)
+            merged.append(rule)
+        else:
+            merged[position] = rule
+        if rule_key:
+            positions_by_key[rule_key] = position
+        positions_by_signature[signature] = position
+    return merged
 
 
 def get_conditional_rules_for_form(category_key_value: str) -> list[dict[str, Any]]:
@@ -2356,6 +2449,7 @@ def _cor_linha_conjunto(value: str) -> str:
 
 def _build_conjunto_banco_descriptions(fields: list[dict[str, Any]], data: Any) -> dict[str, str]:
     by_key = {field["key"]: field for field in fields}
+    effective_scopes = _effective_field_scopes(fields, DEFAULT_CATEGORY_KEY, data)
     encosto = _conjunto_encosto(_conjunto_label(by_key, data, "encosto"))
     primary_parts = [f"CJ BANCOS {encosto}".strip()]
     fornecedor = _normalizar_fornecedor_conjunto(_conjunto_label(by_key, data, "fornecedor"))
@@ -2368,41 +2462,48 @@ def _build_conjunto_banco_descriptions(fields: list[dict[str, Any]], data: Any) 
         if value:
             primary_parts.append(value)
 
-    # Nos conjuntos, cor, costura e linha identificam tecnicamente o produto
-    # final. O revestimento completo pertence à descrição primária somente no
-    # grupo 30; nos bancos unitários (grupo 10) os escopos existentes continuam
-    # inalterados.
+    # O tipo de revestimento identifica o conjunto em qualquer linha. Cor,
+    # costura e linha entram na descrição primária apenas quando uma regra
+    # condicional as classifica como primárias (atualmente, linha LE). Nas
+    # demais linhas elas permanecem como detalhe da descrição secundária.
     revestimento = _conjunto_label(by_key, data, "tipo_revestimento")
     cor_revestimento = _conjunto_label(by_key, data, "cor_do_revestimento")
     tipo_costura = _conjunto_label(by_key, data, "tipo_costura")
     cor_linha = _conjunto_label(by_key, data, "cor_da_linha")
     detalhe_revestimento = [
-        value
-        for value in (
-            _cor_revestimento_conjunto(cor_revestimento) if cor_revestimento else "",
-            _tipo_costura_conjunto(tipo_costura) if tipo_costura else "",
-            _cor_linha_conjunto(cor_linha) if cor_linha else "",
-        )
-        if value
+        ("cor_do_revestimento", _cor_revestimento_conjunto(cor_revestimento) if cor_revestimento else ""),
+        ("tipo_costura", _tipo_costura_conjunto(tipo_costura) if tipo_costura else ""),
+        ("cor_da_linha", _cor_linha_conjunto(cor_linha) if cor_linha else ""),
     ]
-    revestimento_completo = " ".join(
-        value for value in (revestimento, "/".join(detalhe_revestimento)) if value
-    )
-    if revestimento_completo:
-        primary_parts.append(revestimento_completo)
+    detalhes_primarios = []
+    detalhes_secundarios = []
+    linha_executiva = normalize_label(_conjunto_label(by_key, data, "linha")) == "LE"
+    for field_key, formatted_value in detalhe_revestimento:
+        if not formatted_value:
+            continue
+        # Para conjuntos, nenhum outro gatilho genérico do banco unitário pode
+        # levar CAPA/COSTURA/LINHA à primária. A promoção é exclusiva da LE.
+        if linha_executiva and effective_scopes.get(field_key, by_key.get(field_key, {}).get("scope")) == "primaria":
+            detalhes_primarios.append(formatted_value)
+        else:
+            detalhes_secundarios.append(formatted_value)
+    if revestimento:
+        primary_parts.append(" ".join(value for value in (revestimento, "/".join(detalhes_primarios)) if value))
 
     especificidades = _conjunto_value(by_key, data, "especificidade")
     primary_parts.extend(_normalizar_especificidades_conjunto(especificidades))
 
     acessibilidade = _conjunto_label(by_key, data, "cj_acessibilidade")
-    if acessibilidade and normalize_label(acessibilidade) not in {"NA", "N A"}:
+    acessibilidade_scope = effective_scopes.get("cj_acessibilidade", "primaria")
+    if acessibilidade and acessibilidade_scope == "primaria":
         primary_parts.append(acessibilidade)
 
     primary = " - ".join(part for part in primary_parts if part).strip(" -")
     secondary_parts = []
-    acessibilidade_secundaria = _conjunto_label(by_key, data, "cj_acessibilidade_secundaria")
-    if acessibilidade_secundaria:
-        secondary_parts.append(f"ACESSIBILIDADE: {acessibilidade_secundaria}")
+    if detalhes_secundarios:
+        secondary_parts.append(f"REVESTIMENTO: {'/'.join(detalhes_secundarios)}")
+    if acessibilidade and acessibilidade_scope == "secundaria":
+        secondary_parts.append(f"ACESSIBILIDADE: {acessibilidade}")
     observacao = _conjunto_label(by_key, data, "cj_observacao")
     if observacao:
         secondary_parts.append(observacao)
@@ -2483,7 +2584,10 @@ def _has_any_value(values: dict[str, str]) -> bool:
 
 def _selected_conditional_tokens(field: dict[str, Any], data: Any) -> list[str]:
     tokens: list[str] = []
-    for value in _serialize_field_values(field, data):
+    values = _serialize_field_values(field, data)
+    if not values and field.get("key") in CONJUNTO_BANCO_LEGACY_FIELD_ALIASES:
+        values = _conjunto_value({field["key"]: field}, data, field["key"])
+    for value in values:
         token = rule_option_token(value)
         if token:
             tokens.append(token)
@@ -2492,7 +2596,10 @@ def _selected_conditional_tokens(field: dict[str, Any], data: Any) -> list[str]:
 
 def _selected_conditional_prefixes(field: dict[str, Any], data: Any) -> list[str]:
     prefixes: list[str] = []
-    for value in _serialize_field_values(field, data):
+    values = _serialize_field_values(field, data)
+    if not values and field.get("key") in CONJUNTO_BANCO_LEGACY_FIELD_ALIASES:
+        values = _conjunto_value({field["key"]: field}, data, field["key"])
+    for value in values:
         prefix = option_code(value)
         if not prefix:
             match = re.match(r"^\s*(\d+)", clean_text(value))
@@ -2544,29 +2651,13 @@ def _rule_matches(field: dict[str, Any], data: Any, rule: dict[str, Any]) -> boo
 
 
 def _combined_conditional_rules(category_key_value: str) -> list[dict[str, Any]]:
-    rules_by_key: dict[str, dict[str, Any]] = {}
-
-    def add_rule(rule: dict[str, Any], default_match_by: str = "option") -> None:
-        copied = deepcopy(rule)
-        if not clean_text(copied.get("match_by")) and copied.get("source_field_key") == "pre_fixo":
-            copied["match_by"] = "prefix"
-        if not clean_text(copied.get("match_by")):
-            copied["match_by"] = default_match_by
-        key = clean_text(copied.get("key")) or "|".join(
-            [
-                clean_text(copied.get("source_field_key")),
-                clean_text(copied.get("target_field_key")),
-                clean_text(copied.get("action")),
-                "|".join(clean_text(value) for value in copied.get("source_values") or []),
-            ]
-        )
-        rules_by_key[key] = copied
-
-    for rule in DEFAULT_CONDITIONAL_RULES:
-        add_rule(rule)
-    for rule in get_conditional_rules(category_key_value):
-        add_rule(rule, "option")
-    return list(rules_by_key.values())
+    rules = deepcopy(get_conditional_rules(category_key_value))
+    for rule in rules:
+        if not clean_text(rule.get("match_by")) and rule.get("source_field_key") == "pre_fixo":
+            rule["match_by"] = "prefix"
+        elif not clean_text(rule.get("match_by")):
+            rule["match_by"] = "option"
+    return rules
 
 
 def _effective_field_scopes(
@@ -3317,10 +3408,10 @@ def add_conditional_rule(
     target_field_key_value: str,
     target_field_label_value: str = "",
     action_value: str = "hide",
+    rule_key_value: str = "",
 ) -> dict[str, Any]:
     catalog = load_catalog()
     category = _find_category(catalog, category_key_value)
-    fields = category.get("fields") or []
     source_field = _find_field(catalog, category["key"], source_field_key_value)
     target_field = None
     target_key = clean_text(target_field_key_value)
@@ -3339,6 +3430,9 @@ def add_conditional_rule(
         raise ValueError("Selecione um campo alvo existente para alterar a descri\u00e7\u00e3o.")
 
     rules = category.setdefault("conditional_rules", [])
+    edited_key = clean_text(rule_key_value)
+    if edited_key:
+        rules[:] = [rule for rule in rules if clean_text(rule.get("key")) != edited_key]
     for rule in rules:
         same_trigger_and_target = (
             rule.get("source_field_key") == source_field["key"]
@@ -3356,7 +3450,10 @@ def add_conditional_rule(
             raise ValueError("JÃ¡ existe uma regra de classificaÃ§Ã£o para esse campo, opÃ§Ã£o e alvo.")
 
     rule = {
-        "key": uuid.uuid4().hex[:12],
+        # Ao editar uma regra padrão, a cópia com a mesma chave passa a ser a
+        # substituição administrável do catálogo. Excluir a cópia restaura o
+        # comportamento padrão do sistema.
+        "key": edited_key or uuid.uuid4().hex[:12],
         "source_field_key": source_field["key"],
         "source_field_label": source_field["label"],
         "source_field_scope": source_field["scope"],
