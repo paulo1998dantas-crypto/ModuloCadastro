@@ -3550,17 +3550,6 @@ def save_banco_registration(form_data: Any) -> dict[str, str]:
         # Column identity always follows the field's structural/original scope.
         # Conditional scope changes affect only descriptions for this record.
         field_columns = _resolve_field_column_map(ws, fields, create_missing=True)
-        duplicate_row = _find_duplicate_registration_by_description(
-            ws,
-            fields,
-            field_columns,
-            form_data,
-            (primary_column, secondary_column, suffix_column),
-            category["key"],
-        )
-        if duplicate_row:
-            raise ValueError(f"Cadastro jÃ¡ existe na linha {duplicate_row}.")
-
         backup_path = _backup_workbook(workbook, "cadastro")
         row = _next_available_row(ws)
         if row > FIRST_DATA_ROW:

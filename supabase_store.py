@@ -628,21 +628,13 @@ def _duplicate_exists(
     secundaria: str,
     exclude_id: int | str | None = None,
 ) -> bool:
-    params = [
-        ("select", "id"),
-        ("category_key", f"eq.{category_key}"),
-        ("descricao_primaria", f"eq.{primaria}"),
-        ("descricao_secundaria", f"eq.{secundaria}"),
-        ("limit", "1"),
-    ]
-    if exclude_id is not None:
-        params.append(("id", f"neq.{clean_text(exclude_id)}"))
-    rows = _request(
-        "GET",
-        REGISTRATIONS_TABLE,
-        params,
-    )
-    return bool(rows)
+    """Compatibility hook for older callers.
+
+    Descriptions are business labels, not identifiers. Multiple SKUs may
+    intentionally share them, therefore the uniqueness boundary is the SKU.
+    """
+    del category_key, primaria, secundaria, exclude_id
+    return False
 
 
 def _registration_payload(
@@ -695,46 +687,10 @@ def save_registration(form_data: Any) -> dict[str, Any]:
     category_key = clean_text(form_data.get("categoria"))
     category = _category(category_key)
     fields = excel_bancos.get_banco_fields(category["key"])
-    if category["key"] == excel_bancos.DEFAULT_CATEGORY_KEY:
-        excel_bancos._validate_banco_dependencies(fields, form_data)
-        excel_bancos._validate_visible_field_requirements(fields, category["key"], form_data)
-
-    descriptions = excel_bancos.build_descriptions(fields, form_data, category["key"])
-    if _duplicate_exists(category["key"], descriptions["primaria"], descriptions["secundaria"]):
-        raise SupabaseStoreError("Cadastro já existe com a mesma descrição primária e secundária.")
-
-    groups = _field_groups(fields, form_data)
-    field_values = _field_values(fields, groups)
-    field_codes = _field_codes(fields, groups)
     sku = _next_sku(category, fields, form_data)
-    unidade = normalize_unit(form_data.get("unidade"))
-    ativo = status_to_active(form_data.get("ativo"), default=True)
-    possui_bom = excel_bancos.requires_component_bom(fields, form_data)
-    groups[excel_bancos.BOM_FORM_KEY] = possui_bom
-    payload = {
-        "category_key": category["key"],
-        "category_label": category["label"],
-        "sheet": _sheet_name(category),
-        "sku": sku,
-        "descricao_primaria": descriptions["primaria"],
-        "descricao_secundaria": descriptions["secundaria"],
-        "sufixo": descriptions.get("sufixo") or "",
-        "unidade": unidade,
-        "ativo": ativo,
-        "caracteres_primario": len(descriptions["primaria"]),
-        "caracteres_secundario": len(descriptions["secundaria"]),
-        "form_values": groups,
-        "field_values": field_values,
-        "field_codes": field_codes,
-        "search_text": _search_text(
-            sku,
-            category["label"],
-            descriptions["primaria"],
-            descriptions["secundaria"],
-            unidade,
-            " ".join(field_values.values()),
-        ),
-    }
+    payload, descriptions, possui_bom = _registration_payload(category, fields, form_data, sku, True)
+    unidade = clean_text(payload.get("unidade"))
+    ativo = bool(payload.get("ativo"))
     rows = _request("POST", REGISTRATIONS_TABLE, payload=payload, prefer="return=representation")
     row = rows[0] if rows else payload
     return {
@@ -750,6 +706,81 @@ def save_registration(form_data: Any) -> dict[str, Any]:
         "possui_bom": possui_bom,
         "sku": sku,
         "path": display_target(),
+    }
+
+
+def _description_refresh_payload(
+    row: dict[str, Any],
+    category: dict[str, Any],
+    fields: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Rebuild only the descriptive projection of a persisted registration."""
+    registration_id = row.get("id")
+    original_groups = row.get("form_values")
+    if registration_id in {None, ""} or not isinstance(original_groups, dict):
+        return None
+
+    normalized_groups = _field_groups(fields, original_groups)
+    # Preserve markers not controlled by catalog fields, such as B.O.M. and
+    # migration metadata. A description refresh must never erase them.
+    refreshed_groups = {**original_groups, **normalized_groups}
+    descriptions = excel_bancos.build_descriptions(fields, refreshed_groups, category["key"])
+    field_values = _field_values(fields, normalized_groups)
+    field_codes = _field_codes(fields, normalized_groups)
+    sku = clean_text(row.get("sku"))
+    unidade = normalize_unit(row.get("unidade"))
+    return {
+        "id": registration_id,
+        "descricao_primaria": descriptions["primaria"],
+        "descricao_secundaria": descriptions["secundaria"],
+        "sufixo": descriptions.get("sufixo") or "",
+        "caracteres_primario": len(descriptions["primaria"]),
+        "caracteres_secundario": len(descriptions["secundaria"]),
+        "form_values": refreshed_groups,
+        "field_values": field_values,
+        "field_codes": field_codes,
+        "search_text": _search_text(
+            sku,
+            category["label"],
+            descriptions["primaria"],
+            descriptions["secundaria"],
+            unidade,
+            " ".join(field_values.values()),
+        ),
+    }
+
+
+def refresh_registration_descriptions(category_key: str) -> dict[str, Any]:
+    """Apply current rules to descriptions in one category without changing identity."""
+    category = _category(clean_text(category_key))
+    fields = excel_bancos.get_banco_fields(category["key"])
+    rows = _request_all(
+        REGISTRATIONS_TABLE,
+        [("select", "id,sku,unidade,form_values"), ("category_key", f"eq.{category['key']}")],
+    )
+    payloads: list[dict[str, Any]] = []
+    skipped: list[str] = []
+    for row in rows:
+        payload = _description_refresh_payload(row, category, fields)
+        if payload is None:
+            skipped.append(clean_text(row.get("sku")) or str(row.get("id") or "sem identificador"))
+        else:
+            payloads.append(payload)
+
+    for start in range(0, len(payloads), 200):
+        _request(
+            "POST",
+            REGISTRATIONS_TABLE,
+            payload=payloads[start : start + 200],
+            prefer="resolution=merge-duplicates,return=minimal",
+        )
+    return {
+        "category_key": category["key"],
+        "category_label": category["label"],
+        "total": len(rows),
+        "updated": len(payloads),
+        "skipped": len(skipped),
+        "skipped_identifiers": skipped[:25],
     }
 
 
@@ -1265,13 +1296,6 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
     structure_changed = _registration_structure_changed(current, target_category, fields, form_data)
     new_sku = _next_sku(target_category, fields, form_data) if structure_changed else old_sku
     payload, descriptions, _ = _registration_payload(target_category, fields, form_data, new_sku, False)
-    if _duplicate_exists(
-        target_category["key"],
-        descriptions["primaria"],
-        descriptions["secundaria"],
-        exclude_id=registration_id,
-    ):
-        raise SupabaseStoreError("Ja existe outro cadastro com a mesma descricao primaria e secundaria.")
 
     if not structure_changed:
         rows = _request(

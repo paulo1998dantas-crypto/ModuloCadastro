@@ -1970,11 +1970,21 @@ async def opcoes_page(request: Request, categoria: str = "", sucesso: str = "", 
     return _render_opcoes_page(request, categoria=categoria, sucesso=sucesso, erro=erro)
 
 
-@app.get("/opcoes/catalogo-regras.xlsx")
-async def opcoes_catalogo_regras_exportar():
+def _catalogo_regras_download():
     content = catalogo_regras_xlsx.export_catalog_workbook()
     timestamp = time.strftime("%Y%m%d_%H%M")
-    return _xlsx_download(content, f"Catalogo_Regras_Cadastro_{timestamp}.xlsx")
+    return _xlsx_download(content, f"Catalogo_Campos_Opcoes_Regras_{timestamp}.xlsx")
+
+
+@app.get("/opcoes/catalogo-template.xlsx")
+async def opcoes_catalogo_template_exportar():
+    return _catalogo_regras_download()
+
+
+@app.get("/opcoes/catalogo-regras.xlsx")
+async def opcoes_catalogo_regras_exportar():
+    """Compatibility URL for previously distributed catalog workbooks."""
+    return _catalogo_regras_download()
 
 
 @app.post("/opcoes/catalogo-regras/importar")
@@ -2001,6 +2011,29 @@ async def opcoes_catalogo_regras_importar(
         )
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote(message)}",
+            status_code=303,
+        )
+    except Exception as exc:
+        return RedirectResponse(
+            url=f"/opcoes?categoria={quote(category_key)}&erro={quote(str(exc))}",
+            status_code=303,
+        )
+
+
+@app.post("/opcoes/cadastros/atualizar-descricoes")
+async def opcoes_atualizar_descricoes(category_key: str = Form(...)):
+    try:
+        if not _supabase_mode():
+            raise ValueError("O refresh de descrições requer o modo Supabase ativo.")
+        result = supabase_store.refresh_registration_descriptions(category_key)
+        message = (
+            f"Descrições atualizadas em {result['category_label']}: "
+            f"{result['updated']} cadastro(s) recalculado(s)."
+        )
+        if result["skipped"]:
+            message += f" {result['skipped']} cadastro(s) sem dados de campos foram preservados sem alteração."
+        return RedirectResponse(
+            url=f"/opcoes?categoria={quote(result['category_key'])}&sucesso={quote(message)}",
             status_code=303,
         )
     except Exception as exc:
