@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
     {% if supabase_mode %}<style>a[href="/planilha"],a[href="/ponte"]{display:none}</style>{% endif %}
+    <style>
+        .option-dirty { border-color: rgb(251 191 36) !important; background: rgb(255 251 235) !important; }
+        .option-delete { border-color: rgb(251 113 133) !important; background: rgb(255 241 242) !important; }
+    </style>
     <title>Opções de Cadastro</title>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-800">
@@ -34,6 +38,7 @@
     </header>
 
     <main class="mx-auto max-w-7xl p-6">
+        <div id="workspace-toast" class="pointer-events-none fixed right-5 top-5 z-[100] hidden max-w-md rounded-lg border px-5 py-4 text-sm font-black shadow-xl"></div>
         {% if sucesso %}
         <div class="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
             {{ sucesso }}
@@ -46,15 +51,15 @@
         </div>
         {% endif %}
 
-        <section class="mb-6 overflow-hidden rounded-lg border border-cyan-200 bg-white shadow-sm">
-            <div class="grid grid-cols-1 gap-5 bg-gradient-to-r from-slate-950 to-cyan-950 p-5 text-white lg:grid-cols-[1fr_auto] lg:items-center">
+        <details open data-workspace-section="bulk-catalog" class="mb-6 overflow-hidden rounded-lg border border-cyan-200 bg-white shadow-sm">
+            <summary class="grid cursor-pointer list-none grid-cols-1 gap-5 bg-gradient-to-r from-slate-950 to-cyan-950 p-5 text-white lg:grid-cols-[1fr_auto] lg:items-center">
                 <div>
                     <p class="text-xs font-black uppercase tracking-widest text-cyan-300">Gestão em massa</p>
                     <h2 class="mt-1 text-xl font-black">Catálogo de campos, opções e regras</h2>
                     <p class="mt-2 max-w-3xl text-sm text-slate-200">Exporte a visão efetiva do Cadastro, altere as duas abas no Excel e importe novamente. Campos virtuais e regras padrão do sistema também são incluídos.</p>
                 </div>
-                <a href="/opcoes/catalogo-regras.xlsx" class="rounded-lg bg-cyan-500 px-6 py-3 text-center text-sm font-black text-slate-950 transition hover:bg-cyan-300">Exportar regras</a>
-            </div>
+                <span class="rounded-lg border border-cyan-400/50 bg-cyan-950/60 px-5 py-3 text-center text-sm font-black text-cyan-100">Clique para minimizar ou expandir</span>
+            </summary>
             <div class="grid grid-cols-1 gap-5 p-5 xl:grid-cols-[1fr_1.15fr]">
                 <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                     <p class="font-black text-slate-900">O arquivo contém exatamente duas abas:</p>
@@ -63,6 +68,7 @@
                         <li><strong>REGRAS_CONDICIONAIS:</strong> ação HIDE/SHOW/TURN_PRIMARY/TURN_SECONDARY, origem, gatilhos, destino, escopo e comparação.</li>
                     </ul>
                     <p class="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">Use UPSERT para incluir/atualizar e IGNORAR para desconsiderar uma linha. Não altere as chaves dos registros existentes. Linhas ausentes não são excluídas.</p>
+                    <a href="/opcoes/catalogo-regras.xlsx" class="mt-4 inline-flex rounded-lg bg-cyan-600 px-5 py-3 text-center text-sm font-black text-white transition hover:bg-cyan-700">Exportar regras</a>
                 </div>
                 <form method="post" action="/opcoes/catalogo-regras/importar" enctype="multipart/form-data" class="rounded-lg border border-slate-200 p-4">
                     <input type="hidden" name="category_key" value="{{ selected_category.key }}">
@@ -74,15 +80,15 @@
                     <p class="mt-3 text-xs text-slate-500">A importação é atômica: se qualquer linha estiver inválida, nenhuma alteração do arquivo será gravada.</p>
                 </form>
             </div>
-        </section>
+        </details>
 
         <section class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_0.9fr]">
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 class="mb-4 text-sm font-black uppercase tracking-wide text-slate-700">Selecionar categoria</h2>
-                <form method="get" action="/opcoes" class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto] md:items-end">
+                <form method="get" action="/opcoes" id="category-select-form" class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto] md:items-end">
                     <label class="space-y-1">
                         <span class="block text-xs font-bold uppercase text-slate-500">Categoria atual</span>
-                        <select name="categoria" onchange="this.form.submit()" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                        <select name="categoria" id="category-selector" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500">
                             {% for category in categories %}
                             <option value="{{ category.key }}" {% if category.key == selected_category.key %}selected{% endif %}>{{ category.label }} ({{ category.fields_count }} campos)</option>
                             {% endfor %}
@@ -90,6 +96,7 @@
                     </label>
                     <a href="/cadastro/bancos?categoria={{ selected_category.key }}" class="rounded-lg bg-slate-900 px-5 py-3 text-center text-sm font-bold text-white transition hover:bg-slate-800">Abrir cadastro</a>
                 </form>
+                <p class="mt-3 text-xs font-semibold text-slate-500">Ao trocar de categoria, alterações pendentes em campos e opções são salvas automaticamente antes da navegação.</p>
 
                 <div class="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
                     <form method="post" action="/categorias/editar" class="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] md:items-end">
@@ -119,16 +126,19 @@
             </div>
         </section>
 
-        <section class="mb-6 rounded-lg border border-slate-200 bg-white shadow-sm">
-            <div class="border-b border-slate-200 p-5">
+        <details open data-workspace-section="sku-groups" class="mb-6 rounded-lg border border-slate-200 bg-white shadow-sm">
+            <summary class="cursor-pointer list-none border-b border-slate-200 p-5">
                 <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                     <div>
                         <h2 class="text-sm font-black uppercase tracking-wide text-slate-700">Grupos de SKU</h2>
                         <p class="mt-1 text-xs text-slate-500">O codigo final usa grupo + categoria + sequencial. Vincule aqui quais prefixos pertencem a cada grupo.</p>
                     </div>
-                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase text-slate-600">{{ pn_groups|length }} grupos</span>
+                    <div class="flex items-center gap-2">
+                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase text-slate-600">{{ pn_groups|length }} grupos</span>
+                        <span class="text-xs font-semibold text-slate-400">Clique para minimizar ou expandir</span>
+                    </div>
                 </div>
-            </div>
+            </summary>
 
             <div class="grid grid-cols-1 gap-6 p-5 xl:grid-cols-[0.8fr_1.2fr]">
                 <form method="post" action="/grupos/adicionar" class="grid grid-cols-1 gap-4 md:grid-cols-[120px_1fr]">
@@ -174,7 +184,7 @@
                     {% endfor %}
                 </div>
             </div>
-        </section>
+        </details>
 
         <section class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -216,8 +226,8 @@
                         </select>
                     </label>
                     <label class="space-y-1">
-                        <span class="block text-xs font-bold uppercase text-slate-500">Nova opção</span>
-                        <input name="option_value" id="option-value-input" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: novo fornecedor, nova linha, 560MM..." required>
+                        <span class="block text-xs font-bold uppercase text-slate-500">Nova(s) opção(ões)</span>
+                        <textarea name="option_value" id="option-value-input" rows="2" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Cole uma ou várias opções, usando uma linha para cada opção." required></textarea>
                     </label>
                     <button type="submit" class="rounded-lg bg-emerald-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-700" {% if fields|length == 0 %}disabled{% endif %}>Adicionar</button>
                 </form>
@@ -227,9 +237,19 @@
             </div>
         </section>
 
-        <section class="rounded-lg border border-slate-200 bg-white shadow-sm">
-            <div class="border-b border-slate-200 p-5">
-                <h2 class="text-sm font-black uppercase tracking-wide text-slate-700">Campos disponíveis em {{ selected_category.label }}</h2>
+        <section class="rounded-lg border border-slate-200 bg-white shadow-sm" id="workspace-fields">
+            <div class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 p-5 shadow-sm backdrop-blur">
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h2 class="text-sm font-black uppercase tracking-wide text-slate-700">Campos disponíveis em {{ selected_category.label }}</h2>
+                        <p class="mt-1 text-xs text-slate-500"><span id="dirty-fields-count">0</span> campo(s) com alterações ainda não salvas.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" id="save-all-fields" class="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40" disabled>Salvar tudo</button>
+                        <button type="button" id="collapse-all-fields" class="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700">Recolher campos</button>
+                        <button type="button" id="expand-all-fields" class="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700">Abrir campos</button>
+                    </div>
+                </div>
             </div>
             <div class="divide-y divide-slate-100">
                 {% if fields|length == 0 %}
@@ -237,10 +257,10 @@
                 {% endif %}
 
                 {% for field in fields %}
-                <details class="group p-5">
+                <details class="group p-5" data-field-panel data-field-key="{{ field.key }}">
                     <summary class="flex cursor-pointer list-none flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
-                            <p class="text-sm font-black text-slate-900">{{ field.label }}</p>
+                            <p class="text-sm font-black text-slate-900" data-field-summary-label>{{ field.label }}</p>
                             <p class="text-xs text-slate-500">{{ field.header }} | Coluna {{ field.letter }}</p>
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
@@ -254,7 +274,7 @@
 
                     <div class="mt-5 space-y-5">
                         <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                            <form method="post" action="/campos/editar" class="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_180px_180px_auto] lg:items-end">
+                            <form method="post" action="/campos/editar" data-async-field-form class="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_180px_180px_auto] lg:items-end">
                                 <input type="hidden" name="category_key" value="{{ selected_category.key }}">
                                 <input type="hidden" name="field_key" value="{{ field.key }}">
                                 <label class="space-y-1">
@@ -286,12 +306,17 @@
 
                         <div class="space-y-3">
                             {% set batch_form_id = "options-batch-" ~ field.key %}
-                            <form method="post" action="/opcoes/salvar-lote" id="{{ batch_form_id }}" class="flex justify-end">
+                            <form method="post" action="/opcoes/salvar-lote" id="{{ batch_form_id }}" data-options-form class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
                                 <input type="hidden" name="category_key" value="{{ selected_category.key }}">
                                 <input type="hidden" name="field_key" value="{{ field.key }}">
-                                <button type="submit" class="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800" {% if field.option_rows|length == 0 %}disabled{% endif %}>
-                                    Salvar todas as alterações
-                                </button>
+                                <label class="flex cursor-pointer items-center gap-2 text-sm font-bold text-slate-600">
+                                    <input type="checkbox" data-select-all-options class="h-4 w-4 rounded border-slate-300">
+                                    Selecionar todas
+                                </label>
+                                <div class="flex flex-wrap gap-2">
+                                    <button type="button" data-delete-selected class="rounded-lg bg-rose-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-40" disabled>Excluir selecionadas</button>
+                                    <button type="submit" class="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40" {% if field.option_rows|length == 0 %}disabled{% endif %}>Salvar alterações do campo</button>
+                                </div>
                             </form>
 
                             {% if field.option_rows|length == 0 %}
@@ -299,16 +324,20 @@
                             {% endif %}
 
                             {% for option in field.option_rows %}
-                            <div class="grid grid-cols-1 gap-3 rounded-lg border border-slate-200 p-3 lg:grid-cols-[1fr_auto] lg:items-center">
+                            <div class="grid grid-cols-1 gap-3 rounded-lg border border-slate-200 p-3 lg:grid-cols-[auto_1fr_auto] lg:items-center" data-option-row>
+                                <label class="flex cursor-pointer items-center gap-2 text-xs font-bold uppercase text-slate-500">
+                                    <input type="checkbox" data-delete-option value="{{ option.row }}" class="h-4 w-4 rounded border-slate-300">
+                                    Selecionar
+                                </label>
                                 <div class="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] md:items-center">
                                     <input type="hidden" name="option_row" value="{{ option.row }}" form="{{ batch_form_id }}">
-                                    <input name="option_value" value="{{ option.value }}" form="{{ batch_form_id }}" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" required>
+                                    <input name="option_value" value="{{ option.value }}" data-original-value="{{ option.value }}" form="{{ batch_form_id }}" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" required>
                                 </div>
                                 <form method="post" action="/opcoes/excluir" onsubmit="return confirm('Excluir esta opção?')">
                                     <input type="hidden" name="category_key" value="{{ selected_category.key }}">
                                     <input type="hidden" name="field_key" value="{{ field.key }}">
                                     <input type="hidden" name="option_row" value="{{ option.row }}">
-                                    <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-rose-700">Excluir</button>
+                                    <button type="submit" class="rounded-lg border border-rose-300 bg-white px-4 py-2.5 text-sm font-bold text-rose-700 transition hover:bg-rose-50">Excluir agora</button>
                                 </form>
                             </div>
                             {% endfor %}
@@ -319,16 +348,16 @@
             </div>
         </section>
 
-        <section class="mt-6 rounded-lg border border-slate-200 bg-white shadow-sm">
-            <div class="border-b border-slate-200 p-5">
+        <details open data-workspace-section="description-order" class="mt-6 rounded-lg border border-slate-200 bg-white shadow-sm">
+            <summary class="cursor-pointer list-none border-b border-slate-200 p-5">
                 <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                     <div>
                         <h2 class="text-sm font-black uppercase tracking-wide text-slate-700">Ordem da descrição</h2>
                         <p class="mt-1 text-xs text-slate-500">Arraste os campos para definir a ordem em que eles entram na descrição automática.</p>
                     </div>
-                    <span class="text-xs font-semibold text-slate-400">A ordem da descrição é salva ao soltar o campo.</span>
+                    <span class="text-xs font-semibold text-slate-400">A ordem é salva ao soltar. Clique aqui para minimizar.</span>
                 </div>
-            </div>
+            </summary>
 
             {% set primary_fields = ordered_fields | selectattr('scope', 'equalto', 'primaria') | list %}
             {% set secondary_fields = ordered_fields | selectattr('scope', 'equalto', 'secundaria') | list %}
@@ -372,12 +401,13 @@
                 </section>
                 {% endfor %}
             </div>
-        </section>
+        </details>
 
-        <section class="mt-6 rounded-lg border border-slate-200 bg-white shadow-sm">
-            <div class="border-b border-slate-200 p-5">
+        <details open data-workspace-section="conditional-rules" class="mt-6 rounded-lg border border-slate-200 bg-white shadow-sm">
+            <summary class="flex cursor-pointer list-none items-center justify-between border-b border-slate-200 p-5">
                 <h2 class="text-sm font-black uppercase tracking-wide text-slate-700">Regras condicionais</h2>
-            </div>
+                <span class="text-xs font-semibold text-slate-400">Clique para minimizar ou expandir</span>
+            </summary>
             <div class="grid grid-cols-1 gap-6 p-5 xl:grid-cols-[1.1fr_0.9fr]">
                 <form method="post" action="/regras/adicionar" id="conditional-rule-form" class="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <input type="hidden" name="category_key" value="{{ selected_category.key }}">
@@ -478,7 +508,7 @@
                 </div>
                 {% endif %}
             </div>
-        </section>
+        </details>
     </main>
     <script>
         const fieldOptionsMap = {{ fields | map(attribute='options') | list | tojson }};
@@ -504,11 +534,20 @@
         if (addOptionForm && fieldKeySelect && optionValueInput && warning) {
             const hasDuplicate = () => {
                 const fieldKey = fieldKeySelect.value;
-                const newValue = normalizeOptionLabel(optionValueInput.value);
-                if (!fieldKey || !newValue) {
+                const newValues = optionValueInput.value
+                    .split(/\r?\n/)
+                    .map(normalizeOptionLabel)
+                    .filter(Boolean);
+                if (!fieldKey || !newValues.length) {
                     return false;
                 }
-                return (optionMap[fieldKey] || []).map(normalizeOptionLabel).includes(newValue);
+                const existing = new Set((optionMap[fieldKey] || []).map(normalizeOptionLabel));
+                const incoming = new Set();
+                return newValues.some((value) => {
+                    if (existing.has(value) || incoming.has(value)) return true;
+                    incoming.add(value);
+                    return false;
+                });
             };
 
             const syncWarning = () => {
@@ -528,6 +567,262 @@
         }
     </script>
     <script>
+        const workspaceCategory = {{ selected_category.key | tojson }};
+        const workspaceStateKey = `cadastro-opcoes:${workspaceCategory}`;
+        const workspaceToast = document.getElementById("workspace-toast");
+        const fieldPanels = Array.from(document.querySelectorAll("[data-field-panel]"));
+        const workspaceSections = Array.from(document.querySelectorAll("[data-workspace-section]"));
+        const saveAllButton = document.getElementById("save-all-fields");
+        const dirtyFieldsCount = document.getElementById("dirty-fields-count");
+
+        const notifyWorkspace = (message, kind = "success") => {
+            if (!workspaceToast) return;
+            workspaceToast.textContent = message;
+            workspaceToast.className = "pointer-events-none fixed right-5 top-5 z-[100] max-w-md rounded-lg border px-5 py-4 text-sm font-black shadow-xl";
+            if (kind === "error") {
+                workspaceToast.classList.add("border-rose-300", "bg-rose-50", "text-rose-800");
+            } else {
+                workspaceToast.classList.add("border-emerald-300", "bg-emerald-50", "text-emerald-800");
+            }
+            window.clearTimeout(notifyWorkspace.timer);
+            notifyWorkspace.timer = window.setTimeout(() => workspaceToast.classList.add("hidden"), 4200);
+        };
+
+        const openFieldKeys = () => fieldPanels.filter((panel) => panel.open).map((panel) => panel.dataset.fieldKey);
+        const persistWorkspaceState = () => {
+            sessionStorage.setItem(workspaceStateKey, JSON.stringify({
+                scrollY: window.scrollY,
+                openFields: openFieldKeys(),
+                openSections: workspaceSections.filter((section) => section.open).map((section) => section.dataset.workspaceSection),
+            }));
+        };
+
+        const restoreWorkspaceState = () => {
+            let state = {};
+            try { state = JSON.parse(sessionStorage.getItem(workspaceStateKey) || "{}"); } catch (_) { state = {}; }
+            const openFields = new Set(state.openFields || []);
+            fieldPanels.forEach((panel) => { panel.open = openFields.has(panel.dataset.fieldKey); });
+            const openSections = new Set(state.openSections || workspaceSections.map((section) => section.dataset.workspaceSection));
+            workspaceSections.forEach((section) => { section.open = openSections.has(section.dataset.workspaceSection); });
+            if (Number.isFinite(state.scrollY)) {
+                requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo({ top: state.scrollY, behavior: "auto" })));
+            }
+        };
+
+        fieldPanels.forEach((panel) => panel.addEventListener("toggle", persistWorkspaceState));
+        workspaceSections.forEach((section) => section.addEventListener("toggle", persistWorkspaceState));
+        document.querySelectorAll("form").forEach((form) => {
+            if (!form.matches("[data-options-form], [data-async-field-form]")) {
+                form.addEventListener("submit", persistWorkspaceState);
+            }
+        });
+        restoreWorkspaceState();
+
+        const panelIsDirty = (panel) => Boolean(
+            panel.querySelector('[data-options-form][data-dirty="true"], [data-async-field-form][data-dirty="true"]')
+        );
+
+        const updateDirtySummary = () => {
+            const dirtyPanels = fieldPanels.filter(panelIsDirty).length;
+            if (dirtyFieldsCount) dirtyFieldsCount.textContent = String(dirtyPanels);
+            if (saveAllButton) saveAllButton.disabled = dirtyPanels === 0;
+        };
+
+        const syncOptionsFormState = (form) => {
+            const panel = form.closest("[data-field-panel]");
+            const changed = Array.from(panel.querySelectorAll('input[name="option_value"]'))
+                .some((input) => input.value !== input.dataset.originalValue);
+            form.dataset.dirty = changed ? "true" : "false";
+            panel.querySelectorAll("[data-option-row]").forEach((row) => {
+                const input = row.querySelector('input[name="option_value"]');
+                row.classList.toggle("option-dirty", Boolean(input && input.value !== input.dataset.originalValue));
+            });
+            updateDirtySummary();
+        };
+
+        const syncDeleteState = (panel) => {
+            const checkboxes = Array.from(panel.querySelectorAll("[data-delete-option]"));
+            const selected = checkboxes.filter((checkbox) => checkbox.checked);
+            const deleteButton = panel.querySelector("[data-delete-selected]");
+            const selectAll = panel.querySelector("[data-select-all-options]");
+            if (deleteButton) deleteButton.disabled = selected.length === 0;
+            if (selectAll) {
+                selectAll.checked = Boolean(checkboxes.length) && selected.length === checkboxes.length;
+                selectAll.indeterminate = selected.length > 0 && selected.length < checkboxes.length;
+            }
+            checkboxes.forEach((checkbox) => checkbox.closest("[data-option-row]")?.classList.toggle("option-delete", checkbox.checked));
+        };
+
+        const reconcileOptionRows = (panel, result) => {
+            const selectedRows = Array.from(panel.querySelectorAll("[data-delete-option]:checked"))
+                .map((checkbox) => checkbox.closest("[data-option-row]"));
+            selectedRows.forEach((row) => row?.remove());
+            const rows = Array.from(panel.querySelectorAll("[data-option-row]"));
+            const serverRows = result.option_rows || [];
+            rows.forEach((row, index) => {
+                const serverRow = serverRows[index];
+                if (!serverRow) return;
+                const rowInput = row.querySelector('input[name="option_row"]');
+                const valueInput = row.querySelector('input[name="option_value"]');
+                const deleteCheckbox = row.querySelector("[data-delete-option]");
+                const singleDeleteRow = row.querySelector('form[action="/opcoes/excluir"] input[name="option_row"]');
+                if (rowInput) rowInput.value = serverRow.row;
+                if (deleteCheckbox) { deleteCheckbox.value = serverRow.row; deleteCheckbox.checked = false; }
+                if (singleDeleteRow) singleDeleteRow.value = serverRow.row;
+                if (valueInput) {
+                    valueInput.value = serverRow.value;
+                    valueInput.dataset.originalValue = serverRow.value;
+                }
+                row.classList.remove("option-dirty", "option-delete");
+            });
+            const badge = panel.querySelector("summary .bg-blue-50");
+            if (badge) badge.textContent = `${serverRows.length} opções`;
+            syncDeleteState(panel);
+        };
+
+        const saveOptionForm = async (form, deleteSelected = false) => {
+            const panel = form.closest("[data-field-panel]");
+            const body = new FormData(form);
+            if (deleteSelected) {
+                panel.querySelectorAll("[data-delete-option]:checked").forEach((checkbox) => body.append("delete_option_row", checkbox.value));
+            }
+            const response = await fetch(form.action, {
+                method: "POST",
+                body,
+                headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "application/json" },
+            });
+            const payload = await response.json().catch(() => ({ ok: false, error: "Resposta inválida do servidor." }));
+            if (!response.ok || !payload.ok) throw new Error(payload.error || "Não foi possível salvar as opções.");
+            reconcileOptionRows(panel, payload.result || {});
+            form.dataset.dirty = "false";
+            syncOptionsFormState(form);
+            notifyWorkspace(payload.message || "Opções salvas.");
+            return payload;
+        };
+
+        document.querySelectorAll("[data-options-form]").forEach((form) => {
+            const panel = form.closest("[data-field-panel]");
+            panel.querySelectorAll('input[name="option_value"]').forEach((input) => {
+                input.addEventListener("input", () => syncOptionsFormState(form));
+            });
+            panel.querySelectorAll("[data-delete-option]").forEach((checkbox) => checkbox.addEventListener("change", () => syncDeleteState(panel)));
+            panel.querySelector("[data-select-all-options]")?.addEventListener("change", (event) => {
+                panel.querySelectorAll("[data-delete-option]").forEach((checkbox) => { checkbox.checked = event.target.checked; });
+                syncDeleteState(panel);
+            });
+            panel.querySelector("[data-delete-selected]")?.addEventListener("click", async () => {
+                const count = panel.querySelectorAll("[data-delete-option]:checked").length;
+                if (!count || !confirm(`Excluir ${count} opção(ões) selecionada(s)? A alteração será aplicada em um único lote.`)) return;
+                try { await saveOptionForm(form, true); } catch (error) { notifyWorkspace(error.message, "error"); }
+            });
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                try { await saveOptionForm(form, false); } catch (error) { notifyWorkspace(error.message, "error"); }
+            });
+            syncOptionsFormState(form);
+            syncDeleteState(panel);
+        });
+
+        const saveFieldMetadata = async (form) => {
+            const response = await fetch(form.action, {
+                method: "POST",
+                body: new FormData(form),
+                headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "application/json" },
+            });
+            const payload = await response.json().catch(() => ({ ok: false, error: "Resposta inválida do servidor." }));
+            if (!response.ok || !payload.ok) throw new Error(payload.error || "Não foi possível salvar o campo.");
+            form.dataset.dirty = "false";
+            form.querySelectorAll("input, select").forEach((control) => { control.dataset.originalValue = control.value; });
+            const panel = form.closest("[data-field-panel]");
+            const label = form.querySelector('input[name="field_label"]')?.value;
+            if (label) panel.querySelector("[data-field-summary-label]").textContent = label;
+            notifyWorkspace(payload.message || "Campo salvo.");
+            updateDirtySummary();
+        };
+
+        document.querySelectorAll("[data-async-field-form]").forEach((form) => {
+            form.querySelectorAll("input, select").forEach((control) => {
+                control.dataset.originalValue = control.value;
+                control.addEventListener("change", () => {
+                    form.dataset.dirty = Array.from(form.querySelectorAll("input, select"))
+                        .some((item) => !["category_key", "field_key"].includes(item.name) && item.value !== item.dataset.originalValue) ? "true" : "false";
+                    updateDirtySummary();
+                });
+                control.addEventListener("input", () => control.dispatchEvent(new Event("change")));
+            });
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                try {
+                    await saveFieldMetadata(form);
+                    form.querySelectorAll("input, select").forEach((control) => { control.dataset.originalValue = control.value; });
+                } catch (error) { notifyWorkspace(error.message, "error"); }
+            });
+        });
+
+        const saveAllDirtyFields = async ({ showSuccess = true } = {}) => {
+            const dirtyPanels = fieldPanels.filter(panelIsDirty);
+            if (!dirtyPanels.length) return 0;
+            if (saveAllButton) {
+                saveAllButton.disabled = true;
+                saveAllButton.textContent = "Salvando...";
+            }
+            try {
+                for (const panel of dirtyPanels) {
+                    const metadataForm = panel.querySelector('[data-async-field-form][data-dirty="true"]');
+                    const optionsForm = panel.querySelector('[data-options-form][data-dirty="true"]');
+                    if (metadataForm) await saveFieldMetadata(metadataForm);
+                    if (optionsForm) await saveOptionForm(optionsForm, false);
+                }
+                if (showSuccess) notifyWorkspace("Todas as alterações visíveis foram salvas.");
+                return dirtyPanels.length;
+            } finally {
+                if (saveAllButton) saveAllButton.textContent = "Salvar tudo";
+                updateDirtySummary();
+            }
+        };
+
+        saveAllButton?.addEventListener("click", async () => {
+            try {
+                await saveAllDirtyFields();
+            } catch (error) {
+                notifyWorkspace(error.message, "error");
+            }
+        });
+
+        const categorySelector = document.getElementById("category-selector");
+        categorySelector?.addEventListener("change", async () => {
+            const nextCategory = categorySelector.value;
+            if (!nextCategory || nextCategory === workspaceCategory) return;
+            categorySelector.disabled = true;
+            try {
+                await saveAllDirtyFields({ showSuccess: false });
+                persistWorkspaceState();
+                window.location.assign(`/opcoes?categoria=${encodeURIComponent(nextCategory)}`);
+            } catch (error) {
+                categorySelector.value = workspaceCategory;
+                categorySelector.disabled = false;
+                notifyWorkspace(`${error.message} A categoria não foi alterada.`, "error");
+            }
+        });
+
+        document.getElementById("collapse-all-fields")?.addEventListener("click", () => {
+            fieldPanels.forEach((panel) => { panel.open = false; });
+            persistWorkspaceState();
+        });
+        document.getElementById("expand-all-fields")?.addEventListener("click", () => {
+            fieldPanels.forEach((panel) => { panel.open = true; });
+            persistWorkspaceState();
+        });
+
+        window.addEventListener("beforeunload", (event) => {
+            persistWorkspaceState();
+            if (!fieldPanels.some(panelIsDirty)) return;
+            event.preventDefault();
+            event.returnValue = "";
+        });
+        updateDirtySummary();
+    </script>
+    <script>
         const reorderLists = Array.from(document.querySelectorAll("[data-order-list]"));
         const reorderCategoryKey = {{ selected_category.key | tojson }};
         let draggedOrderItem = null;
@@ -539,11 +834,12 @@
             formData.append("category_key", reorderCategoryKey);
             formData.append("scope", scope);
             orderedKeys.forEach((key) => formData.append("ordered_field_keys", key));
-            await fetch("/campos/reordenar", {
+            const response = await fetch("/campos/reordenar", {
                 method: "POST",
                 body: formData,
             });
-            window.location.reload();
+            if (!response.ok) throw new Error("Não foi possível salvar a nova ordem da descrição.");
+            notifyWorkspace("Ordem da descrição atualizada.");
         };
 
         reorderLists.forEach((list) => {
@@ -566,7 +862,11 @@
                     return;
                 }
                 draggedOrderItem.classList.remove("opacity-60");
-                await saveOrderForList(list);
+                try {
+                    await saveOrderForList(list);
+                } catch (error) {
+                    notifyWorkspace(error.message, "error");
+                }
             });
         });
 

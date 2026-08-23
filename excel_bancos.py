@@ -3433,24 +3433,58 @@ def _ensure_catalog_managed_field(field_key_value: str) -> None:
 
 
 def add_field_option(category_key_value: str, field_key_value: str, option_value: str) -> dict[str, str]:
+    result = add_field_options(category_key_value, field_key_value, [option_value])
+    return {
+        "field": result["field"],
+        "option": result["options"][0],
+        "row": result["rows"][0],
+        "path": result["path"],
+        "backup": result["backup"],
+    }
+
+
+def add_field_options(
+    category_key_value: str,
+    field_key_value: str,
+    option_values: list[str],
+) -> dict[str, Any]:
+    """Inclui varias opcoes validando o lote inteiro antes de persistir.
+
+    A operacao e atomica no nivel do catalogo: uma duplicidade ou valor vazio
+    impede que qualquer opcao do lote seja gravada.
+    """
     _ensure_catalog_managed_field(field_key_value)
     catalog = load_catalog()
     field = _find_field(catalog, category_key_value, field_key_value)
-    raw_option = clean_text(option_value)
-    if not raw_option:
-        raise ValueError("Informe a nova opÃ§Ã£o.")
-
     options = field.setdefault("options", [])
-    if option_identity(raw_option) in {option_identity(value) for value in options}:
-        raise ValueError("Essa opÃ§Ã£o jÃ¡ existe para o campo selecionado.")
+    raw_options = [clean_text(value) for value in option_values]
+    if not raw_options or any(not value for value in raw_options):
+        raise ValueError("Informe ao menos uma nova opÃ§Ã£o valida.")
 
-    option = _format_option_value(raw_option, options)
-    options.append(option)
+    existing_identities = {option_identity(value) for value in options}
+    incoming_identities: set[str] = set()
+    formatted_options: list[str] = []
+    working_options = list(options)
+    for raw_option in raw_options:
+        identity = option_identity(raw_option)
+        if identity in existing_identities or identity in incoming_identities:
+            raise ValueError(f"A opÃ§Ã£o '{raw_option}' jÃ¡ existe para o campo selecionado.")
+        option = _format_option_value(raw_option, working_options)
+        formatted_identity = option_identity(option)
+        if formatted_identity in existing_identities or formatted_identity in incoming_identities:
+            raise ValueError(f"A opÃ§Ã£o '{raw_option}' jÃ¡ existe para o campo selecionado.")
+        incoming_identities.add(formatted_identity)
+        formatted_options.append(option)
+        working_options.append(option)
+
+    first_row = len(options) + 1
+    options.extend(formatted_options)
     save_catalog(catalog)
     return {
         "field": field["label"],
-        "option": option,
-        "row": len(options),
+        "options": formatted_options,
+        "rows": list(range(first_row, first_row + len(formatted_options))),
+        "count": len(formatted_options),
         "path": str(DATA_PATH),
         "backup": "",
     }
@@ -3576,7 +3610,9 @@ def update_field_options(
     field_key_value: str,
     row_values: list[int],
     option_values: list[str],
+    delete_row_values: list[int] | None = None,
 ) -> dict[str, Any]:
+    """Atualiza e exclui opcoes em uma unica gravacao do catalogo."""
     _ensure_catalog_managed_field(field_key_value)
     catalog = load_catalog()
     field = _find_field(catalog, category_key_value, field_key_value)
@@ -3584,23 +3620,38 @@ def update_field_options(
     if len(row_values) != len(option_values):
         raise ValueError("Quantidade de alteraÃ§Ãµes invÃ¡lida.")
 
+    delete_indexes: set[int] = set()
+    for row_value in delete_row_values or []:
+        index = int(row_value) - 1
+        if index < 0 or index >= len(options):
+            raise ValueError("OpÃ§Ã£o selecionada para exclusÃ£o nÃ£o foi encontrada.")
+        delete_indexes.add(index)
+
     updates: list[tuple[int, str, int]] = []
     for row_value, raw_option in zip(row_values, option_values):
         index = int(row_value) - 1
         if index < 0 or index >= len(options):
             raise ValueError("OpÃ§Ã£o nÃ£o encontrada.")
+        if index in delete_indexes:
+            continue
         raw_text = clean_text(raw_option)
         if not raw_text:
-            continue
+            raise ValueError("OpÃ§Ãµes vazias nÃ£o podem ser salvas. Exclua a linha se ela nÃ£o for mais necessÃ¡ria.")
         current = options[index]
         option = _format_option_value(raw_text, options, current)
         updates.append((index, option, row_value))
 
-    if not updates:
+    if not updates and not delete_indexes:
         return {
             "field": field["label"],
             "updated": [],
+            "deleted": [],
             "count": 0,
+            "deleted_count": 0,
+            "option_rows": [
+                {"row": index, "value": option}
+                for index, option in enumerate(options, start=1)
+            ],
             "path": str(DATA_PATH),
             "backup": "",
         }
@@ -3608,6 +3659,8 @@ def update_field_options(
     new_options = list(options)
     for index, option, _ in updates:
         new_options[index] = option
+    deleted_options = [options[index] for index in sorted(delete_indexes)]
+    new_options = [option for index, option in enumerate(new_options) if index not in delete_indexes]
 
     seen_identities: set[str] = set()
     for option in new_options:
@@ -3622,9 +3675,30 @@ def update_field_options(
         "field": field["label"],
         "updated": [option for _, option, _ in updates],
         "count": len(updates),
+        "deleted": deleted_options,
+        "deleted_count": len(deleted_options),
+        "option_rows": [
+            {"row": index, "value": option}
+            for index, option in enumerate(options, start=1)
+        ],
         "path": str(DATA_PATH),
         "backup": "",
     }
+
+
+def delete_field_options(
+    category_key_value: str,
+    field_key_value: str,
+    row_values: list[int],
+) -> dict[str, Any]:
+    """Exclui varias opcoes de um campo em uma unica operacao."""
+    return update_field_options(
+        category_key_value,
+        field_key_value,
+        [],
+        [],
+        delete_row_values=row_values,
+    )
 
 
 def delete_field_option(category_key_value: str, field_key_value: str, row_value: int) -> dict[str, str]:

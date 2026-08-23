@@ -2012,18 +2012,24 @@ async def opcoes_catalogo_regras_importar(
 
 @app.post("/opcoes")
 async def opcoes_post(
+    request: Request,
     category_key: str = Form(...),
     field_key: str = Form(...),
     option_value: str = Form(...),
 ):
     try:
-        result = excel_bancos.add_field_option(category_key, field_key, option_value)
-        message = f"Opção {result['option']} adicionada em {result['field']}."
+        option_values = [value for value in option_value.splitlines() if excel_bancos.clean_text(value)]
+        result = excel_bancos.add_field_options(category_key, field_key, option_values)
+        message = f"{result['count']} opção(ões) adicionada(s) em {result['field']}."
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JSONResponse({"ok": True, "message": message, "result": result})
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote(message)}",
             status_code=303,
         )
     except Exception as exc:
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(category_key)}&erro={quote(str(exc))}",
             status_code=303,
@@ -2053,19 +2059,34 @@ async def opcoes_editar_post(
 
 @app.post("/opcoes/salvar-lote")
 async def opcoes_salvar_lote_post(
+    request: Request,
     category_key: str = Form(...),
     field_key: str = Form(...),
     option_row: list[int] = Form(...),
     option_value: list[str] = Form(...),
+    delete_option_row: list[int] | None = Form(None),
 ):
     try:
-        result = excel_bancos.update_field_options(category_key, field_key, option_row, option_value)
-        message = f"{result['count']} opção(ões) atualizada(s) em {result['field']}."
+        result = excel_bancos.update_field_options(
+            category_key,
+            field_key,
+            option_row,
+            option_value,
+            delete_row_values=delete_option_row or [],
+        )
+        message = (
+            f"{result['count']} opção(ões) revisada(s) e "
+            f"{result['deleted_count']} excluída(s) em {result['field']}."
+        )
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JSONResponse({"ok": True, "message": message, "result": result})
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote(message)}",
             status_code=303,
         )
     except Exception as exc:
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(category_key)}&erro={quote(str(exc))}",
             status_code=303,
@@ -2281,6 +2302,7 @@ async def campos_adicionar_post(
 
 @app.post("/campos/editar")
 async def campos_editar_post(
+    request: Request,
     category_key: str = Form(...),
     field_key: str = Form(...),
     field_label: str = Form(...),
@@ -2296,11 +2318,15 @@ async def campos_editar_post(
             field_selection_mode,
         )
         message = f"Campo atualizado: {result['field']}."
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JSONResponse({"ok": True, "message": message, "result": result})
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote(message)}",
             status_code=303,
         )
     except Exception as exc:
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(category_key)}&erro={quote(str(exc))}",
             status_code=303,
