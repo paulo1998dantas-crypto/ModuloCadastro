@@ -341,6 +341,59 @@ class DescriptionRulesTests(unittest.TestCase):
             )
         self.assertEqual(description["primaria"], "1425X4")
 
+    def test_vidros_oculta_na_e_acrescenta_cj_para_conjunto(self):
+        fields = [
+            {
+                "key": "prefixo",
+                "label": "PREFIXO",
+                "scope": "primaria",
+                "selection_mode": "unitaria",
+                "description_order": 1,
+                "options": ["2- VIDRO FIXO"],
+            },
+            {
+                "key": "especificidade",
+                "label": "ESPECIFICIDADE",
+                "scope": "primaria",
+                "selection_mode": "unitaria",
+                "description_order": 2,
+                "options": ["2- N/A"],
+            },
+        ]
+        conditional_rules = [
+            {
+                "action": "hide",
+                "match_by": "option",
+                "source_type": "field",
+                "source_field_key": "especificidade",
+                "source_values": ["NA"],
+                "target_field_key": "especificidade",
+            }
+        ]
+        description_rules = [
+            {
+                "key": "vidros_grupo_conjunto_prefixo_cj",
+                "action": "prepend_literal",
+                "source_type": "group",
+                "source_field_key": excel_bancos.PN_GROUP_FORM_KEY,
+                "source_values": ["30"],
+                "literal": "CJ",
+            }
+        ]
+        with patch.object(
+            excel_bancos, "_combined_conditional_rules", return_value=conditional_rules
+        ), patch.object(excel_bancos, "get_description_rules", return_value=description_rules):
+            description = excel_bancos.build_descriptions(
+                fields,
+                {
+                    "prefixo": "2- VIDRO FIXO",
+                    "especificidade": "2- N/A",
+                    excel_bancos.PN_GROUP_FORM_KEY: "30",
+                },
+                "cat_12_vidros",
+            )
+        self.assertEqual(description["primaria"], "CJ VIDRO FIXO")
+
 
 if __name__ == "__main__":
     unittest.main()

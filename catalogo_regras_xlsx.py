@@ -47,6 +47,7 @@ RULE_HEADERS = [
     "ORIGEM_ATUAL",
     "SEPARADOR",
     "CAMPOS_ADICIONAIS",
+    "TEXTO_LITERAL",
 ]
 
 HEADER_FILL = PatternFill("solid", fgColor="0B2948")
@@ -161,12 +162,15 @@ def _action(value: Any) -> str:
         "JOIN_FIELDS": "join_fields",
         "JUNTAR_CAMPOS": "join_fields",
         "CONCATENAR_CAMPOS": "join_fields",
+        "PREPEND_LITERAL": "prepend_literal",
+        "PREFIXO_LITERAL": "prepend_literal",
+        "ADICIONAR_PREFIXO": "prepend_literal",
     }
     action = aliases.get(normalized)
     if action is None:
         raise ValueError(
             f"Ação inválida: {_text(value)}. Use HIDE, SHOW, TURN_PRIMARY, "
-            "TURN_SECONDARY ou JOIN_FIELDS."
+            "TURN_SECONDARY, JOIN_FIELDS ou PREPEND_LITERAL."
         )
     return action
 
@@ -345,6 +349,56 @@ def _upsert_rule(category: dict[str, Any], row: dict[str, Any]) -> str:
         )
         return operation
 
+    if action == "prepend_literal":
+        source_type = (
+            "group"
+            if source_key_value == excel_bancos.PN_GROUP_FORM_KEY
+            or _normalized(source_label_value) in {"GRUPO", "GRUPO DO SKU"}
+            else "field"
+        )
+        if source_type != "group":
+            raise ValueError("PREPEND_LITERAL exige GRUPO DO SKU como CAMPO_ORIGEM.")
+        values = [
+            excel_bancos._pn_group_code(value)
+            for value in _split_values(row["VALORES_GATILHO"])
+        ]
+        values = [value for value in values if value]
+        literal = _text(row.get("TEXTO_LITERAL"))
+        if not values or not literal:
+            raise ValueError("PREPEND_LITERAL exige VALORES_GATILHO e TEXTO_LITERAL.")
+        rule_key = _text(row["CHAVE_REGRA"])
+        rules = category.setdefault("description_rules", [])
+        existing = next(
+            (rule for rule in rules if rule_key and _text(rule.get("key")) == rule_key),
+            None,
+        )
+        if existing is None:
+            existing = next(
+                (
+                    rule for rule in rules
+                    if _text(rule.get("action")).lower() == "prepend_literal"
+                    and sorted(rule.get("source_values") or []) == sorted(values)
+                    and _text(rule.get("literal")) == literal
+                ),
+                None,
+            )
+        operation = "updated" if existing is not None else "inserted"
+        if existing is None:
+            existing = {}
+            rules.append(existing)
+        existing.update(
+            {
+                "key": rule_key or existing.get("key") or uuid.uuid4().hex[:12],
+                "action": "prepend_literal",
+                "source_type": "group",
+                "source_field_key": excel_bancos.PN_GROUP_FORM_KEY,
+                "source_field_label": "GRUPO DO SKU",
+                "source_values": values,
+                "literal": literal,
+            }
+        )
+        return operation
+
     source_type = (
         "group"
         if source_key_value == excel_bancos.PN_GROUP_FORM_KEY
@@ -475,7 +529,7 @@ def import_catalog_workbook(content: bytes) -> dict[str, int]:
                 rules_ws,
                 row_number,
                 RULE_HEADERS,
-                optional_headers={"SEPARADOR", "CAMPOS_ADICIONAIS"},
+                optional_headers={"SEPARADOR", "CAMPOS_ADICIONAIS", "TEXTO_LITERAL"},
             )
             if not any(_text(value) for value in row.values()):
                 continue
@@ -593,10 +647,33 @@ def export_catalog_workbook() -> bytes:
                     (rule.get("match_by") or "option").upper(),
                     "PADRAO_SISTEMA" if rule.get("origin") == "system" else "CATALOGO",
                     "",
+                    "",
                 ]
             )
 
         for rule in excel_bancos.get_description_rules(category.get("key")):
+            if rule.get("action") == "prepend_literal":
+                rules_ws.append(
+                    [
+                        "UPSERT",
+                        rule.get("key"),
+                        category.get("label"),
+                        category.get("key"),
+                        "PREPEND_LITERAL",
+                        "GRUPO DO SKU",
+                        excel_bancos.PN_GROUP_FORM_KEY,
+                        "; ".join(rule.get("source_values") or []),
+                        "",
+                        "",
+                        "",
+                        "",
+                        "CATALOGO",
+                        "",
+                        "",
+                        rule.get("literal") or "",
+                    ]
+                )
+                continue
             rules_ws.append(
                 [
                     "UPSERT",
@@ -614,13 +691,14 @@ def export_catalog_workbook() -> bytes:
                     "CATALOGO",
                     rule.get("separator") or "X",
                     "; ".join(rule.get("additional_target_field_keys") or []),
+                    "",
                 ]
             )
 
     _style_sheet(fields_ws, [17, 28, 23, 28, 25, 15, 18, 16, 18, 70, 18], "CatalogoCamposOpcoes")
     _style_sheet(
         rules_ws,
-        [17, 20, 28, 23, 18, 28, 25, 55, 28, 25, 18, 16, 18, 14, 35],
+        [17, 20, 28, 23, 18, 28, 25, 55, 28, 25, 18, 16, 18, 14, 35, 26],
         "CatalogoRegrasCondicionais",
     )
 
@@ -631,7 +709,7 @@ def export_catalog_workbook() -> bytes:
         (fields_ws, "H", '"SIM,NAO"'),
         (fields_ws, "I", '"LISTA,TEXTO_LIVRE"'),
         (rules_ws, "A", '"UPSERT,IGNORAR"'),
-        (rules_ws, "E", '"HIDE,SHOW,TURN_PRIMARY,TURN_SECONDARY,JOIN_FIELDS"'),
+        (rules_ws, "E", '"HIDE,SHOW,TURN_PRIMARY,TURN_SECONDARY,JOIN_FIELDS,PREPEND_LITERAL"'),
         (rules_ws, "K", '"PRIMARIA,SECUNDARIA"'),
         (rules_ws, "L", '"OPCAO,PREFIXO"'),
     ]

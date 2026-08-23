@@ -1080,6 +1080,36 @@ def _sanitize_description_rules(
     seen_keys: set[str] = set()
     for rule in rules or []:
         action = clean_text(rule.get("action")).lower()
+        rule_key = clean_text(rule.get("key")) or uuid.uuid4().hex[:12]
+        if rule_key in seen_keys:
+            continue
+        if action == "prepend_literal":
+            source_type = clean_text(rule.get("source_type")).lower() or "group"
+            source_key = clean_text(rule.get("source_field_key")) or PN_GROUP_FORM_KEY
+            raw_values = rule.get("source_values") or []
+            if isinstance(raw_values, str):
+                raw_values = [raw_values]
+            source_values: list[str] = []
+            for raw_value in raw_values:
+                group_code = _pn_group_code(raw_value)
+                if group_code and group_code not in source_values:
+                    source_values.append(group_code)
+            literal = clean_text(rule.get("literal"))[:32]
+            if source_type != "group" or source_key != PN_GROUP_FORM_KEY or not source_values or not literal:
+                continue
+            cleaned.append(
+                {
+                    "key": rule_key,
+                    "action": "prepend_literal",
+                    "source_type": "group",
+                    "source_field_key": PN_GROUP_FORM_KEY,
+                    "source_field_label": "GRUPO DO SKU",
+                    "source_values": source_values,
+                    "literal": literal,
+                }
+            )
+            seen_keys.add(rule_key)
+            continue
         if action != "join_fields":
             continue
         source_key = clean_text(rule.get("source_field_key"))
@@ -1102,9 +1132,6 @@ def _sanitize_description_rules(
             ):
                 continue
             additional_target_keys.append(additional_target_key)
-        rule_key = clean_text(rule.get("key")) or uuid.uuid4().hex[:12]
-        if rule_key in seen_keys:
-            continue
         separator = clean_text(rule.get("separator")) or "X"
         # Separadores longos indicam, em geral, uma coluna preenchida no lugar
         # errado durante a importacao. Mantemos a regra pequena e previsivel.
@@ -2724,6 +2751,7 @@ def build_descriptions(
     secondary_parts: list[str] = []
     secondary_codes: list[str] = []
     effective_scopes = _effective_field_scopes(fields, category_key_value, data)
+    visible_field_keys = _visible_field_keys(fields, category_key_value, data)
     fields_by_key = {field["key"]: field for field in fields}
     description_rules: list[dict[str, Any]] = []
     if clean_text(category_key_value):
@@ -2752,6 +2780,8 @@ def build_descriptions(
         )
 
     for field in _ordered_fields_for_description(fields):
+        if field["key"] not in visible_field_keys:
+            continue
         if field["key"] in joined_target_keys:
             continue
         values = _serialize_field_values(field, data)
@@ -2767,7 +2797,7 @@ def build_descriptions(
             )
             joined_parts: list[str] = []
             for joined_field in [field, *(fields_by_key.get(key) for key in target_keys)]:
-                if joined_field is None:
+                if joined_field is None or joined_field["key"] not in visible_field_keys:
                     continue
                 current_values = _serialize_field_values(joined_field, data)
                 current_label = _format_field_description(joined_field, current_values) if current_values else ""
@@ -2789,7 +2819,22 @@ def build_descriptions(
             secondary_parts.append(label)
             secondary_codes.extend(code for code in (option_code(value) for value in joined_values) if code)
 
-    primary_description_base = " ".join(primary_parts).strip()
+    prefix_literals: list[str] = []
+    current_group = pn_group_code(fields, data)
+    for rule in description_rules:
+        if rule.get("action") != "prepend_literal" or rule.get("source_type") != "group":
+            continue
+        if current_group not in set(rule.get("source_values") or []):
+            continue
+        literal = clean_text(rule.get("literal"))
+        if literal and normalize_label(literal) not in {normalize_label(value) for value in prefix_literals}:
+            prefix_literals.append(literal)
+    if primary_parts and prefix_literals:
+        first_primary = normalize_label(primary_parts[0])
+        prefix_literals = [
+            literal for literal in prefix_literals if normalize_label(literal) != first_primary
+        ]
+    primary_description_base = " ".join([*prefix_literals, *primary_parts]).strip()
     suffix = ""
     if secondary_codes:
         suffix = ".".join(secondary_codes)
