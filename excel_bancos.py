@@ -3587,11 +3587,11 @@ def update_field_option(category_key_value: str, field_key_value: str, row_value
     }
 
 
-def add_conditional_rule(
+def add_conditional_rules(
     category_key_value: str,
     source_field_key_value: str,
-    source_value_value: str,
-    target_field_key_value: str,
+    source_value_values: str | list[str],
+    target_field_key_values: str | list[str],
     target_field_label_value: str = "",
     action_value: str = "hide",
     rule_key_value: str = "",
@@ -3603,85 +3603,150 @@ def add_conditional_rule(
     if source_type not in {"field", "group"}:
         source_type = "field"
     source_field = None
+    raw_source_values = (
+        source_value_values
+        if isinstance(source_value_values, list)
+        else [source_value_values]
+    )
+    source_values: list[str] = []
+    source_groups: list[dict[str, Any]] = []
     if source_type == "group":
-        source_value = _pn_group_code(source_value_value)
-        source_group = _find_pn_group(catalog, source_value)
+        for raw_value in raw_source_values:
+            source_value = _pn_group_code(raw_value)
+            if not source_value or source_value in source_values:
+                continue
+            source_groups.append(_find_pn_group(catalog, source_value))
+            source_values.append(source_value)
         source_key = PN_GROUP_FORM_KEY
         source_label = "GRUPO DO SKU"
         source_scope = "estrutura"
     else:
         source_field = _find_field(catalog, category["key"], source_field_key_value)
-        source_value = rule_option_token(clean_text(source_value_value))
-        source_group = None
+        for raw_value in raw_source_values:
+            source_value = rule_option_token(clean_text(raw_value))
+            if source_value and source_value not in source_values:
+                source_values.append(source_value)
         source_key = source_field["key"]
         source_label = source_field["label"]
         source_scope = source_field["scope"]
-    target_field = None
-    target_key = clean_text(target_field_key_value)
+
+    raw_target_keys = (
+        target_field_key_values
+        if isinstance(target_field_key_values, list)
+        else [target_field_key_values]
+    )
+    target_keys: list[str] = []
+    for raw_key in raw_target_keys:
+        target_key = clean_text(raw_key)
+        if target_key and target_key not in target_keys:
+            target_keys.append(target_key)
     target_label = clean_text(target_field_label_value)
-    if target_key:
-        target_field = _find_field(catalog, category["key"], target_key)
-    elif not target_label:
+    target_fields = [
+        _find_field(catalog, category["key"], target_key)
+        for target_key in target_keys
+    ]
+    if not target_fields and not target_label:
         raise ValueError("Informe o campo alvo da regra.")
-    if not source_value:
-        raise ValueError("Informe o grupo ou a opÃ§Ã£o condicional.")
+    if not source_values:
+        raise ValueError("Informe ao menos um grupo ou uma opÃ§Ã£o condicional.")
     action = clean_text(action_value).lower()
     if action not in {"hide", "show", "set_primary", "set_secondary"}:
         action = "hide"
-    if action in {"set_primary", "set_secondary"} and target_field is None:
+    if action in {"set_primary", "set_secondary"} and not target_fields:
         raise ValueError("Selecione um campo alvo existente para alterar a descri\u00e7\u00e3o.")
 
     rules = category.setdefault("conditional_rules", [])
     edited_key = clean_text(rule_key_value)
     if edited_key:
         rules[:] = [rule for rule in rules if clean_text(rule.get("key")) != edited_key]
-    for rule in rules:
-        same_trigger_and_target = (
-            (clean_text(rule.get("source_type")).lower() or (
-                "group" if rule.get("source_field_key") == PN_GROUP_FORM_KEY else "field"
-            )) == source_type
-            and rule.get("source_field_key") == source_key
-            and rule.get("target_field_key") == (target_field["key"] if target_field else "")
-            and rule_option_token(clean_text(rule.get("target_field_label"))) == rule_option_token(
-                target_label or (target_field["label"] if target_field else "")
-            )
-            and rule_option_token(rule.get("source_values", [""])[0] if rule.get("source_values") else "") == source_value
-        )
-        if not same_trigger_and_target:
-            continue
-        if rule.get("action") == action:
-            raise ValueError("Essa regra jÃ¡ existe.")
-        if action in {"set_primary", "set_secondary"} and rule.get("action") in {"set_primary", "set_secondary"}:
-            raise ValueError("JÃ¡ existe uma regra de classificaÃ§Ã£o para esse campo, opÃ§Ã£o e alvo.")
 
-    rule = {
-        # Ao editar uma regra padrão, a cópia com a mesma chave passa a ser a
-        # substituição administrável do catálogo. Excluir a cópia restaura o
-        # comportamento padrão do sistema.
-        "key": edited_key or uuid.uuid4().hex[:12],
-        "source_type": source_type,
-        "source_field_key": source_key,
-        "source_field_label": source_label,
-        "source_field_scope": source_scope,
-        "source_values": [source_value],
-        "target_field_key": target_field["key"] if target_field else "",
-        "target_field_label": target_field["label"] if target_field else target_label,
-        "target_field_scope": target_field["scope"] if target_field else "secundaria",
-        "action": action,
-    }
-    rules.append(rule)
+    candidate_targets: list[dict[str, Any] | None] = target_fields or [None]
+    source_value_set = set(source_values)
+    created_rules: list[dict[str, Any]] = []
+    for target_index, target_field in enumerate(candidate_targets):
+        candidate_target_key = target_field["key"] if target_field else ""
+        candidate_target_label = target_field["label"] if target_field else target_label
+        for rule in rules + created_rules:
+            existing_source_type = clean_text(rule.get("source_type")).lower() or (
+                "group" if rule.get("source_field_key") == PN_GROUP_FORM_KEY else "field"
+            )
+            existing_values = {
+                _pn_group_code(value) if source_type == "group" else rule_option_token(value)
+                for value in (rule.get("source_values") or [])
+            }
+            same_trigger_and_target = (
+                existing_source_type == source_type
+                and rule.get("source_field_key") == source_key
+                and rule.get("target_field_key") == candidate_target_key
+                and (
+                    bool(candidate_target_key)
+                    or rule_option_token(clean_text(rule.get("target_field_label")))
+                    == rule_option_token(candidate_target_label)
+                )
+                and bool(existing_values & source_value_set)
+            )
+            if not same_trigger_and_target:
+                continue
+            if rule.get("action") == action:
+                raise ValueError("Essa regra jÃ¡ existe para ao menos um dos valores e campos selecionados.")
+            if action in {"set_primary", "set_secondary"} and rule.get("action") in {"set_primary", "set_secondary"}:
+                raise ValueError("JÃ¡ existe uma regra de classificaÃ§Ã£o para um dos valores e campos selecionados.")
+
+        created_rules.append(
+            {
+                # Ao editar uma regra padrão, a primeira cópia mantém a chave
+                # original. Destinos adicionais recebem chaves próprias.
+                "key": edited_key if edited_key and target_index == 0 else uuid.uuid4().hex[:12],
+                "source_type": source_type,
+                "source_field_key": source_key,
+                "source_field_label": source_label,
+                "source_field_scope": source_scope,
+                "source_values": source_values,
+                "target_field_key": candidate_target_key,
+                "target_field_label": candidate_target_label,
+                "target_field_scope": target_field["scope"] if target_field else "secundaria",
+                "action": action,
+            }
+        )
+
+    rules.extend(created_rules)
     save_catalog(catalog)
     return {
-        "rule": rule,
+        "rule": created_rules[0],
+        "rules": created_rules,
         "source_field": (
-            f"Grupo {source_group['code']} - {source_group['label']}"
-            if source_group
+            ", ".join(f"Grupo {group['code']} - {group['label']}" for group in source_groups)
+            if source_groups
             else source_label
         ),
-        "target_field": target_field["label"] if target_field else target_label,
+        "target_field": ", ".join(
+            target_field["label"] for target_field in target_fields
+        ) or target_label,
         "path": str(DATA_PATH),
         "backup": "",
     }
+
+
+def add_conditional_rule(
+    category_key_value: str,
+    source_field_key_value: str,
+    source_value_value: str,
+    target_field_key_value: str,
+    target_field_label_value: str = "",
+    action_value: str = "hide",
+    rule_key_value: str = "",
+    source_type_value: str = "field",
+) -> dict[str, Any]:
+    return add_conditional_rules(
+        category_key_value,
+        source_field_key_value,
+        source_value_value,
+        target_field_key_value,
+        target_field_label_value,
+        action_value,
+        rule_key_value,
+        source_type_value,
+    )
 
 
 def delete_conditional_rule(category_key_value: str, rule_key_value: str) -> dict[str, str]:

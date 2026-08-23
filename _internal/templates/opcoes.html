@@ -445,8 +445,9 @@
                         </select>
                     </label>
                     <label class="space-y-1">
-                        <span id="conditional-source-value-label" class="block text-xs font-bold uppercase text-slate-500">Opção origem</span>
-                        <select name="source_value" id="conditional-source-value" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" required></select>
+                        <span id="conditional-source-value-label" class="block text-xs font-bold uppercase text-slate-500">Opções origem</span>
+                        <select name="source_value" id="conditional-source-value" multiple size="5" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" required></select>
+                        <span class="block text-[11px] font-semibold text-slate-400">Selecione uma ou mais opções. Use Ctrl para marcar opções separadas.</span>
                     </label>
                     <label class="space-y-1">
                         <span class="block text-xs font-bold uppercase text-slate-500">Ação</span>
@@ -458,13 +459,14 @@
                         </select>
                     </label>
                     <label class="space-y-1">
-                        <span class="block text-xs font-bold uppercase text-slate-500">Campo alvo existente</span>
-                        <select name="target_field_key" id="conditional-target-field" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                        <span class="block text-xs font-bold uppercase text-slate-500">Campos alvo existentes</span>
+                        <select name="target_field_key" id="conditional-target-field" multiple size="5" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="">Usar nome personalizado abaixo</option>
                             {% for field in fields %}
                             <option value="{{ field.key }}">{{ field.label }} - {{ field.scope }}</option>
                             {% endfor %}
                         </select>
+                        <span class="block text-[11px] font-semibold text-slate-400">A mesma ação será aplicada a todos os campos selecionados.</span>
                     </label>
                     <label class="space-y-1">
                         <span class="block text-xs font-bold uppercase text-slate-500">Nome do campo alvo</span>
@@ -486,7 +488,8 @@
                 <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
                     <p class="text-sm font-bold text-slate-900">Como usar</p>
                     <p class="mt-2 text-sm text-slate-600">
-                        Selecione se o gatilho vem de um campo da categoria ou do grupo do SKU, o valor que dispara a regra e a ação desejada.
+                        Selecione se o gatilho vem de um campo da categoria ou do grupo do SKU, um ou mais valores que disparam a regra e a ação desejada.
+                        Uma única configuração pode atuar em vários campos alvo; o sistema mantém cada destino como uma regra compatível e editável.
                         Para tornar um campo primário ou secundário, escolha obrigatoriamente um campo alvo existente;
                         a coluna original da planilha será preservada.
                     </p>
@@ -948,7 +951,7 @@
             conditionalSourceField.disabled = byGroup;
             conditionalSourceField.required = !byGroup;
             if (conditionalSourceValueLabel) {
-                conditionalSourceValueLabel.textContent = byGroup ? "Grupo gatilho" : "Opção origem";
+                conditionalSourceValueLabel.textContent = byGroup ? "Grupos gatilho" : "Opções origem";
             }
             const selectedField = conditionalFields.find((field) => field.key === conditionalSourceField.value) || conditionalFields[0];
             const sourceOptions = byGroup
@@ -968,6 +971,7 @@
                 conditionalSourceValue.disabled = true;
             } else {
                 conditionalSourceValue.disabled = false;
+                conditionalSourceValue.options[0].selected = true;
             }
         };
 
@@ -976,7 +980,17 @@
                 return;
             }
             const changesScope = conditionalAction && ["set_primary", "set_secondary"].includes(conditionalAction.value);
-            const usingCustomLabel = !changesScope && !conditionalTargetField.value;
+            const selectedTargetKeys = Array.from(conditionalTargetField.selectedOptions)
+                .map((option) => option.value)
+                .filter(Boolean);
+            const customOption = Array.from(conditionalTargetField.options).find((option) => !option.value);
+            if (selectedTargetKeys.length && customOption) {
+                customOption.selected = false;
+            }
+            if (customOption) {
+                customOption.disabled = changesScope;
+            }
+            const usingCustomLabel = !changesScope && selectedTargetKeys.length === 0;
             conditionalTargetField.required = changesScope;
             conditionalTargetLabel.required = usingCustomLabel;
             conditionalTargetLabel.disabled = !usingCustomLabel;
@@ -1020,19 +1034,20 @@
                 if (conditionalSourceValue) {
                     const sourceValues = rule.source_values || [];
                     const sourceLabels = rule.source_value_labels || sourceValues;
-                    conditionalSourceValue.value = rule.source_type === "group"
-                        ? (sourceValues[0] || "")
-                        : (sourceLabels[0] || "");
-                    if (!conditionalSourceValue.value && rule.source_values?.length) {
-                        const wanted = normalizeOptionLabel(rule.source_values[0]);
-                        const match = Array.from(conditionalSourceValue.options).find(
-                            (option) => normalizeOptionLabel(option.value) === wanted,
-                        );
-                        if (match) conditionalSourceValue.value = match.value;
-                    }
+                    const wantedValues = new Set(
+                        (rule.source_type === "group" ? sourceValues : [...sourceValues, ...sourceLabels])
+                            .map((value) => normalizeOptionLabel(value)),
+                    );
+                    Array.from(conditionalSourceValue.options).forEach((option) => {
+                        option.selected = wantedValues.has(normalizeOptionLabel(option.value));
+                    });
                 }
                 if (conditionalAction) conditionalAction.value = rule.action || "hide";
-                if (conditionalTargetField) conditionalTargetField.value = rule.target_field_key || "";
+                if (conditionalTargetField) {
+                    Array.from(conditionalTargetField.options).forEach((option) => {
+                        option.selected = option.value === (rule.target_field_key || "");
+                    });
+                }
                 if (conditionalTargetLabel) conditionalTargetLabel.value = rule.target_field_key ? "" : (rule.target_field_label || "");
                 if (conditionalTargetScope) conditionalTargetScope.value = rule.target_field_scope || "secundaria";
                 syncTargetLabelState();

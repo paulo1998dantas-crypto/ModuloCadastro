@@ -2139,14 +2139,14 @@ async def regras_adicionar_post(
     rule_key: str = Form(""),
     source_type: str = Form("field"),
     source_field_key: str = Form(""),
-    source_value: str = Form(...),
-    target_field_key: str = Form(""),
+    source_value: list[str] = Form(...),
+    target_field_key: list[str] = Form([]),
     target_field_label: str = Form(""),
     target_field_scope: str = Form("secundaria"),
     action: str = Form("hide"),
 ):
     try:
-        result = excel_bancos.add_conditional_rule(
+        result = excel_bancos.add_conditional_rules(
             category_key,
             source_field_key,
             source_value,
@@ -2156,7 +2156,12 @@ async def regras_adicionar_post(
             rule_key,
             source_type,
         )
-        if not excel_bancos.clean_text(target_field_key) and excel_bancos.clean_text(target_field_label):
+        selected_target_keys = [
+            excel_bancos.clean_text(value)
+            for value in target_field_key
+            if excel_bancos.clean_text(value)
+        ]
+        if not selected_target_keys and excel_bancos.clean_text(target_field_label):
             catalog = excel_bancos.load_catalog()
             category = next((item for item in catalog["categories"] if item["key"] == category_key), None)
             if category is not None:
@@ -2167,8 +2172,14 @@ async def regras_adicionar_post(
                         rule["target_field_scope"] = excel_bancos.clean_text(target_field_scope) or "secundaria"
                         excel_bancos.save_catalog(catalog)
                         break
+        saved_count = len(result.get("rules") or [result["rule"]])
+        message = (
+            "Regra condicional salva."
+            if saved_count == 1
+            else f"{saved_count} regras condicionais salvas."
+        )
         return RedirectResponse(
-            url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote('Regra condicional salva.')}",
+            url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote(message)}",
             status_code=303,
         )
     except Exception as exc:
