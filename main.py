@@ -19,6 +19,7 @@ from fastapi.templating import Jinja2Templates
 from werkzeug.security import check_password_hash
 
 import bridge_store
+import catalogo_regras_xlsx
 import excel_bancos
 import supabase_store
 import supabase_suprimentos
@@ -1967,6 +1968,46 @@ async def api_ponte_produtos(request: Request, authorization: str = Header("")):
 @app.get("/opcoes", response_class=HTMLResponse)
 async def opcoes_page(request: Request, categoria: str = "", sucesso: str = "", erro: str = ""):
     return _render_opcoes_page(request, categoria=categoria, sucesso=sucesso, erro=erro)
+
+
+@app.get("/opcoes/catalogo-regras.xlsx")
+async def opcoes_catalogo_regras_exportar():
+    content = catalogo_regras_xlsx.export_catalog_workbook()
+    timestamp = time.strftime("%Y%m%d_%H%M")
+    return _xlsx_download(content, f"Catalogo_Regras_Cadastro_{timestamp}.xlsx")
+
+
+@app.post("/opcoes/catalogo-regras/importar")
+async def opcoes_catalogo_regras_importar(
+    category_key: str = Form(""),
+    arquivo_catalogo: UploadFile = File(...),
+):
+    try:
+        filename = Path(arquivo_catalogo.filename or "").name.strip()
+        if not filename.lower().endswith(".xlsx"):
+            raise ValueError("Envie o catálogo no formato XLSX.")
+        content = await arquivo_catalogo.read()
+        if not content:
+            raise ValueError("O arquivo enviado está vazio.")
+        if len(content) > 8 * 1024 * 1024:
+            raise ValueError("O catálogo excede o limite de 8 MB.")
+        result = catalogo_regras_xlsx.import_catalog_workbook(content)
+        message = (
+            "Catálogo atualizado: "
+            f"{result['fields_inserted']} campo(s) incluído(s), "
+            f"{result['fields_updated']} atualizado(s), "
+            f"{result['rules_inserted']} regra(s) incluída(s) e "
+            f"{result['rules_updated']} atualizada(s)."
+        )
+        return RedirectResponse(
+            url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote(message)}",
+            status_code=303,
+        )
+    except Exception as exc:
+        return RedirectResponse(
+            url=f"/opcoes?categoria={quote(category_key)}&erro={quote(str(exc))}",
+            status_code=303,
+        )
 
 
 @app.post("/opcoes")

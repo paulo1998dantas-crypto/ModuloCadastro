@@ -46,6 +46,36 @@
         </div>
         {% endif %}
 
+        <section class="mb-6 overflow-hidden rounded-lg border border-cyan-200 bg-white shadow-sm">
+            <div class="grid grid-cols-1 gap-5 bg-gradient-to-r from-slate-950 to-cyan-950 p-5 text-white lg:grid-cols-[1fr_auto] lg:items-center">
+                <div>
+                    <p class="text-xs font-black uppercase tracking-widest text-cyan-300">Gestão em massa</p>
+                    <h2 class="mt-1 text-xl font-black">Catálogo de campos, opções e regras</h2>
+                    <p class="mt-2 max-w-3xl text-sm text-slate-200">Exporte a visão efetiva do Cadastro, altere as duas abas no Excel e importe novamente. Campos virtuais e regras padrão do sistema também são incluídos.</p>
+                </div>
+                <a href="/opcoes/catalogo-regras.xlsx" class="rounded-lg bg-cyan-500 px-6 py-3 text-center text-sm font-black text-slate-950 transition hover:bg-cyan-300">Exportar regras</a>
+            </div>
+            <div class="grid grid-cols-1 gap-5 p-5 xl:grid-cols-[1fr_1.15fr]">
+                <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                    <p class="font-black text-slate-900">O arquivo contém exatamente duas abas:</p>
+                    <ul class="mt-3 list-disc space-y-2 pl-5">
+                        <li><strong>CAMPOS_E_OPCOES:</strong> categoria, campo, escopo primário/secundário, seleção unitária/múltipla, obrigatoriedade, tipo de entrada, opções e ordem.</li>
+                        <li><strong>REGRAS_CONDICIONAIS:</strong> ação HIDE/SHOW/TURN_PRIMARY/TURN_SECONDARY, origem, gatilhos, destino, escopo e comparação.</li>
+                    </ul>
+                    <p class="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">Use UPSERT para incluir/atualizar e IGNORAR para desconsiderar uma linha. Não altere as chaves dos registros existentes. Linhas ausentes não são excluídas.</p>
+                </div>
+                <form method="post" action="/opcoes/catalogo-regras/importar" enctype="multipart/form-data" class="rounded-lg border border-slate-200 p-4">
+                    <input type="hidden" name="category_key" value="{{ selected_category.key }}">
+                    <label class="block space-y-2">
+                        <span class="block text-xs font-black uppercase tracking-wide text-slate-500">Planilha atualizada (.xlsx)</span>
+                        <input type="file" name="arquivo_catalogo" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="block w-full rounded-lg border border-slate-300 bg-white p-3 text-sm file:mr-4 file:rounded-md file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:font-bold file:text-white hover:file:bg-slate-700" required>
+                    </label>
+                    <button type="submit" onclick="return confirm('Importar as alterações do catálogo? A operação será validada por completo antes de salvar.')" class="mt-4 w-full rounded-lg bg-emerald-600 px-6 py-3 text-sm font-black text-white transition hover:bg-emerald-700">Validar e importar regras</button>
+                    <p class="mt-3 text-xs text-slate-500">A importação é atômica: se qualquer linha estiver inválida, nenhuma alteração do arquivo será gravada.</p>
+                </form>
+            </div>
+        </section>
+
         <section class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_0.9fr]">
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 class="mb-4 text-sm font-black uppercase tracking-wide text-slate-700">Selecionar categoria</h2>

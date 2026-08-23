@@ -961,16 +961,30 @@ def _sanitize_fields(fields: list[dict[str, Any]] | None, include_defaults: bool
             seen_options.add(option_key)
             options.append(value)
 
-        cleaned.append(
-            {
-                "key": key,
-                "label": label,
-                "scope": scope,
-                "selection_mode": selection_mode,
-                "description_order": description_order,
-                "options": options,
-            }
-        )
+        cleaned_field = {
+            "key": key,
+            "label": label,
+            "scope": scope,
+            "selection_mode": selection_mode,
+            "description_order": description_order,
+            "options": options,
+        }
+        # Os metadados novos são opcionais no catálogo legado. Uma simples
+        # leitura não deve regravar o JSON inteiro; quando o usuário os altera
+        # pelo XLSX, passam a ser persistidos explicitamente.
+        if "required" in field:
+            cleaned_field["required"] = bool(field.get("required"))
+        if "free_text" in field:
+            cleaned_field["free_text"] = bool(field.get("free_text"))
+        if "banco_mode" in field and clean_text(field.get("banco_mode")):
+            cleaned_field["banco_mode"] = clean_text(field.get("banco_mode"))
+        if "conjunto_only_options" in field:
+            cleaned_field["conjunto_only_options"] = [
+                normalize_option_text(option)
+                for option in (field.get("conjunto_only_options") or [])
+                if normalize_option_text(option)
+            ]
+        cleaned.append(cleaned_field)
 
     if include_defaults and not cleaned:
         cleaned.extend(_default_category()["fields"])
@@ -1061,16 +1075,61 @@ def _sanitize_catalog(catalog: dict[str, Any]) -> dict[str, Any]:
         key = raw_key if raw_key not in used_keys else _unique_category_key(label, used_keys)
         used_keys.add(key)
         fields = _sanitize_fields(raw_category.get("fields") or [], include_defaults=False)
+        raw_overrides = raw_category.get("field_overrides") or {}
+        field_overrides: dict[str, dict[str, Any]] = {}
+        if isinstance(raw_overrides, dict):
+            for override_key, raw_override in raw_overrides.items():
+                key_value = clean_text(override_key)
+                if not key_value or not isinstance(raw_override, dict):
+                    continue
+                override: dict[str, Any] = {}
+                if clean_text(raw_override.get("label")):
+                    override["label"] = clean_text(raw_override.get("label")).upper()
+                if clean_text(raw_override.get("scope")):
+                    override["scope"] = field_scope(raw_override.get("scope"))
+                if clean_text(raw_override.get("selection_mode")):
+                    override["selection_mode"] = field_selection_mode(raw_override.get("selection_mode"))
+                if raw_override.get("description_order") not in {None, ""}:
+                    try:
+                        override["description_order"] = max(1, int(raw_override.get("description_order")))
+                    except (TypeError, ValueError):
+                        pass
+                if "required" in raw_override:
+                    override["required"] = bool(raw_override.get("required"))
+                if "free_text" in raw_override:
+                    override["free_text"] = bool(raw_override.get("free_text"))
+                if "options" in raw_override:
+                    override["options"] = [
+                        normalize_option_text(option)
+                        for option in (raw_override.get("options") or [])
+                        if normalize_option_text(option)
+                    ]
+                if override:
+                    field_overrides[key_value] = override
 
-        categories.append(
-            {
-                "key": key,
-                "label": label,
-                "sheet_name": _safe_sheet_title(raw_category.get("sheet_name") or label),
-                "fields": fields,
-                "conditional_rules": _sanitize_conditional_rules(raw_category.get("conditional_rules") or [], fields, key),
-            }
-        )
+        rule_fields = deepcopy(fields)
+        if key == DEFAULT_CATEGORY_KEY:
+            existing_keys = {field["key"] for field in rule_fields}
+            rule_fields.extend(
+                deepcopy(field)
+                for field in CONJUNTO_BANCO_FIELDS
+                if field["key"] not in existing_keys
+            )
+        for field in rule_fields:
+            field.update(deepcopy(field_overrides.get(field["key"]) or {}))
+
+        category_entry = {
+            "key": key,
+            "label": label,
+            "sheet_name": _safe_sheet_title(raw_category.get("sheet_name") or label),
+            "fields": fields,
+            "conditional_rules": _sanitize_conditional_rules(
+                raw_category.get("conditional_rules") or [], rule_fields, key
+            ),
+        }
+        if field_overrides:
+            category_entry["field_overrides"] = field_overrides
+        categories.append(category_entry)
 
     if active_category_value not in {category["key"] for category in categories}:
         active_category_value = categories[0]["key"]
@@ -1776,28 +1835,35 @@ def _field_response(field: dict[str, Any], index: int) -> dict[str, Any]:
 
 def _fields_for_category(category: dict[str, Any]) -> list[dict[str, Any]]:
     fields = deepcopy(category.get("fields") or [])
-    if category.get("key") != DEFAULT_CATEGORY_KEY:
-        return fields
+    if category.get("key") == DEFAULT_CATEGORY_KEY:
+        # A serie 1020 continua com os campos atuais; a serie 3020 recebe somente
+        # os atributos exclusivos de conjunto. Os campos tecnicos equivalentes
+        # continuam unicos e compartilhados pelos dois grupos.
+        for field in fields:
+            field["banco_mode"] = "shared" if field["key"] in CONJUNTO_BANCO_SHARED_FIELDS else "insumo"
+            if field["key"] == "pre_fixo":
+                # PRE-FIXO e o conceito canonico para bancos unitarios e conjuntos.
+                # O antigo campo cj_sufixo permanece apenas como alias de leitura.
+                field["label"] = "PRÉ-FIXO"
+                if not any(option_identity(option) == "CJ" for option in (field.get("options") or [])):
+                    field["options"] = list(field.get("options") or []) + ["8- CJ"]
+            if field["key"] == "especificidade":
+                conjunto_only = [
+                    option for option in CONJUNTO_BANCO_ESPECIFICIDADE_OPTIONS if option not in (field.get("options") or [])
+                ]
+                field["selection_mode"] = SELECTION_MODE_MULTIPLA
+                field["options"] = list(field.get("options") or []) + conjunto_only
+                field["conjunto_only_options"] = conjunto_only
+        existing_keys = {field["key"] for field in fields}
+        fields.extend(
+            deepcopy(field)
+            for field in CONJUNTO_BANCO_FIELDS
+            if field["key"] not in existing_keys
+        )
 
-    # A serie 1020 continua com os campos atuais; a serie 3020 recebe somente
-    # os atributos exclusivos de conjunto. Os campos tecnicos equivalentes
-    # continuam unicos e compartilhados pelos dois grupos.
+    overrides = category.get("field_overrides") or {}
     for field in fields:
-        field["banco_mode"] = "shared" if field["key"] in CONJUNTO_BANCO_SHARED_FIELDS else "insumo"
-        if field["key"] == "pre_fixo":
-            # PRE-FIXO e o conceito canonico para bancos unitarios e conjuntos.
-            # O antigo campo cj_sufixo permanece apenas como alias de leitura.
-            field["label"] = "PRÉ-FIXO"
-            if not any(option_identity(option) == "CJ" for option in (field.get("options") or [])):
-                field["options"] = list(field.get("options") or []) + ["8- CJ"]
-        if field["key"] == "especificidade":
-            conjunto_only = [
-                option for option in CONJUNTO_BANCO_ESPECIFICIDADE_OPTIONS if option not in (field.get("options") or [])
-            ]
-            field["selection_mode"] = SELECTION_MODE_MULTIPLA
-            field["options"] = list(field.get("options") or []) + conjunto_only
-            field["conjunto_only_options"] = conjunto_only
-    fields.extend(deepcopy(CONJUNTO_BANCO_FIELDS))
+        field.update(deepcopy(overrides.get(field["key"]) or {}))
     return fields
 
 
