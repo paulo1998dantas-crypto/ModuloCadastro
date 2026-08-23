@@ -44,6 +44,16 @@ def _catalog():
                         "free_text": True,
                         "options": [],
                     },
+                    {
+                        "key": "campo_extra",
+                        "label": "CAMPO EXTRA",
+                        "scope": "secundaria",
+                        "selection_mode": "unitaria",
+                        "description_order": 3,
+                        "required": False,
+                        "free_text": True,
+                        "options": [],
+                    },
                 ],
                 "conditional_rules": [
                     {
@@ -219,6 +229,7 @@ class CatalogoRegrasXlsxTests(unittest.TestCase):
                 "source_field_label": "ORIGEM",
                 "target_field_key": "destino",
                 "target_field_label": "DESTINO",
+                "additional_target_field_keys": ["campo_extra"],
                 "separator": "X",
             }
         ]
@@ -302,18 +313,19 @@ class DescriptionRulesTests(unittest.TestCase):
                 "source_field_label": "COMPRIMENTO",
                 "target_field_key": "largura",
                 "target_field_label": "LARGURA",
+                "additional_target_field_keys": ["espessura"],
                 "separator": "X",
             }
         ]
 
-    def test_comprimento_e_largura_formam_uma_unica_medida(self):
+    def test_comprimento_largura_e_espessura_formam_uma_unica_medida(self):
         with patch.object(excel_bancos, "get_description_rules", return_value=self.rules):
             description = excel_bancos.build_descriptions(
                 self.fields,
                 {"comprimento": "1- 1425", "largura": "1- 686", "espessura": "1- 4"},
                 "cat_12_vidros",
             )
-        self.assertEqual(description["primaria"], "1425X686 4")
+        self.assertEqual(description["primaria"], "1425X686X4")
 
     def test_medida_incompleta_nao_cria_x_solto(self):
         with patch.object(excel_bancos, "get_description_rules", return_value=self.rules):
@@ -321,6 +333,13 @@ class DescriptionRulesTests(unittest.TestCase):
                 self.fields, {"comprimento": "1- 1425"}, "cat_12_vidros"
             )
         self.assertEqual(description["primaria"], "1425")
+
+    def test_medida_sem_largura_mantem_componentes_informados_sem_x_solto(self):
+        with patch.object(excel_bancos, "get_description_rules", return_value=self.rules):
+            description = excel_bancos.build_descriptions(
+                self.fields, {"comprimento": "1- 1425", "espessura": "1- 4"}, "cat_12_vidros"
+            )
+        self.assertEqual(description["primaria"], "1425X4")
 
 
 if __name__ == "__main__":

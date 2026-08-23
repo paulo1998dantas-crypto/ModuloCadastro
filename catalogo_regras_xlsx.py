@@ -46,6 +46,7 @@ RULE_HEADERS = [
     "COMPARACAO",
     "ORIGEM_ATUAL",
     "SEPARADOR",
+    "CAMPOS_ADICIONAIS",
 ]
 
 HEADER_FILL = PatternFill("solid", fgColor="0B2948")
@@ -303,6 +304,13 @@ def _upsert_rule(category: dict[str, Any], row: dict[str, Any]) -> str:
         separator = _text(row.get("SEPARADOR")) or "X"
         if len(separator) > 8:
             raise ValueError("SEPARADOR deve ter no máximo 8 caracteres.")
+        additional_targets: list[str] = []
+        for additional_value in _split_values(row.get("CAMPOS_ADICIONAIS")):
+            additional_target = _resolve_rule_field(category, additional_value, additional_value, "adicional")
+            if additional_target["key"] in {source["key"], target["key"]}:
+                raise ValueError("JOIN_FIELDS não pode repetir o campo de origem ou destino.")
+            if additional_target["key"] not in additional_targets:
+                additional_targets.append(additional_target["key"])
         rule_key = _text(row["CHAVE_REGRA"])
         rules = category.setdefault("description_rules", [])
         existing = next(
@@ -331,6 +339,7 @@ def _upsert_rule(category: dict[str, Any], row: dict[str, Any]) -> str:
                 "source_field_label": source["label"],
                 "target_field_key": target["key"],
                 "target_field_label": target["label"],
+                "additional_target_field_keys": additional_targets,
                 "separator": separator,
             }
         )
@@ -463,7 +472,10 @@ def import_catalog_workbook(content: bytes) -> dict[str, int]:
 
         for row_number in range(2, rules_ws.max_row + 1):
             row = _row_dict(
-                rules_ws, row_number, RULE_HEADERS, optional_headers={"SEPARADOR"}
+                rules_ws,
+                row_number,
+                RULE_HEADERS,
+                optional_headers={"SEPARADOR", "CAMPOS_ADICIONAIS"},
             )
             if not any(_text(value) for value in row.values()):
                 continue
@@ -528,7 +540,7 @@ def export_catalog_workbook() -> bytes:
     rules_ws["A1"].comment = Comment(
         "Ações aceitas: HIDE, SHOW, TURN_PRIMARY, TURN_SECONDARY e JOIN_FIELDS. "
         "Separe múltiplos valores gatilho por ponto e vírgula (;). Para JOIN_FIELDS, "
-        "informe os campos de origem e destino e o SEPARADOR.",
+        "informe os campos de origem, destino, adicionais (se houver) e o SEPARADOR.",
         "JI Montadora",
     )
 
@@ -601,13 +613,14 @@ def export_catalog_workbook() -> bytes:
                     "",
                     "CATALOGO",
                     rule.get("separator") or "X",
+                    "; ".join(rule.get("additional_target_field_keys") or []),
                 ]
             )
 
     _style_sheet(fields_ws, [17, 28, 23, 28, 25, 15, 18, 16, 18, 70, 18], "CatalogoCamposOpcoes")
     _style_sheet(
         rules_ws,
-        [17, 20, 28, 23, 18, 28, 25, 55, 28, 25, 18, 16, 18, 14],
+        [17, 20, 28, 23, 18, 28, 25, 55, 28, 25, 18, 16, 18, 14, 35],
         "CatalogoRegrasCondicionais",
     )
 

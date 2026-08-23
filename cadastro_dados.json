@@ -2923,6 +2923,9 @@
           "source_field_label": "COMPRIMENTO",
           "target_field_key": "fornecedor_referencia",
           "target_field_label": "LARGURA",
+          "additional_target_field_keys": [
+            "espessura"
+          ],
           "separator": "X"
         }
       ]

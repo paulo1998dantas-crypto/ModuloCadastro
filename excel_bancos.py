@@ -1088,6 +1088,20 @@ def _sanitize_description_rules(
         target_field = field_map.get(target_key)
         if source_field is None or target_field is None or source_key == target_key:
             continue
+        raw_additional_targets = rule.get("additional_target_field_keys") or []
+        if isinstance(raw_additional_targets, str):
+            raw_additional_targets = [raw_additional_targets]
+        additional_target_keys: list[str] = []
+        for raw_target_key in raw_additional_targets:
+            additional_target_key = clean_text(raw_target_key)
+            if (
+                not additional_target_key
+                or additional_target_key in {source_key, target_key}
+                or additional_target_key in additional_target_keys
+                or additional_target_key not in field_map
+            ):
+                continue
+            additional_target_keys.append(additional_target_key)
         rule_key = clean_text(rule.get("key")) or uuid.uuid4().hex[:12]
         if rule_key in seen_keys:
             continue
@@ -1103,6 +1117,7 @@ def _sanitize_description_rules(
                 "source_field_label": source_field["label"],
                 "target_field_key": target_key,
                 "target_field_label": target_field["label"],
+                "additional_target_field_keys": additional_target_keys,
                 "separator": separator,
             }
         )
@@ -2724,11 +2739,17 @@ def build_descriptions(
         for rule in description_rules
         if rule.get("action") == "join_fields"
     }
-    joined_target_keys = {
-        rule["target_field_key"]
-        for rule in description_rules
-        if rule.get("action") == "join_fields"
-    }
+    joined_target_keys: set[str] = set()
+    for rule in description_rules:
+        if rule.get("action") != "join_fields":
+            continue
+        joined_target_keys.add(rule["target_field_key"])
+        raw_additional_targets = rule.get("additional_target_field_keys") or []
+        if isinstance(raw_additional_targets, str):
+            raw_additional_targets = [raw_additional_targets]
+        joined_target_keys.update(
+            clean_text(field_key) for field_key in raw_additional_targets if clean_text(field_key)
+        )
 
     for field in _ordered_fields_for_description(fields):
         if field["key"] in joined_target_keys:
@@ -2737,15 +2758,23 @@ def build_descriptions(
         rule = join_rules_by_source.get(field["key"])
         joined_values: list[str] = []
         if rule:
-            target_field = fields_by_key.get(rule["target_field_key"])
-            target_values = _serialize_field_values(target_field, data) if target_field else []
-            source_label = _format_field_description(field, values) if values else ""
-            target_label = _format_field_description(target_field, target_values) if target_values else ""
-            if source_label and target_label:
-                label = f"{source_label}{rule.get('separator') or 'X'}{target_label}"
-            else:
-                label = source_label or target_label
-            joined_values = values + target_values
+            target_keys = [rule["target_field_key"]]
+            raw_additional_targets = rule.get("additional_target_field_keys") or []
+            if isinstance(raw_additional_targets, str):
+                raw_additional_targets = [raw_additional_targets]
+            target_keys.extend(
+                clean_text(field_key) for field_key in raw_additional_targets if clean_text(field_key)
+            )
+            joined_parts: list[str] = []
+            for joined_field in [field, *(fields_by_key.get(key) for key in target_keys)]:
+                if joined_field is None:
+                    continue
+                current_values = _serialize_field_values(joined_field, data)
+                current_label = _format_field_description(joined_field, current_values) if current_values else ""
+                if current_label:
+                    joined_parts.append(current_label)
+                    joined_values.extend(current_values)
+            label = (rule.get("separator") or "X").join(joined_parts)
         else:
             if not values:
                 continue
