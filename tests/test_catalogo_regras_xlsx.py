@@ -208,6 +208,120 @@ class CatalogoRegrasXlsxTests(unittest.TestCase):
         self.assertEqual(group_rule["source_field_key"], excel_bancos.PN_GROUP_FORM_KEY)
         self.assertEqual(group_rule["source_values"], ["30"])
 
+    def test_join_fields_e_exportada_reimportada_e_auditavel(self):
+        catalog = _catalog()
+        category = catalog["categories"][0]
+        category["description_rules"] = [
+            {
+                "key": "teste-origem-x-destino",
+                "action": "join_fields",
+                "source_field_key": "origem",
+                "source_field_label": "ORIGEM",
+                "target_field_key": "destino",
+                "target_field_label": "DESTINO",
+                "separator": "X",
+            }
+        ]
+        content = self._export(catalog)
+        workbook = load_workbook(io.BytesIO(content), data_only=True)
+        try:
+            rules = workbook[catalogo_regras_xlsx.SHEET_RULES]
+            action_column = catalogo_regras_xlsx.RULE_HEADERS.index("ACAO") + 1
+            separator_column = catalogo_regras_xlsx.RULE_HEADERS.index("SEPARADOR") + 1
+            row_number = next(
+                row for row in range(2, rules.max_row + 1)
+                if rules.cell(row, action_column).value == "JOIN_FIELDS"
+            )
+            self.assertEqual(rules.cell(row_number, separator_column).value, "X")
+        finally:
+            workbook.close()
+
+        saved = []
+        with patch.object(excel_bancos, "load_catalog", return_value=deepcopy(catalog)), patch.object(
+            excel_bancos, "save_catalog", side_effect=lambda value: saved.append(deepcopy(value))
+        ):
+            result = catalogo_regras_xlsx.import_catalog_workbook(content)
+
+        self.assertEqual(result["rules_updated"], 2)
+        description_rule = saved[0]["categories"][0]["description_rules"][0]
+        self.assertEqual(description_rule["action"], "join_fields")
+        self.assertEqual(description_rule["separator"], "X")
+
+    def test_planilha_antiga_sem_coluna_separador_continua_compativel(self):
+        content = self._export()
+        workbook = load_workbook(io.BytesIO(content))
+        rules = workbook[catalogo_regras_xlsx.SHEET_RULES]
+        rules.delete_cols(catalogo_regras_xlsx.RULE_HEADERS.index("SEPARADOR") + 1)
+        output = io.BytesIO()
+        workbook.save(output)
+        workbook.close()
+
+        saved = []
+        with patch.object(excel_bancos, "load_catalog", return_value=_catalog()), patch.object(
+            excel_bancos, "save_catalog", side_effect=lambda value: saved.append(deepcopy(value))
+        ):
+            result = catalogo_regras_xlsx.import_catalog_workbook(output.getvalue())
+
+        self.assertEqual(result["rules_updated"], 1)
+        self.assertEqual(len(saved), 1)
+
+
+class DescriptionRulesTests(unittest.TestCase):
+    def setUp(self):
+        self.fields = [
+            {
+                "key": "comprimento",
+                "label": "COMPRIMENTO",
+                "scope": "primaria",
+                "selection_mode": "unitaria",
+                "description_order": 1,
+                "options": ["1- 1425"],
+            },
+            {
+                "key": "largura",
+                "label": "LARGURA",
+                "scope": "primaria",
+                "selection_mode": "unitaria",
+                "description_order": 2,
+                "options": ["1- 686"],
+            },
+            {
+                "key": "espessura",
+                "label": "ESPESSURA",
+                "scope": "primaria",
+                "selection_mode": "unitaria",
+                "description_order": 3,
+                "options": ["1- 4MM"],
+            },
+        ]
+        self.rules = [
+            {
+                "key": "vidros-comprimento-x-largura",
+                "action": "join_fields",
+                "source_field_key": "comprimento",
+                "source_field_label": "COMPRIMENTO",
+                "target_field_key": "largura",
+                "target_field_label": "LARGURA",
+                "separator": "X",
+            }
+        ]
+
+    def test_comprimento_e_largura_formam_uma_unica_medida(self):
+        with patch.object(excel_bancos, "get_description_rules", return_value=self.rules):
+            description = excel_bancos.build_descriptions(
+                self.fields,
+                {"comprimento": "1- 1425", "largura": "1- 686", "espessura": "1- 4MM"},
+                "cat_12_vidros",
+            )
+        self.assertEqual(description["primaria"], "1425X686 4MM")
+
+    def test_medida_incompleta_nao_cria_x_solto(self):
+        with patch.object(excel_bancos, "get_description_rules", return_value=self.rules):
+            description = excel_bancos.build_descriptions(
+                self.fields, {"comprimento": "1- 1425"}, "cat_12_vidros"
+            )
+        self.assertEqual(description["primaria"], "1425")
+
 
 if __name__ == "__main__":
     unittest.main()

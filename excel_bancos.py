@@ -1064,6 +1064,52 @@ def _sanitize_conditional_rules(
     return cleaned
 
 
+def _sanitize_description_rules(
+    rules: list[dict[str, Any]] | None,
+    fields: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Valida regras estruturais usadas para compor a descricao do cadastro.
+
+    Diferentemente das regras condicionais (exibir, ocultar ou mudar escopo),
+    estas regras definem como dois campos visiveis formam uma unica parte da
+    descricao. Elas permanecem no catalogo para serem exportadas, auditadas e
+    reimportadas sem comportamento escondido no codigo.
+    """
+    field_map = {field["key"]: field for field in fields}
+    cleaned: list[dict[str, Any]] = []
+    seen_keys: set[str] = set()
+    for rule in rules or []:
+        action = clean_text(rule.get("action")).lower()
+        if action != "join_fields":
+            continue
+        source_key = clean_text(rule.get("source_field_key"))
+        target_key = clean_text(rule.get("target_field_key"))
+        source_field = field_map.get(source_key)
+        target_field = field_map.get(target_key)
+        if source_field is None or target_field is None or source_key == target_key:
+            continue
+        rule_key = clean_text(rule.get("key")) or uuid.uuid4().hex[:12]
+        if rule_key in seen_keys:
+            continue
+        separator = clean_text(rule.get("separator")) or "X"
+        # Separadores longos indicam, em geral, uma coluna preenchida no lugar
+        # errado durante a importacao. Mantemos a regra pequena e previsivel.
+        separator = separator[:8]
+        cleaned.append(
+            {
+                "key": rule_key,
+                "action": "join_fields",
+                "source_field_key": source_key,
+                "source_field_label": source_field["label"],
+                "target_field_key": target_key,
+                "target_field_label": target_field["label"],
+                "separator": separator,
+            }
+        )
+        seen_keys.add(rule_key)
+    return cleaned
+
+
 def _sanitize_catalog(catalog: dict[str, Any]) -> dict[str, Any]:
     if catalog.get("fields") is not None:
         raw_categories = [
@@ -1150,6 +1196,11 @@ def _sanitize_catalog(catalog: dict[str, Any]) -> dict[str, Any]:
                 raw_category.get("conditional_rules") or [], rule_fields, key
             ),
         }
+        description_rules = _sanitize_description_rules(
+            raw_category.get("description_rules") or [], rule_fields
+        )
+        if description_rules:
+            category_entry["description_rules"] = description_rules
         if field_overrides:
             category_entry["field_overrides"] = field_overrides
         categories.append(category_entry)
@@ -2028,6 +2079,14 @@ def get_conditional_rules(category_key_value: str) -> list[dict[str, Any]]:
     return merged
 
 
+def get_description_rules(category_key_value: str) -> list[dict[str, Any]]:
+    """Retorna regras de composicao da descricao armazenadas no catalogo."""
+    catalog = load_catalog()
+    category = _find_category(catalog, category_key_value)
+    fields = _fields_for_category(category)
+    return _sanitize_description_rules(category.get("description_rules") or [], fields)
+
+
 def get_conditional_rules_for_form(category_key_value: str) -> list[dict[str, Any]]:
     rules = get_conditional_rules(category_key_value)
     form_rules: list[dict[str, Any]] = []
@@ -2650,18 +2709,56 @@ def build_descriptions(
     secondary_parts: list[str] = []
     secondary_codes: list[str] = []
     effective_scopes = _effective_field_scopes(fields, category_key_value, data)
+    fields_by_key = {field["key"]: field for field in fields}
+    description_rules: list[dict[str, Any]] = []
+    if clean_text(category_key_value):
+        try:
+            description_rules = get_description_rules(category_key_value)
+        except ValueError:
+            # Chamadas internas e testes podem montar campos transitorios antes
+            # de a categoria ser persistida. Nessa situacao nao existe regra de
+            # composicao aplicavel; categorias salvas continuam estritas.
+            description_rules = []
+    join_rules_by_source = {
+        rule["source_field_key"]: rule
+        for rule in description_rules
+        if rule.get("action") == "join_fields"
+    }
+    joined_target_keys = {
+        rule["target_field_key"]
+        for rule in description_rules
+        if rule.get("action") == "join_fields"
+    }
 
     for field in _ordered_fields_for_description(fields):
-        values = _serialize_field_values(field, data)
-        if not values:
+        if field["key"] in joined_target_keys:
             continue
-        label = _format_field_description(field, values)
+        values = _serialize_field_values(field, data)
+        rule = join_rules_by_source.get(field["key"])
+        joined_values: list[str] = []
+        if rule:
+            target_field = fields_by_key.get(rule["target_field_key"])
+            target_values = _serialize_field_values(target_field, data) if target_field else []
+            source_label = _format_field_description(field, values) if values else ""
+            target_label = _format_field_description(target_field, target_values) if target_values else ""
+            if source_label and target_label:
+                label = f"{source_label}{rule.get('separator') or 'X'}{target_label}"
+            else:
+                label = source_label or target_label
+            joined_values = values + target_values
+        else:
+            if not values:
+                continue
+            label = _format_field_description(field, values)
+            joined_values = values
+        if not label:
+            continue
         effective_scope = effective_scopes.get(field["key"], field["scope"])
         if effective_scope == "primaria":
             primary_parts.append(label)
         elif effective_scope == "secundaria":
             secondary_parts.append(label)
-            secondary_codes.extend(code for code in (option_code(value) for value in values) if code)
+            secondary_codes.extend(code for code in (option_code(value) for value in joined_values) if code)
 
     primary_description_base = " ".join(primary_parts).strip()
     suffix = ""

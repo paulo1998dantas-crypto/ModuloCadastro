@@ -45,6 +45,7 @@ RULE_HEADERS = [
     "ESCOPO_DESTINO",
     "COMPARACAO",
     "ORIGEM_ATUAL",
+    "SEPARADOR",
 ]
 
 HEADER_FILL = PatternFill("solid", fgColor="0B2948")
@@ -64,13 +65,26 @@ def _header_map(ws) -> dict[str, int]:
     return {_normalized(cell.value): index for index, cell in enumerate(ws[1], start=1) if _text(cell.value)}
 
 
-def _row_dict(ws, row_number: int, headers: list[str]) -> dict[str, Any]:
+def _row_dict(
+    ws,
+    row_number: int,
+    headers: list[str],
+    optional_headers: set[str] | None = None,
+) -> dict[str, Any]:
     columns = _header_map(ws)
-    missing = [header for header in headers if _normalized(header) not in columns]
+    optional = {_normalized(header) for header in (optional_headers or set())}
+    missing = [
+        header for header in headers
+        if _normalized(header) not in columns and _normalized(header) not in optional
+    ]
     if missing:
         raise ValueError(f"A aba {ws.title} não contém as colunas obrigatórias: {', '.join(missing)}.")
     return {
-        header: ws.cell(row=row_number, column=columns[_normalized(header)]).value
+        header: (
+            ws.cell(row=row_number, column=columns[_normalized(header)]).value
+            if _normalized(header) in columns
+            else None
+        )
         for header in headers
     }
 
@@ -143,11 +157,15 @@ def _action(value: Any) -> str:
         "TURN_SECUNDARIA": "set_secondary",
         "TORNAR_SECUNDARIO": "set_secondary",
         "TORNAR_SECUNDARIA": "set_secondary",
+        "JOIN_FIELDS": "join_fields",
+        "JUNTAR_CAMPOS": "join_fields",
+        "CONCATENAR_CAMPOS": "join_fields",
     }
     action = aliases.get(normalized)
     if action is None:
         raise ValueError(
-            f"Ação inválida: {_text(value)}. Use HIDE, SHOW, TURN_PRIMARY ou TURN_SECONDARY."
+            f"Ação inválida: {_text(value)}. Use HIDE, SHOW, TURN_PRIMARY, "
+            "TURN_SECONDARY ou JOIN_FIELDS."
         )
     return action
 
@@ -272,6 +290,52 @@ def _resolve_rule_field(category: dict[str, Any], key_value: Any, label_value: A
 def _upsert_rule(category: dict[str, Any], row: dict[str, Any]) -> str:
     source_key_value = _text(row["CHAVE_CAMPO_ORIGEM"])
     source_label_value = _text(row["CAMPO_ORIGEM"])
+    action = _action(row["ACAO"])
+    if action == "join_fields":
+        source = _resolve_rule_field(
+            category, row["CHAVE_CAMPO_ORIGEM"], row["CAMPO_ORIGEM"], "de origem"
+        )
+        target = _resolve_rule_field(
+            category, row["CHAVE_CAMPO_DESTINO"], row["CAMPO_DESTINO"], "de destino"
+        )
+        if source["key"] == target["key"]:
+            raise ValueError("JOIN_FIELDS exige dois campos diferentes.")
+        separator = _text(row.get("SEPARADOR")) or "X"
+        if len(separator) > 8:
+            raise ValueError("SEPARADOR deve ter no máximo 8 caracteres.")
+        rule_key = _text(row["CHAVE_REGRA"])
+        rules = category.setdefault("description_rules", [])
+        existing = next(
+            (rule for rule in rules if rule_key and _text(rule.get("key")) == rule_key),
+            None,
+        )
+        if existing is None:
+            existing = next(
+                (
+                    rule for rule in rules
+                    if rule.get("source_field_key") == source["key"]
+                    and rule.get("target_field_key") == target["key"]
+                    and _text(rule.get("action")).lower() == "join_fields"
+                ),
+                None,
+            )
+        operation = "updated" if existing is not None else "inserted"
+        if existing is None:
+            existing = {}
+            rules.append(existing)
+        existing.update(
+            {
+                "key": rule_key or existing.get("key") or uuid.uuid4().hex[:12],
+                "action": "join_fields",
+                "source_field_key": source["key"],
+                "source_field_label": source["label"],
+                "target_field_key": target["key"],
+                "target_field_label": target["label"],
+                "separator": separator,
+            }
+        )
+        return operation
+
     source_type = (
         "group"
         if source_key_value == excel_bancos.PN_GROUP_FORM_KEY
@@ -287,7 +351,6 @@ def _upsert_rule(category: dict[str, Any], row: dict[str, Any]) -> str:
         if source_type == "group"
         else _resolve_rule_field(category, source_key_value, source_label_value, "de origem")
     )
-    action = _action(row["ACAO"])
     target_key = _text(row["CHAVE_CAMPO_DESTINO"])
     target_label = _text(row["CAMPO_DESTINO"])
     target = _find_effective_field(category, target_key, target_label)
@@ -399,7 +462,9 @@ def import_catalog_workbook(content: bytes) -> dict[str, int]:
                 raise ValueError(f"Linha {row_number} de {SHEET_FIELDS}: {exc}") from exc
 
         for row_number in range(2, rules_ws.max_row + 1):
-            row = _row_dict(rules_ws, row_number, RULE_HEADERS)
+            row = _row_dict(
+                rules_ws, row_number, RULE_HEADERS, optional_headers={"SEPARADOR"}
+            )
             if not any(_text(value) for value in row.values()):
                 continue
             operation = _normalized(row["ACAO_REGISTRO"])
@@ -461,8 +526,9 @@ def export_catalog_workbook() -> bytes:
         "JI Montadora",
     )
     rules_ws["A1"].comment = Comment(
-        "Ações aceitas: HIDE, SHOW, TURN_PRIMARY e TURN_SECONDARY. "
-        "Separe múltiplos valores gatilho por ponto e vírgula (;).",
+        "Ações aceitas: HIDE, SHOW, TURN_PRIMARY, TURN_SECONDARY e JOIN_FIELDS. "
+        "Separe múltiplos valores gatilho por ponto e vírgula (;). Para JOIN_FIELDS, "
+        "informe os campos de origem e destino e o SEPARADOR.",
         "JI Montadora",
     )
 
@@ -514,11 +580,36 @@ def export_catalog_workbook() -> bytes:
                     (rule.get("target_field_scope") or "secundaria").upper(),
                     (rule.get("match_by") or "option").upper(),
                     "PADRAO_SISTEMA" if rule.get("origin") == "system" else "CATALOGO",
+                    "",
+                ]
+            )
+
+        for rule in excel_bancos.get_description_rules(category.get("key")):
+            rules_ws.append(
+                [
+                    "UPSERT",
+                    rule.get("key"),
+                    category.get("label"),
+                    category.get("key"),
+                    "JOIN_FIELDS",
+                    rule.get("source_field_label"),
+                    rule.get("source_field_key"),
+                    "",
+                    rule.get("target_field_label"),
+                    rule.get("target_field_key"),
+                    "",
+                    "",
+                    "CATALOGO",
+                    rule.get("separator") or "X",
                 ]
             )
 
     _style_sheet(fields_ws, [17, 28, 23, 28, 25, 15, 18, 16, 18, 70, 18], "CatalogoCamposOpcoes")
-    _style_sheet(rules_ws, [17, 20, 28, 23, 18, 28, 25, 55, 28, 25, 18, 16, 18], "CatalogoRegrasCondicionais")
+    _style_sheet(
+        rules_ws,
+        [17, 20, 28, 23, 18, 28, 25, 55, 28, 25, 18, 16, 18, 14],
+        "CatalogoRegrasCondicionais",
+    )
 
     validations = [
         (fields_ws, "A", '"UPSERT,IGNORAR"'),
@@ -527,7 +618,7 @@ def export_catalog_workbook() -> bytes:
         (fields_ws, "H", '"SIM,NAO"'),
         (fields_ws, "I", '"LISTA,TEXTO_LIVRE"'),
         (rules_ws, "A", '"UPSERT,IGNORAR"'),
-        (rules_ws, "E", '"HIDE,SHOW,TURN_PRIMARY,TURN_SECONDARY"'),
+        (rules_ws, "E", '"HIDE,SHOW,TURN_PRIMARY,TURN_SECONDARY,JOIN_FIELDS"'),
         (rules_ws, "K", '"PRIMARIA,SECUNDARIA"'),
         (rules_ws, "L", '"OPCAO,PREFIXO"'),
     ]
