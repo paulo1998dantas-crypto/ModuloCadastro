@@ -121,14 +121,9 @@
                         {% for field in ordered_fields if field.scope == 'primaria' %}
                         <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-description-order="{{ field.description_order }}" data-banco-mode="{{ field.banco_mode or '' }}" data-field-required="{{ 'true' if field.required else 'false' }}">
                             <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
-                            {% if selected_category.key != 'bancos' %}
+                            {% if field.free_text %}
                             <input name="{{ field.key }}" list="options-{{ field.key }}" value="{{ field.selected_value or (field.selected_values|join(' | ')) }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
                             <datalist id="options-{{ field.key }}">
-                                {% for option in field.options %}<option value="{{ option }}"></option>{% endfor %}
-                            </datalist>
-                            {% elif field.free_text %}
-                            <input name="{{ field.key }}" list="options-{{ field.scope }}-{{ field.key }}" value="{{ field.selected_value or (field.selected_values|join(' | ')) }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Digite livremente ou escolha uma sugestao...">
-                            <datalist id="options-{{ field.scope }}-{{ field.key }}">
                                 {% for option in field.options %}<option value="{{ option }}"></option>{% endfor %}
                             </datalist>
                             {% elif field.selection_mode == 'multipla' %}
@@ -139,6 +134,9 @@
                             {% else %}
                             <select name="{{ field.key }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
                                 <option value="">Selecione...</option>
+                                {% if field.selected_value and field.selected_value not in field.options %}
+                                <option value="{{ field.selected_value }}" selected>{{ field.selected_value }} (valor atual)</option>
+                                {% endif %}
                                 {% for option in field.options %}<option value="{{ option }}" {% if field.selected_value == option %}selected{% endif %}>{{ option }}</option>{% endfor %}
                             </select>
                             {% endif %}
@@ -153,14 +151,9 @@
                         {% for field in ordered_fields if field.scope == 'secundaria' %}
                         <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-description-order="{{ field.description_order }}" data-banco-mode="{{ field.banco_mode or '' }}" data-field-required="{{ 'true' if field.required else 'false' }}">
                             <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
-                            {% if selected_category.key != 'bancos' %}
+                            {% if field.free_text %}
                             <input name="{{ field.key }}" list="options-{{ field.key }}" value="{{ field.selected_value or (field.selected_values|join(' | ')) }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
                             <datalist id="options-{{ field.key }}">
-                                {% for option in field.options %}<option value="{{ option }}"></option>{% endfor %}
-                            </datalist>
-                            {% elif field.free_text %}
-                            <input name="{{ field.key }}" list="options-{{ field.scope }}-{{ field.key }}" value="{{ field.selected_value or (field.selected_values|join(' | ')) }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Digite livremente ou escolha uma sugestao...">
-                            <datalist id="options-{{ field.scope }}-{{ field.key }}">
                                 {% for option in field.options %}<option value="{{ option }}"></option>{% endfor %}
                             </datalist>
                             {% elif field.selection_mode == 'multipla' %}
@@ -171,6 +164,9 @@
                             {% else %}
                             <select name="{{ field.key }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
                                 <option value="">Selecione...</option>
+                                {% if field.selected_value and field.selected_value not in field.options %}
+                                <option value="{{ field.selected_value }}" selected>{{ field.selected_value }} (valor atual)</option>
+                                {% endif %}
                                 {% for option in field.options %}<option value="{{ option }}" {% if field.selected_value == option %}selected{% endif %}>{{ option }}</option>{% endfor %}
                             </select>
                             {% endif %}
