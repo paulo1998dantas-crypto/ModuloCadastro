@@ -610,6 +610,7 @@
       "conditional_rules": [
         {
           "key": "cond_pre_fixo_veiculo",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -626,6 +627,7 @@
         },
         {
           "key": "cond_encosto_reclinador",
+          "source_type": "field",
           "source_field_key": "encosto",
           "source_field_label": "ENCOSTO",
           "source_field_scope": "primaria",
@@ -641,6 +643,7 @@
         },
         {
           "key": "cond_encosto_grau_reclinacao",
+          "source_type": "field",
           "source_field_key": "encosto",
           "source_field_label": "ENCOSTO",
           "source_field_scope": "primaria",
@@ -656,6 +659,7 @@
         },
         {
           "key": "cond_linha_usb",
+          "source_type": "field",
           "source_field_key": "linha",
           "source_field_label": "LINHA",
           "source_field_scope": "primaria",
@@ -670,6 +674,7 @@
         },
         {
           "key": "cond_linha_resfriador",
+          "source_type": "field",
           "source_field_key": "linha",
           "source_field_label": "LINHA",
           "source_field_scope": "primaria",
@@ -684,6 +689,7 @@
         },
         {
           "key": "cond_linha_aquecedor",
+          "source_type": "field",
           "source_field_key": "linha",
           "source_field_label": "LINHA",
           "source_field_scope": "primaria",
@@ -698,6 +704,7 @@
         },
         {
           "key": "cond_linha_massageador",
+          "source_type": "field",
           "source_field_key": "linha",
           "source_field_label": "LINHA",
           "source_field_scope": "primaria",
@@ -712,6 +719,7 @@
         },
         {
           "key": "cond_linha_mesa_snack",
+          "source_type": "field",
           "source_field_key": "linha",
           "source_field_label": "LINHA",
           "source_field_scope": "primaria",
@@ -726,6 +734,7 @@
         },
         {
           "key": "cond_linha_isofix",
+          "source_type": "field",
           "source_field_key": "linha",
           "source_field_label": "LINHA",
           "source_field_scope": "primaria",
@@ -740,6 +749,7 @@
         },
         {
           "key": "cond_linha_posicao_isofix",
+          "source_type": "field",
           "source_field_key": "linha",
           "source_field_label": "LINHA",
           "source_field_scope": "primaria",
@@ -754,6 +764,7 @@
         },
         {
           "key": "cond_linha_apoio_panturrilha",
+          "source_type": "field",
           "source_field_key": "linha",
           "source_field_label": "LINHA",
           "source_field_scope": "primaria",
@@ -768,6 +779,7 @@
         },
         {
           "key": "cond_isofix_posicao",
+          "source_type": "field",
           "source_field_key": "isofix",
           "source_field_label": "ISOFIX",
           "source_field_scope": "secundaria",
@@ -783,6 +795,7 @@
         },
         {
           "key": "10693c46274b",
+          "source_type": "field",
           "source_field_key": "braco",
           "source_field_label": "APOIO DE BRAÇO",
           "source_field_scope": "primaria",
@@ -797,6 +810,7 @@
         },
         {
           "key": "8b8facc51159",
+          "source_type": "field",
           "source_field_key": "braco",
           "source_field_label": "APOIO DE BRAÇO",
           "source_field_scope": "primaria",
@@ -811,6 +825,7 @@
         },
         {
           "key": "d298a9e41d47",
+          "source_type": "field",
           "source_field_key": "braco",
           "source_field_label": "APOIO DE BRAÇO",
           "source_field_scope": "primaria",
@@ -825,6 +840,7 @@
         },
         {
           "key": "9e3ae4b1df32",
+          "source_type": "field",
           "source_field_key": "modelo_pe",
           "source_field_label": "MODELO PÉ",
           "source_field_scope": "secundaria",
@@ -839,6 +855,7 @@
         },
         {
           "key": "6b3e16b094d1",
+          "source_type": "field",
           "source_field_key": "modelo_pe",
           "source_field_label": "MODELO PÉ",
           "source_field_scope": "secundaria",
@@ -853,6 +870,7 @@
         },
         {
           "key": "b14276e8083a",
+          "source_type": "field",
           "source_field_key": "modelo_pe",
           "source_field_label": "MODELO PÉ",
           "source_field_scope": "secundaria",
@@ -867,6 +885,7 @@
         },
         {
           "key": "377dbae421aa",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -881,6 +900,7 @@
         },
         {
           "key": "68f3c38c63c5",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -895,6 +915,7 @@
         },
         {
           "key": "8f6f7e0f59ae",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -909,6 +930,7 @@
         },
         {
           "key": "76f25a490f97",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -923,6 +945,7 @@
         },
         {
           "key": "fa223e7ea9e7",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -937,6 +960,7 @@
         },
         {
           "key": "ddcda3c58a4a",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -951,6 +975,7 @@
         },
         {
           "key": "f538ca6ea1cc",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -965,6 +990,7 @@
         },
         {
           "key": "391d7346ff3c",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -979,6 +1005,7 @@
         },
         {
           "key": "5580d864c865",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -993,6 +1020,7 @@
         },
         {
           "key": "f6fbef15dac0",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1007,6 +1035,7 @@
         },
         {
           "key": "7588acbce266",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1021,6 +1050,7 @@
         },
         {
           "key": "5bcea72fbf71",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1035,6 +1065,7 @@
         },
         {
           "key": "68151a85f736",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1049,6 +1080,7 @@
         },
         {
           "key": "e9eb86567258",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1063,6 +1095,7 @@
         },
         {
           "key": "4ea50e521046",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1077,6 +1110,7 @@
         },
         {
           "key": "4fba2757961d",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1091,6 +1125,7 @@
         },
         {
           "key": "9a8b792e2bb6",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1105,6 +1140,7 @@
         },
         {
           "key": "82ce4fa822c0",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1119,6 +1155,7 @@
         },
         {
           "key": "aca48cd6453e",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1133,6 +1170,7 @@
         },
         {
           "key": "699020130e7a",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1147,6 +1185,7 @@
         },
         {
           "key": "1c9cf13314b4",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1161,6 +1200,7 @@
         },
         {
           "key": "664d23ec28f8",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1175,6 +1215,7 @@
         },
         {
           "key": "ed029447a40b",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1189,6 +1230,7 @@
         },
         {
           "key": "8e064084b7a9",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1203,6 +1245,7 @@
         },
         {
           "key": "6fac9bccebec",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1217,6 +1260,7 @@
         },
         {
           "key": "1e3dbe51c660",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1231,6 +1275,7 @@
         },
         {
           "key": "2fd6ba015278",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1245,6 +1290,7 @@
         },
         {
           "key": "5674af1edd5e",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1259,6 +1305,7 @@
         },
         {
           "key": "ab0991826a12",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1273,6 +1320,7 @@
         },
         {
           "key": "9bc078209d70",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1287,6 +1335,7 @@
         },
         {
           "key": "87f6ae40cd0a",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1301,6 +1350,7 @@
         },
         {
           "key": "ff2a143efd77",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1315,6 +1365,7 @@
         },
         {
           "key": "2d14d23f090c",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1329,6 +1380,7 @@
         },
         {
           "key": "472de8209891",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1343,6 +1395,7 @@
         },
         {
           "key": "62e6efb0c01b",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1357,6 +1410,7 @@
         },
         {
           "key": "513a9540bbfd",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1371,6 +1425,7 @@
         },
         {
           "key": "f08f8f27dad2",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1385,6 +1440,7 @@
         },
         {
           "key": "e163525bda5f",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1399,6 +1455,7 @@
         },
         {
           "key": "a4f60c6743a6",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1413,6 +1470,7 @@
         },
         {
           "key": "cab87695a337",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1427,6 +1485,7 @@
         },
         {
           "key": "bc2395f887c8",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1441,6 +1500,7 @@
         },
         {
           "key": "61e426d8b143",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1455,6 +1515,7 @@
         },
         {
           "key": "c5e7c45648b4",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1469,6 +1530,7 @@
         },
         {
           "key": "2cdbb997c005",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1483,6 +1545,7 @@
         },
         {
           "key": "bfe033e87475",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1497,6 +1560,7 @@
         },
         {
           "key": "cabd044d1359",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1511,6 +1575,7 @@
         },
         {
           "key": "f8eec571947e",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1525,6 +1590,7 @@
         },
         {
           "key": "8667ae9f4804",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1539,6 +1605,7 @@
         },
         {
           "key": "4fd8ba2d2c07",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1553,6 +1620,7 @@
         },
         {
           "key": "184b910702e8",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1567,6 +1635,7 @@
         },
         {
           "key": "ce4be08ccef2",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1581,6 +1650,7 @@
         },
         {
           "key": "999a896f7b20",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1595,6 +1665,7 @@
         },
         {
           "key": "ea046ad45578",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1609,6 +1680,7 @@
         },
         {
           "key": "f1b3c2bf0fbc",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1623,6 +1695,7 @@
         },
         {
           "key": "06da54d61af7",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1637,6 +1710,7 @@
         },
         {
           "key": "02cae5953758",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1651,6 +1725,7 @@
         },
         {
           "key": "f16042506782",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1665,6 +1740,7 @@
         },
         {
           "key": "f44b216e06be",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1679,6 +1755,7 @@
         },
         {
           "key": "3d9274000d6c",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1693,6 +1770,7 @@
         },
         {
           "key": "ff5756f6ba31",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1707,6 +1785,7 @@
         },
         {
           "key": "cafdc07a7d2e",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1721,6 +1800,7 @@
         },
         {
           "key": "8e020a09d252",
+          "source_type": "field",
           "source_field_key": "modelo_pe",
           "source_field_label": "MODELO PÉ",
           "source_field_scope": "secundaria",
@@ -1735,6 +1815,7 @@
         },
         {
           "key": "283d9b501ee5",
+          "source_type": "field",
           "source_field_key": "modelo_pe",
           "source_field_label": "MODELO PÉ",
           "source_field_scope": "secundaria",
@@ -1749,6 +1830,7 @@
         },
         {
           "key": "b3583ba07a4e",
+          "source_type": "field",
           "source_field_key": "linha",
           "source_field_label": "LINHA",
           "source_field_scope": "primaria",
@@ -1763,6 +1845,7 @@
         },
         {
           "key": "67473b11434b",
+          "source_type": "field",
           "source_field_key": "linha",
           "source_field_label": "LINHA",
           "source_field_scope": "primaria",
@@ -1777,6 +1860,7 @@
         },
         {
           "key": "5866d1950bd9",
+          "source_type": "field",
           "source_field_key": "linha",
           "source_field_label": "LINHA",
           "source_field_scope": "primaria",
@@ -1791,6 +1875,7 @@
         },
         {
           "key": "37ef1660df10",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1805,6 +1890,7 @@
         },
         {
           "key": "9a4a339dcef7",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1819,6 +1905,7 @@
         },
         {
           "key": "4f475d341a4c",
+          "source_type": "field",
           "source_field_key": "modelo_pe",
           "source_field_label": "MODELO PÉ",
           "source_field_scope": "secundaria",
@@ -1833,6 +1920,7 @@
         },
         {
           "key": "ed359b7046c2",
+          "source_type": "field",
           "source_field_key": "modelo_pe",
           "source_field_label": "MODELO PÉ",
           "source_field_scope": "secundaria",
@@ -1847,6 +1935,7 @@
         },
         {
           "key": "81cd4ff0fb3f",
+          "source_type": "field",
           "source_field_key": "modelo_pe",
           "source_field_label": "MODELO PÉ",
           "source_field_scope": "secundaria",
@@ -1861,6 +1950,7 @@
         },
         {
           "key": "7c34469cc5d4",
+          "source_type": "field",
           "source_field_key": "modelo_pe",
           "source_field_label": "MODELO PÉ",
           "source_field_scope": "secundaria",
@@ -1875,6 +1965,7 @@
         },
         {
           "key": "dcc60d7b2639",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1889,6 +1980,7 @@
         },
         {
           "key": "319546f4157c",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1903,6 +1995,7 @@
         },
         {
           "key": "5a65108574a4",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1917,6 +2010,7 @@
         },
         {
           "key": "c3a161a67b87",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1931,6 +2025,7 @@
         },
         {
           "key": "d0c22b4b6fa8",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1945,6 +2040,7 @@
         },
         {
           "key": "b0ce44a296cd",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1959,6 +2055,7 @@
         },
         {
           "key": "d4ce029ca5fc",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1973,6 +2070,7 @@
         },
         {
           "key": "c6f0a13a9f3c",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -1987,6 +2085,7 @@
         },
         {
           "key": "ecc5c6469522",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2001,6 +2100,7 @@
         },
         {
           "key": "4155a181174b",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2015,6 +2115,7 @@
         },
         {
           "key": "6b08eada285b",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2029,6 +2130,7 @@
         },
         {
           "key": "9d09f3530532",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2043,6 +2145,7 @@
         },
         {
           "key": "be6c021ebffe",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2057,6 +2160,7 @@
         },
         {
           "key": "c2bf4801bc8c",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2071,6 +2175,7 @@
         },
         {
           "key": "92c68d27cec9",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2085,6 +2190,7 @@
         },
         {
           "key": "4531d45d1836",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2099,6 +2205,7 @@
         },
         {
           "key": "5ac0bb517031",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2113,6 +2220,7 @@
         },
         {
           "key": "9336527c00c2",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2127,6 +2235,7 @@
         },
         {
           "key": "bbf738ac3f94",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2141,6 +2250,7 @@
         },
         {
           "key": "4689abbca419",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2155,6 +2265,7 @@
         },
         {
           "key": "376bcd408bd1",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2169,6 +2280,7 @@
         },
         {
           "key": "8330f32a19ab",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2183,6 +2295,7 @@
         },
         {
           "key": "ce55c2929af0",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2197,6 +2310,7 @@
         },
         {
           "key": "3aa61ede8805",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2211,6 +2325,7 @@
         },
         {
           "key": "6b9a4e9cfeb7",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2225,6 +2340,7 @@
         },
         {
           "key": "b54cba3c03fb",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2239,6 +2355,7 @@
         },
         {
           "key": "6a60f9078a2d",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2253,6 +2370,7 @@
         },
         {
           "key": "50dddc406248",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2267,6 +2385,7 @@
         },
         {
           "key": "ef43868103c0",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2281,6 +2400,7 @@
         },
         {
           "key": "5ab974246003",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2295,6 +2415,7 @@
         },
         {
           "key": "60c28d8baec5",
+          "source_type": "field",
           "source_field_key": "modelo_pe",
           "source_field_label": "MODELO PÉ",
           "source_field_scope": "secundaria",
@@ -2309,6 +2430,7 @@
         },
         {
           "key": "9828994dc5cc",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2323,6 +2445,7 @@
         },
         {
           "key": "f214e4f455c2",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2337,6 +2460,7 @@
         },
         {
           "key": "93d54f7accf0",
+          "source_type": "field",
           "source_field_key": "fornecedor",
           "source_field_label": "FORNECEDOR",
           "source_field_scope": "primaria",
@@ -2351,6 +2475,7 @@
         },
         {
           "key": "f4dd15385440",
+          "source_type": "field",
           "source_field_key": "modelo_pe",
           "source_field_label": "MODELO PÉ",
           "source_field_scope": "secundaria",
@@ -2365,6 +2490,7 @@
         },
         {
           "key": "5a6ec0485873",
+          "source_type": "field",
           "source_field_key": "modelo_pe",
           "source_field_label": "MODELO PÉ",
           "source_field_scope": "secundaria",
@@ -2379,6 +2505,7 @@
         },
         {
           "key": "7d618f26994a",
+          "source_type": "field",
           "source_field_key": "pre_fixo",
           "source_field_label": "PRE FIXO",
           "source_field_scope": "primaria",
@@ -2393,6 +2520,7 @@
         },
         {
           "key": "e6142b15845d",
+          "source_type": "field",
           "source_field_key": "fornecedor",
           "source_field_label": "FORNECEDOR",
           "source_field_scope": "primaria",
@@ -2407,6 +2535,7 @@
         },
         {
           "key": "5e437600d3ee",
+          "source_type": "field",
           "source_field_key": "tipo_revestimento",
           "source_field_label": "TIPO REVESTIMENTO",
           "source_field_scope": "primaria",

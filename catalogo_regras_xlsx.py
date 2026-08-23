@@ -270,8 +270,22 @@ def _resolve_rule_field(category: dict[str, Any], key_value: Any, label_value: A
 
 
 def _upsert_rule(category: dict[str, Any], row: dict[str, Any]) -> str:
-    source = _resolve_rule_field(
-        category, row["CHAVE_CAMPO_ORIGEM"], row["CAMPO_ORIGEM"], "de origem"
+    source_key_value = _text(row["CHAVE_CAMPO_ORIGEM"])
+    source_label_value = _text(row["CAMPO_ORIGEM"])
+    source_type = (
+        "group"
+        if source_key_value == excel_bancos.PN_GROUP_FORM_KEY
+        or _normalized(source_label_value) in {"GRUPO", "GRUPO DO SKU"}
+        else "field"
+    )
+    source = (
+        {
+            "key": excel_bancos.PN_GROUP_FORM_KEY,
+            "label": "GRUPO DO SKU",
+            "scope": "estrutura",
+        }
+        if source_type == "group"
+        else _resolve_rule_field(category, source_key_value, source_label_value, "de origem")
     )
     action = _action(row["ACAO"])
     target_key = _text(row["CHAVE_CAMPO_DESTINO"])
@@ -282,7 +296,12 @@ def _upsert_rule(category: dict[str, Any], row: dict[str, Any]) -> str:
     if target is None and not target_label:
         raise ValueError("Informe CAMPO_DESTINO ou CHAVE_CAMPO_DESTINO.")
 
-    values = [excel_bancos.rule_option_token(value) for value in _split_values(row["VALORES_GATILHO"])]
+    values = [
+        excel_bancos._pn_group_code(value)
+        if source_type == "group"
+        else excel_bancos.rule_option_token(value)
+        for value in _split_values(row["VALORES_GATILHO"])
+    ]
     values = [value for value in values if value]
     if not values:
         raise ValueError("VALORES_GATILHO não pode ficar vazio.")
@@ -304,7 +323,11 @@ def _upsert_rule(category: dict[str, Any], row: dict[str, Any]) -> str:
             (
                 rule
                 for rule in rules
-                if rule.get("source_field_key") == source["key"]
+                if (
+                    _text(rule.get("source_type")).lower()
+                    or ("group" if rule.get("source_field_key") == excel_bancos.PN_GROUP_FORM_KEY else "field")
+                ) == source_type
+                and rule.get("source_field_key") == source["key"]
                 and (rule.get("target_field_key") or _normalized(rule.get("target_field_label"))) == target_identity
                 and _text(rule.get("action")).lower() == action
                 and sorted(rule.get("source_values") or []) == sorted(values)
@@ -318,6 +341,7 @@ def _upsert_rule(category: dict[str, Any], row: dict[str, Any]) -> str:
     existing.update(
         {
             "key": rule_key or existing.get("key") or uuid.uuid4().hex[:12],
+            "source_type": source_type,
             "source_field_key": source["key"],
             "source_field_label": source["label"],
             "source_field_scope": source.get("scope", "primaria"),

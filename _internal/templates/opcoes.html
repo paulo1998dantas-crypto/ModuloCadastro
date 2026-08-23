@@ -413,15 +413,22 @@
                     <input type="hidden" name="category_key" value="{{ selected_category.key }}">
                     <input type="hidden" name="rule_key" id="conditional-rule-key" value="">
                     <label class="space-y-1 md:col-span-2">
+                        <span class="block text-xs font-bold uppercase text-slate-500">Origem do gatilho</span>
+                        <select name="source_type" id="conditional-source-type" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="field">Campo da categoria</option>
+                            <option value="group">Grupo do SKU</option>
+                        </select>
+                    </label>
+                    <label id="conditional-source-field-wrap" class="space-y-1 md:col-span-2">
                         <span class="block text-xs font-bold uppercase text-slate-500">Campo origem</span>
-                        <select name="source_field_key" id="conditional-source-field" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <select name="source_field_key" id="conditional-source-field" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
                             {% for field in fields %}
                             <option value="{{ field.key }}">{{ field.label }} - {{ field.scope }}</option>
                             {% endfor %}
                         </select>
                     </label>
                     <label class="space-y-1">
-                        <span class="block text-xs font-bold uppercase text-slate-500">Opção origem</span>
+                        <span id="conditional-source-value-label" class="block text-xs font-bold uppercase text-slate-500">Opção origem</span>
                         <select name="source_value" id="conditional-source-value" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" required></select>
                     </label>
                     <label class="space-y-1">
@@ -462,7 +469,7 @@
                 <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
                     <p class="text-sm font-bold text-slate-900">Como usar</p>
                     <p class="mt-2 text-sm text-slate-600">
-                        Selecione o campo de origem, a opção que dispara a regra e a ação desejada.
+                        Selecione se o gatilho vem de um campo da categoria ou do grupo do SKU, o valor que dispara a regra e a ação desejada.
                         Para tornar um campo primário ou secundário, escolha obrigatoriamente um campo alvo existente;
                         a coluna original da planilha será preservada.
                     </p>
@@ -477,6 +484,9 @@
                     <div class="grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-white p-4 lg:grid-cols-[1fr_auto] lg:items-center">
                         <div class="space-y-1">
                             <p class="text-sm font-black text-slate-900">{{ rule.source_field_label }} = {{ rule.source_value_labels | join(', ') }}</p>
+                            <span class="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-black uppercase text-blue-700">
+                                {% if rule.source_type == 'group' %}Gatilho por grupo{% else %}Gatilho por campo{% endif %}
+                            </span>
                             <span class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-black uppercase {% if rule.origin == 'system' %}bg-amber-100 text-amber-800{% else %}bg-emerald-100 text-emerald-800{% endif %}">
                                 {% if rule.origin == 'system' %}Padrão do sistema{% else %}Configurada{% endif %}
                             </span>
@@ -901,8 +911,12 @@
     </script>
     <script>
         const conditionalFields = {{ fields | tojson }};
+        const conditionalGroups = {{ pn_groups | tojson }};
+        const conditionalSourceType = document.getElementById("conditional-source-type");
+        const conditionalSourceFieldWrap = document.getElementById("conditional-source-field-wrap");
         const conditionalSourceField = document.getElementById("conditional-source-field");
         const conditionalSourceValue = document.getElementById("conditional-source-value");
+        const conditionalSourceValueLabel = document.getElementById("conditional-source-value-label");
         const conditionalTargetField = document.getElementById("conditional-target-field");
         const conditionalTargetLabel = document.getElementById("conditional-target-label");
         const conditionalAction = document.getElementById("conditional-action");
@@ -916,12 +930,22 @@
             if (!conditionalSourceField || !conditionalSourceValue) {
                 return;
             }
-            const selectedField = conditionalFields.find((field) => field.key === conditionalSourceField.value) || conditionalFields[0];
             conditionalSourceValue.innerHTML = "";
-            (selectedField?.options || []).forEach((option) => {
+            const byGroup = conditionalSourceType?.value === "group";
+            conditionalSourceFieldWrap?.classList.toggle("hidden", byGroup);
+            conditionalSourceField.disabled = byGroup;
+            conditionalSourceField.required = !byGroup;
+            if (conditionalSourceValueLabel) {
+                conditionalSourceValueLabel.textContent = byGroup ? "Grupo gatilho" : "Opção origem";
+            }
+            const selectedField = conditionalFields.find((field) => field.key === conditionalSourceField.value) || conditionalFields[0];
+            const sourceOptions = byGroup
+                ? conditionalGroups.map((group) => ({ value: group.code, label: `${group.code} - ${group.label}` }))
+                : (selectedField?.options || []).map((option) => ({ value: option, label: option }));
+            sourceOptions.forEach((option) => {
                 const opt = document.createElement("option");
-                opt.value = option;
-                opt.textContent = option;
+                opt.value = option.value;
+                opt.textContent = option.label;
                 conditionalSourceValue.appendChild(opt);
             });
             if (!conditionalSourceValue.options.length) {
@@ -954,8 +978,9 @@
 
         if (conditionalSourceField) {
             conditionalSourceField.addEventListener("change", renderSourceOptions);
-            renderSourceOptions();
         }
+        conditionalSourceType?.addEventListener("change", renderSourceOptions);
+        renderSourceOptions();
         if (conditionalTargetField) {
             conditionalTargetField.addEventListener("change", syncTargetLabelState);
             syncTargetLabelState();
@@ -977,11 +1002,15 @@
             button.addEventListener("click", () => {
                 const rule = JSON.parse(button.dataset.rule || "{}");
                 if (conditionalRuleKey) conditionalRuleKey.value = rule.key || "";
+                if (conditionalSourceType) conditionalSourceType.value = rule.source_type || "field";
                 if (conditionalSourceField) conditionalSourceField.value = rule.source_field_key || "";
                 renderSourceOptions();
                 if (conditionalSourceValue) {
-                    const sourceLabels = rule.source_value_labels || rule.source_values || [];
-                    conditionalSourceValue.value = sourceLabels[0] || "";
+                    const sourceValues = rule.source_values || [];
+                    const sourceLabels = rule.source_value_labels || sourceValues;
+                    conditionalSourceValue.value = rule.source_type === "group"
+                        ? (sourceValues[0] || "")
+                        : (sourceLabels[0] || "");
                     if (!conditionalSourceValue.value && rule.source_values?.length) {
                         const wanted = normalizeOptionLabel(rule.source_values[0]);
                         const match = Array.from(conditionalSourceValue.options).find(

@@ -999,9 +999,14 @@ def _sanitize_conditional_rules(
     field_map = {field["key"]: field for field in fields}
     cleaned: list[dict[str, Any]] = []
     for rule in rules or []:
+        source_type = clean_text(rule.get("source_type")).lower()
         source_key = clean_text(rule.get("source_field_key"))
+        if source_type not in {"field", "group"}:
+            source_type = "group" if source_key == PN_GROUP_FORM_KEY else "field"
+        if source_type == "group":
+            source_key = PN_GROUP_FORM_KEY
         target_key = clean_text(rule.get("target_field_key"))
-        if source_key not in field_map and target_key not in field_map:
+        if source_type == "field" and source_key not in field_map and target_key not in field_map:
             continue
         source_field = field_map.get(source_key)
         target_field = field_map.get(target_key)
@@ -1009,7 +1014,10 @@ def _sanitize_conditional_rules(
         for value in rule.get("source_values") or []:
             normalized = clean_text(value)
             if normalized:
-                source_values.append(rule_option_token(normalized))
+                source_values.append(
+                    _pn_group_code(normalized) if source_type == "group" else rule_option_token(normalized)
+                )
+        source_values = [value for value in source_values if value]
         if not source_values:
             continue
         action = clean_text(rule.get("action")).lower()
@@ -1018,14 +1026,29 @@ def _sanitize_conditional_rules(
         match_by = clean_text(rule.get("match_by")).lower()
         if match_by not in {"option", "prefix"}:
             match_by = "option"
-        if action in {"set_primary", "set_secondary"} and (source_field is None or target_field is None):
+        if action in {"set_primary", "set_secondary"} and (
+            (source_type == "field" and source_field is None) or target_field is None
+        ):
             continue
         cleaned.append(
             {
                 "key": clean_text(rule.get("key")) or uuid.uuid4().hex[:12],
+                "source_type": source_type,
                 "source_field_key": source_key,
-                "source_field_label": source_field["label"] if source_field else clean_text(rule.get("source_field_label")) or source_key,
-                "source_field_scope": source_field["scope"] if source_field else clean_text(rule.get("source_field_scope")) or "primaria",
+                "source_field_label": (
+                    "GRUPO DO SKU"
+                    if source_type == "group"
+                    else source_field["label"]
+                    if source_field
+                    else clean_text(rule.get("source_field_label")) or source_key
+                ),
+                "source_field_scope": (
+                    "estrutura"
+                    if source_type == "group"
+                    else source_field["scope"]
+                    if source_field
+                    else clean_text(rule.get("source_field_scope")) or "primaria"
+                ),
                 "source_values": source_values,
                 "target_field_key": target_key,
                 "target_field_label": target_field["label"] if target_field else clean_text(rule.get("target_field_label")) or target_key,
@@ -1882,31 +1905,57 @@ def _resolve_conditional_rules(
     fields: list[dict[str, Any]],
     rules: list[dict[str, Any]],
     origin: str,
+    pn_groups: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     field_map = {field["key"]: _field_response(field, index) for index, field in enumerate(fields)}
     token_map = {
         field["key"]: {rule_option_token(option): option for option in (field.get("options") or [])}
         for field in fields
     }
+    group_labels = {
+        _pn_group_code(group.get("code")): f"{_pn_group_code(group.get('code'))} - {clean_text(group.get('label'))}"
+        for group in (pn_groups or [])
+        if _pn_group_code(group.get("code"))
+    }
     resolved: list[dict[str, Any]] = []
     for rule in rules:
+        source_type = clean_text(rule.get("source_type")).lower()
         source_key = clean_text(rule.get("source_field_key"))
+        if source_type not in {"field", "group"}:
+            source_type = "group" if source_key == PN_GROUP_FORM_KEY else "field"
+        if source_type == "group":
+            source_key = PN_GROUP_FORM_KEY
         target_key = clean_text(rule.get("target_field_key"))
         source_field = field_map.get(source_key)
         target_field = field_map.get(target_key)
-        source_value_labels = [
-            token_map.get(source_key, {}).get(rule_option_token(value), value)
-            for value in (rule.get("source_values") or [])
-        ]
+        if source_type == "group":
+            source_value_labels = [
+                group_labels.get(_pn_group_code(value), _pn_group_code(value) or clean_text(value))
+                for value in (rule.get("source_values") or [])
+            ]
+        else:
+            source_value_labels = [
+                token_map.get(source_key, {}).get(rule_option_token(value), value)
+                for value in (rule.get("source_values") or [])
+            ]
         resolved.append(
             {
                 "key": clean_text(rule.get("key")) or uuid.uuid4().hex[:12],
+                "source_type": source_type,
                 "source_field_key": source_key,
                 "source_field_label": (
-                    source_field["label"] if source_field else clean_text(rule.get("source_field_label")) or source_key
+                    "GRUPO DO SKU"
+                    if source_type == "group"
+                    else source_field["label"]
+                    if source_field
+                    else clean_text(rule.get("source_field_label")) or source_key
                 ),
                 "source_field_scope": (
-                    source_field["scope"] if source_field else clean_text(rule.get("source_field_scope")) or "primaria"
+                    "estrutura"
+                    if source_type == "group"
+                    else source_field["scope"]
+                    if source_field
+                    else clean_text(rule.get("source_field_scope")) or "primaria"
                 ),
                 "source_values": list(rule.get("source_values") or []),
                 "source_value_labels": source_value_labels,
@@ -1927,8 +1976,9 @@ def _resolve_conditional_rules(
     return resolved
 
 
-def _conditional_rule_signature(rule: dict[str, Any]) -> tuple[str, str, str, str, tuple[str, ...]]:
+def _conditional_rule_signature(rule: dict[str, Any]) -> tuple[str, str, str, str, str, tuple[str, ...]]:
     return (
+        clean_text(rule.get("source_type")).lower() or "field",
         clean_text(rule.get("source_field_key")),
         clean_text(rule.get("target_field_key")),
         rule_option_token(clean_text(rule.get("target_field_label"))),
@@ -1948,16 +1998,19 @@ def get_conditional_rules(category_key_value: str) -> list[dict[str, Any]]:
     catalog = load_catalog()
     category = _find_category(catalog, category_key_value)
     fields = _fields_for_category(category)
+    pn_groups = catalog.get("pn_groups") or _default_pn_groups()
     system_rules = (
-        _resolve_conditional_rules(fields, DEFAULT_CONDITIONAL_RULES, "system")
+        _resolve_conditional_rules(fields, DEFAULT_CONDITIONAL_RULES, "system", pn_groups)
         if category.get("key") == DEFAULT_CATEGORY_KEY
         else []
     )
-    catalog_rules = _resolve_conditional_rules(fields, category.get("conditional_rules") or [], "catalog")
+    catalog_rules = _resolve_conditional_rules(
+        fields, category.get("conditional_rules") or [], "catalog", pn_groups
+    )
 
     merged: list[dict[str, Any]] = []
     positions_by_key: dict[str, int] = {}
-    positions_by_signature: dict[tuple[str, str, str, str, tuple[str, ...]], int] = {}
+    positions_by_signature: dict[tuple[str, str, str, str, str, tuple[str, ...]], int] = {}
     for rule in system_rules + catalog_rules:
         rule_key = clean_text(rule.get("key"))
         signature = _conditional_rule_signature(rule)
@@ -2001,6 +2054,7 @@ def get_conditional_rules_for_form(category_key_value: str) -> list[dict[str, An
             continue
         form_rules.append(
             {
+                "sourceType": rule.get("source_type", "field"),
                 "sourceLabel": rule["source_field_label"],
                 "sourceScope": rule["source_field_scope"],
                 "action": rule["action"],
@@ -2722,6 +2776,26 @@ def _rule_matches(field: dict[str, Any], data: Any, rule: dict[str, Any]) -> boo
     return False
 
 
+def _conditional_rule_matches(
+    fields: list[dict[str, Any]],
+    data: Any,
+    rule: dict[str, Any],
+) -> bool:
+    source_type = clean_text(rule.get("source_type")).lower()
+    source_key = clean_text(rule.get("source_field_key"))
+    if source_type == "group" or source_key == PN_GROUP_FORM_KEY:
+        selected_group = pn_group_code(fields, data)
+        rule_groups = {
+            _pn_group_code(value)
+            for value in (rule.get("source_values") or [])
+            if _pn_group_code(value)
+        }
+        return bool(selected_group and selected_group in rule_groups)
+
+    source_field = next((field for field in fields if field.get("key") == source_key), None)
+    return bool(source_field and _rule_matches(source_field, data, rule))
+
+
 def _combined_conditional_rules(category_key_value: str) -> list[dict[str, Any]]:
     rules = deepcopy(get_conditional_rules(category_key_value))
     for rule in rules:
@@ -2746,11 +2820,10 @@ def _effective_field_scopes(
         action = clean_text(rule.get("action")).lower()
         if action not in {"set_primary", "set_secondary"}:
             continue
-        source_field = field_map.get(clean_text(rule.get("source_field_key")))
         target_key = clean_text(rule.get("target_field_key"))
-        if source_field is None or target_key not in field_map:
+        if target_key not in field_map:
             continue
-        if _rule_matches(source_field, data, rule):
+        if _conditional_rule_matches(fields, data, rule):
             scopes[target_key] = "primaria" if action == "set_primary" else "secundaria"
     return scopes
 
@@ -2764,14 +2837,12 @@ def _visible_field_keys(fields: list[dict[str, Any]], category_key_value: str, d
         action = clean_text(rule.get("action")).lower()
         if action in {"set_primary", "set_secondary"}:
             continue
-        source_key = clean_text(rule.get("source_field_key"))
         target_key = clean_text(rule.get("target_field_key"))
-        source_field = field_map.get(source_key)
         target_field = field_map.get(target_key)
-        if source_field is None or target_field is None:
+        if target_field is None:
             continue
 
-        matches = _rule_matches(source_field, data, rule)
+        matches = _conditional_rule_matches(fields, data, rule)
         if action == "show":
             show_matches[target_key].append(matches)
         else:
@@ -3524,10 +3595,27 @@ def add_conditional_rule(
     target_field_label_value: str = "",
     action_value: str = "hide",
     rule_key_value: str = "",
+    source_type_value: str = "field",
 ) -> dict[str, Any]:
     catalog = load_catalog()
     category = _find_category(catalog, category_key_value)
-    source_field = _find_field(catalog, category["key"], source_field_key_value)
+    source_type = clean_text(source_type_value).lower()
+    if source_type not in {"field", "group"}:
+        source_type = "field"
+    source_field = None
+    if source_type == "group":
+        source_value = _pn_group_code(source_value_value)
+        source_group = _find_pn_group(catalog, source_value)
+        source_key = PN_GROUP_FORM_KEY
+        source_label = "GRUPO DO SKU"
+        source_scope = "estrutura"
+    else:
+        source_field = _find_field(catalog, category["key"], source_field_key_value)
+        source_value = rule_option_token(clean_text(source_value_value))
+        source_group = None
+        source_key = source_field["key"]
+        source_label = source_field["label"]
+        source_scope = source_field["scope"]
     target_field = None
     target_key = clean_text(target_field_key_value)
     target_label = clean_text(target_field_label_value)
@@ -3535,9 +3623,8 @@ def add_conditional_rule(
         target_field = _find_field(catalog, category["key"], target_key)
     elif not target_label:
         raise ValueError("Informe o campo alvo da regra.")
-    source_value = rule_option_token(clean_text(source_value_value))
     if not source_value:
-        raise ValueError("Informe a opÃ§Ã£o condicional.")
+        raise ValueError("Informe o grupo ou a opÃ§Ã£o condicional.")
     action = clean_text(action_value).lower()
     if action not in {"hide", "show", "set_primary", "set_secondary"}:
         action = "hide"
@@ -3550,7 +3637,10 @@ def add_conditional_rule(
         rules[:] = [rule for rule in rules if clean_text(rule.get("key")) != edited_key]
     for rule in rules:
         same_trigger_and_target = (
-            rule.get("source_field_key") == source_field["key"]
+            (clean_text(rule.get("source_type")).lower() or (
+                "group" if rule.get("source_field_key") == PN_GROUP_FORM_KEY else "field"
+            )) == source_type
+            and rule.get("source_field_key") == source_key
             and rule.get("target_field_key") == (target_field["key"] if target_field else "")
             and rule_option_token(clean_text(rule.get("target_field_label"))) == rule_option_token(
                 target_label or (target_field["label"] if target_field else "")
@@ -3569,9 +3659,10 @@ def add_conditional_rule(
         # substituição administrável do catálogo. Excluir a cópia restaura o
         # comportamento padrão do sistema.
         "key": edited_key or uuid.uuid4().hex[:12],
-        "source_field_key": source_field["key"],
-        "source_field_label": source_field["label"],
-        "source_field_scope": source_field["scope"],
+        "source_type": source_type,
+        "source_field_key": source_key,
+        "source_field_label": source_label,
+        "source_field_scope": source_scope,
         "source_values": [source_value],
         "target_field_key": target_field["key"] if target_field else "",
         "target_field_label": target_field["label"] if target_field else target_label,
@@ -3582,7 +3673,11 @@ def add_conditional_rule(
     save_catalog(catalog)
     return {
         "rule": rule,
-        "source_field": source_field["label"],
+        "source_field": (
+            f"Grupo {source_group['code']} - {source_group['label']}"
+            if source_group
+            else source_label
+        ),
         "target_field": target_field["label"] if target_field else target_label,
         "path": str(DATA_PATH),
         "backup": "",

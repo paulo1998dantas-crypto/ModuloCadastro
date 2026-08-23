@@ -2137,7 +2137,8 @@ async def campos_reordenar_post(
 async def regras_adicionar_post(
     category_key: str = Form(...),
     rule_key: str = Form(""),
-    source_field_key: str = Form(...),
+    source_type: str = Form("field"),
+    source_field_key: str = Form(""),
     source_value: str = Form(...),
     target_field_key: str = Form(""),
     target_field_label: str = Form(""),
@@ -2153,6 +2154,7 @@ async def regras_adicionar_post(
             target_field_label,
             action,
             rule_key,
+            source_type,
         )
         if not excel_bancos.clean_text(target_field_key) and excel_bancos.clean_text(target_field_label):
             catalog = excel_bancos.load_catalog()

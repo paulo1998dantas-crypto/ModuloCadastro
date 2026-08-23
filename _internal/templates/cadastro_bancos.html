@@ -918,6 +918,11 @@
                 .map((control) => control.value || "");
         };
 
+        const normalizeGroupCode = (value) => {
+            const match = String(value || "").match(/\d+/);
+            return match ? String(Number(match[0])).padStart(2, "0") : "";
+        };
+
         const bancoConjuntoAtivo = () => {
             if (currentCategoryKey !== "bancos") {
                 return false;
@@ -994,15 +999,20 @@
             const bancoModeVisibility = updateBancoMode();
 
             rules.forEach((rule) => {
-                const sourceBlock = findBlock(rule.sourceLabel, rule.sourceScope);
-                if (!sourceBlock) {
-                    return;
+                let matches = false;
+                if (rule.sourceType === "group") {
+                    const selectedGroup = normalizeGroupCode(groupSelect?.value);
+                    matches = rule.values.some((value) => normalizeGroupCode(value) === selectedGroup);
+                } else {
+                    const sourceBlock = findBlock(rule.sourceLabel, rule.sourceScope);
+                    if (!sourceBlock) {
+                        return;
+                    }
+                    const selectedTokens = rule.matchBy === "prefix" ? getSelectedPrefixes(sourceBlock) : getSelectedTokens(sourceBlock);
+                    matches = selectedTokens.some((token) => {
+                        return rule.values.some((value) => token === value || token.startsWith(value));
+                    });
                 }
-
-                const selectedTokens = rule.matchBy === "prefix" ? getSelectedPrefixes(sourceBlock) : getSelectedTokens(sourceBlock);
-                const matches = selectedTokens.some((token) => {
-                    return rule.values.some((value) => token === value || token.startsWith(value));
-                });
                 const action = rule.action || (rule.mode === "showWhen" ? "show" : "hide");
 
                 if (action === "set_primary" || action === "set_secondary") {

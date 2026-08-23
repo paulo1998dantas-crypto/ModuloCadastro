@@ -13,7 +13,10 @@ def _catalog():
     return {
         "version": 2,
         "active_category": "teste",
-        "pn_groups": [],
+        "pn_groups": [
+            {"code": "20", "label": "PRODUTO / PROCESSO", "prefixes": ["PP"]},
+            {"code": "30", "label": "CONJUNTO / KIT", "prefixes": ["CJ"]},
+        ],
         "categories": [
             {
                 "key": "teste",
@@ -174,6 +177,36 @@ class CatalogoRegrasXlsxTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "campo destino existente"):
                 catalogo_regras_xlsx.import_catalog_workbook(output.getvalue())
         save.assert_not_called()
+
+    def test_regra_por_grupo_e_exportada_e_reimportada(self):
+        catalog = _catalog()
+        catalog["categories"][0]["conditional_rules"].append(
+            {
+                "key": "regra-grupo",
+                "source_type": "group",
+                "source_field_key": excel_bancos.PN_GROUP_FORM_KEY,
+                "source_field_label": "GRUPO DO SKU",
+                "source_field_scope": "estrutura",
+                "source_values": ["30"],
+                "target_field_key": "destino",
+                "target_field_label": "DESTINO",
+                "target_field_scope": "secundaria",
+                "action": "hide",
+                "match_by": "option",
+            }
+        )
+        content = self._export(catalog)
+        saved = []
+        with patch.object(excel_bancos, "load_catalog", return_value=deepcopy(catalog)), patch.object(
+            excel_bancos, "save_catalog", side_effect=lambda value: saved.append(deepcopy(value))
+        ):
+            catalogo_regras_xlsx.import_catalog_workbook(content)
+
+        rules = saved[0]["categories"][0]["conditional_rules"]
+        group_rule = next(rule for rule in rules if rule["key"] == "regra-grupo")
+        self.assertEqual(group_rule["source_type"], "group")
+        self.assertEqual(group_rule["source_field_key"], excel_bancos.PN_GROUP_FORM_KEY)
+        self.assertEqual(group_rule["source_values"], ["30"])
 
 
 if __name__ == "__main__":

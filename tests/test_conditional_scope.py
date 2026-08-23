@@ -38,6 +38,7 @@ class ConditionalScopeTests(unittest.TestCase):
             "origem": "1- ATIVA",
             "alvo_primario": "7- VALOR P",
             "alvo_secundario": "8- VALOR S",
+            excel_bancos.PN_GROUP_FORM_KEY: "30",
         }
 
     def _rule(self, action, target_key):
@@ -94,6 +95,42 @@ class ConditionalScopeTests(unittest.TestCase):
             visible = excel_bancos._visible_field_keys(self.fields, "teste", self.data)
 
         self.assertNotIn("alvo_secundario", visible)
+
+    def test_group_rule_can_hide_a_field(self):
+        rule = {
+            **self._rule("hide", "alvo_secundario"),
+            "source_type": "group",
+            "source_field_key": excel_bancos.PN_GROUP_FORM_KEY,
+            "source_values": ["30"],
+        }
+        with patch.object(excel_bancos, "_combined_conditional_rules", return_value=[rule]):
+            visible = excel_bancos._visible_field_keys(self.fields, "teste", self.data)
+
+        self.assertNotIn("alvo_secundario", visible)
+
+    def test_group_rule_can_turn_a_field_primary(self):
+        rule = {
+            **self._rule("set_primary", "alvo_secundario"),
+            "source_type": "group",
+            "source_field_key": excel_bancos.PN_GROUP_FORM_KEY,
+            "source_values": ["30"],
+        }
+        with patch.object(excel_bancos, "_combined_conditional_rules", return_value=[rule]):
+            descriptions = excel_bancos.build_descriptions(self.fields, self.data, "teste")
+
+        self.assertEqual(descriptions["primaria"], "ATIVA VALOR P VALOR S")
+
+    def test_group_rule_does_not_match_another_group(self):
+        rule = {
+            **self._rule("hide", "alvo_secundario"),
+            "source_type": "group",
+            "source_field_key": excel_bancos.PN_GROUP_FORM_KEY,
+            "source_values": ["20"],
+        }
+        with patch.object(excel_bancos, "_combined_conditional_rules", return_value=[rule]):
+            visible = excel_bancos._visible_field_keys(self.fields, "teste", self.data)
+
+        self.assertIn("alvo_secundario", visible)
 
     def test_dynamic_scope_keeps_original_workbook_column(self):
         workbook = Workbook()
