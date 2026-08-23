@@ -291,7 +291,7 @@ class DescriptionRulesTests(unittest.TestCase):
                 "scope": "primaria",
                 "selection_mode": "unitaria",
                 "description_order": 3,
-                "options": ["1- 4MM"],
+                "options": ["1- 4"],
             },
         ]
         self.rules = [
@@ -310,10 +310,10 @@ class DescriptionRulesTests(unittest.TestCase):
         with patch.object(excel_bancos, "get_description_rules", return_value=self.rules):
             description = excel_bancos.build_descriptions(
                 self.fields,
-                {"comprimento": "1- 1425", "largura": "1- 686", "espessura": "1- 4MM"},
+                {"comprimento": "1- 1425", "largura": "1- 686", "espessura": "1- 4"},
                 "cat_12_vidros",
             )
-        self.assertEqual(description["primaria"], "1425X686 4MM")
+        self.assertEqual(description["primaria"], "1425X686 4")
 
     def test_medida_incompleta_nao_cria_x_solto(self):
         with patch.object(excel_bancos, "get_description_rules", return_value=self.rules):
