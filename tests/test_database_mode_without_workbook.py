@@ -29,5 +29,67 @@ class DatabaseModeWithoutWorkbookTests(unittest.TestCase):
         sync_headers.assert_called_once_with("cadastro.xlsx", "cat_10_ar_condicionado")
 
 
+class CatalogFieldPersistenceTests(unittest.TestCase):
+    def setUp(self):
+        self.catalog = {
+            "version": 2,
+            "active_category": "cat_10_ar_condicionado",
+            "categories": [
+                {
+                    "key": "cat_10_ar_condicionado",
+                    "label": "10 - AR CONDICIONADO",
+                    "sheet_name": "10 - AR CONDICIONADO",
+                    "fields": [
+                        {
+                            "key": "descritor_base",
+                            "label": "DESCRITOR BASE",
+                            "scope": "primaria",
+                            "selection_mode": "unitaria",
+                            "description_order": 1,
+                            "options": ["1- EVAPORADOR"],
+                        }
+                    ],
+                    "conditional_rules": [],
+                }
+            ],
+            "pn_groups": [],
+        }
+
+    def test_update_field_changes_persisted_catalog_object(self):
+        with (
+            patch.object(excel_bancos, "load_catalog", return_value=self.catalog),
+            patch.object(excel_bancos, "save_catalog") as save_catalog,
+            patch.object(excel_bancos, "sync_workbook_structure"),
+        ):
+            result = excel_bancos.update_field(
+                "cat_10_ar_condicionado",
+                "descritor_base",
+                "ITEM",
+                "primaria",
+                "unitaria",
+            )
+
+        self.assertEqual("ITEM", result["field"])
+        self.assertEqual("ITEM", self.catalog["categories"][0]["fields"][0]["label"])
+        self.assertIs(save_catalog.call_args.args[0], self.catalog)
+
+    def test_update_field_option_changes_persisted_catalog_object(self):
+        with (
+            patch.object(excel_bancos, "load_catalog", return_value=self.catalog),
+            patch.object(excel_bancos, "save_catalog"),
+        ):
+            excel_bancos.update_field_option(
+                "cat_10_ar_condicionado",
+                "descritor_base",
+                1,
+                "CONDENSADOR",
+            )
+
+        self.assertEqual(
+            ["1- CONDENSADOR"],
+            self.catalog["categories"][0]["fields"][0]["options"],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

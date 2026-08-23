@@ -3317,6 +3317,15 @@ def save_banco_registration(form_data: Any) -> dict[str, str]:
 
 def _find_field(catalog: dict[str, Any], category_key_value: str, field_key_value: str) -> dict[str, Any]:
     category = _find_category(catalog, category_key_value)
+    # Os campos persistidos precisam ser devolvidos pela própria estrutura do
+    # catálogo. ``_fields_for_category`` retorna uma cópia para acrescentar os
+    # campos técnicos de conjunto de bancos; editar essa cópia fazia a tela
+    # informar sucesso sem gravar nome, opções ou configuração no Supabase.
+    for field in category.get("fields") or []:
+        if field["key"] == field_key_value:
+            return field
+
+    # Mantém a leitura dos campos técnicos virtuais para regras condicionais.
     for field in _fields_for_category(category):
         if field["key"] == field_key_value:
             return field
@@ -3614,6 +3623,7 @@ def update_field(
     scope: str,
     selection_mode: str,
 ) -> dict[str, str]:
+    _ensure_catalog_managed_field(field_key_value)
     catalog = load_catalog()
     category = _find_category(catalog, category_key_value)
     field = _find_field(catalog, category["key"], field_key_value)
@@ -3648,6 +3658,7 @@ def update_field(
 
 
 def delete_field(category_key_value: str, field_key_value: str) -> dict[str, str]:
+    _ensure_catalog_managed_field(field_key_value)
     catalog = load_catalog()
     category = _find_category(catalog, category_key_value)
     field = _find_field(catalog, category["key"], field_key_value)
