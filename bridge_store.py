@@ -11,7 +11,7 @@ from typing import Any
 PROJECT_DIR = Path(__file__).resolve().parent
 DEFAULT_DATA_DIR = PROJECT_DIR / "outputs" / "online_bridge"
 BRIDGE_STORE_VERSION = 1
-DEFAULT_MASTER_WORKBOOK_PATH = r"C:\Users\PRODUCAO-2.0\J I MONTADORA DE VEICULOS ESPECIAIS LTDA\JI Montadora - 02 Produção\01 Controle de Produção\01 - Projeto Cadastro\01 - Gerador cadastros.xlsx"
+DEFAULT_MASTER_WORKBOOK_PATH = ""
 DEFAULT_MASTER_WORKBOOK_URL = "https://jimontadora1.sharepoint.com/Shared%20Documents/Dados/JI%20Montadora/02%20Produ%C3%A7%C3%A3o/01%20Controle%20de%20Produ%C3%A3o/01%20-%20Projeto%20Cadastro/01%20-%20Gerador%20cadastros.xlsx?web=1"
 _LOCK = threading.Lock()
 

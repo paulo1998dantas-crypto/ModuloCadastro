@@ -780,9 +780,13 @@ def _catalog_service_key() -> str:
     )
 
 
-def _catalog_supabase_enabled() -> bool:
+def _database_save_mode() -> bool:
     mode = clean_text(os.environ.get("CADASTRO_SAVE_MODE")).lower()
-    return mode in {"supabase", "postgres", "database", "banco"} and bool(
+    return mode in {"supabase", "postgres", "database", "banco"}
+
+
+def _catalog_supabase_enabled() -> bool:
+    return _database_save_mode() and bool(
         _catalog_supabase_url() and _catalog_service_key()
     )
 
@@ -2062,6 +2066,8 @@ def sync_workbook_headers(workbook: Path, category_key_value: str) -> None:
 
 
 def sync_workbook_structure(category_key_value: str) -> None:
+    if _database_save_mode():
+        return
     sync_workbook_headers(active_workbook_path(), category_key_value)
 
 
