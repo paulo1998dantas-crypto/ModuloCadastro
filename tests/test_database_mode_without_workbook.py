@@ -73,6 +73,56 @@ class CatalogFieldPersistenceTests(unittest.TestCase):
         self.assertEqual("ITEM", self.catalog["categories"][0]["fields"][0]["label"])
         self.assertIs(save_catalog.call_args.args[0], self.catalog)
 
+    def test_update_field_can_make_a_field_optional(self):
+        with (
+            patch.object(excel_bancos, "load_catalog", return_value=self.catalog),
+            patch.object(excel_bancos, "save_catalog"),
+            patch.object(excel_bancos, "sync_workbook_structure"),
+        ):
+            result = excel_bancos.update_field(
+                "cat_10_ar_condicionado",
+                "descritor_base",
+                "DESCRITOR BASE",
+                "primaria",
+                "unitaria",
+                "nao",
+            )
+
+        self.assertFalse(result["required"])
+        self.assertFalse(self.catalog["categories"][0]["fields"][0]["required"])
+
+    def test_update_virtual_banco_field_persists_required_override(self):
+        catalog = {
+            "version": 2,
+            "active_category": excel_bancos.DEFAULT_CATEGORY_KEY,
+            "categories": [
+                {
+                    "key": excel_bancos.DEFAULT_CATEGORY_KEY,
+                    "label": "BANCOS",
+                    "sheet_name": "BANCOS",
+                    "fields": [],
+                    "conditional_rules": [],
+                }
+            ],
+            "pn_groups": [],
+        }
+        with (
+            patch.object(excel_bancos, "load_catalog", return_value=catalog),
+            patch.object(excel_bancos, "save_catalog"),
+            patch.object(excel_bancos, "sync_workbook_structure"),
+        ):
+            result = excel_bancos.update_field(
+                excel_bancos.DEFAULT_CATEGORY_KEY,
+                "cj_layout",
+                "LAYOUT",
+                "primaria",
+                "unitaria",
+                "sim",
+            )
+
+        self.assertTrue(result["required"])
+        self.assertTrue(catalog["categories"][0]["field_overrides"]["cj_layout"]["required"])
+
     def test_update_field_option_changes_persisted_catalog_object(self):
         with (
             patch.object(excel_bancos, "load_catalog", return_value=self.catalog),

@@ -434,6 +434,16 @@ def field_selection_mode(value: Any) -> str:
     return SELECTION_MODE_UNITARIA
 
 
+def field_required(value: Any) -> bool:
+    """Normaliza a obrigatoriedade editada na interface e nos importadores."""
+    normalized = normalize_label(value)
+    if normalized in {"", "SIM", "S", "TRUE", "1", "OBRIGATORIO"}:
+        return True
+    if normalized in {"NAO", "N", "FALSE", "0", "OPCIONAL"}:
+        return False
+    raise ValueError("Obrigatoriedade invalida. Informe SIM ou NAO.")
+
+
 def header_for_field(label: str, scope: str) -> str:
     suffix = "PRIMARIO" if field_scope(scope) == "primaria" else "SECUNDARIO"
     return f"{clean_text(label)} - {suffix}"
@@ -4051,7 +4061,13 @@ def delete_field_option(category_key_value: str, field_key_value: str, row_value
     }
 
 
-def add_field(category_key_value: str, label: str, scope: str, selection_mode: str) -> dict[str, str]:
+def add_field(
+    category_key_value: str,
+    label: str,
+    scope: str,
+    selection_mode: str,
+    required: Any = True,
+) -> dict[str, Any]:
     catalog = load_catalog()
     category = _find_category(catalog, category_key_value)
     label_clean = clean_text(label).upper()
@@ -4071,6 +4087,7 @@ def add_field(category_key_value: str, label: str, scope: str, selection_mode: s
         "label": label_clean,
         "scope": scope_value,
         "selection_mode": field_selection_mode(selection_mode),
+        "required": field_required(required),
         "description_order": next_order,
         "options": [],
     }
@@ -4082,6 +4099,7 @@ def add_field(category_key_value: str, label: str, scope: str, selection_mode: s
         "field": field["label"],
         "scope": field["scope"],
         "selection_mode": field["selection_mode"],
+        "required": bool(field["required"]),
         "path": str(DATA_PATH),
         "backup": "",
     }
@@ -4093,14 +4111,54 @@ def update_field(
     label: str,
     scope: str,
     selection_mode: str,
-) -> dict[str, str]:
-    _ensure_catalog_managed_field(field_key_value)
+    required: Any = True,
+) -> dict[str, Any]:
     catalog = load_catalog()
     category = _find_category(catalog, category_key_value)
-    field = _find_field(catalog, category["key"], field_key_value)
     label_clean = clean_text(label).upper()
     if not label_clean:
         raise ValueError("Informe o nome do campo.")
+    required_value = field_required(required)
+    stored_field = next(
+        (item for item in category.get("fields") or [] if item["key"] == field_key_value),
+        None,
+    )
+
+    if stored_field is None:
+        virtual_field = next(
+            (item for item in _fields_for_category(category) if item["key"] == field_key_value),
+            None,
+        )
+        if virtual_field is None:
+            raise ValueError("Campo nao encontrado.")
+
+        # Campos tecnicos podem ter a obrigatoriedade ajustada por categoria,
+        # mas sua estrutura (nome, escopo e selecao) continua protegida.
+        if (
+            normalize_label(label_clean) != normalize_label(virtual_field["label"])
+            or field_scope(scope) != virtual_field.get("scope")
+            or field_selection_mode(selection_mode) != virtual_field.get("selection_mode")
+        ):
+            raise ValueError(
+                "Este campo tecnico permite alterar somente a obrigatoriedade por esta tela."
+            )
+
+        overrides = category.setdefault("field_overrides", {})
+        override = deepcopy(overrides.get(field_key_value) or {})
+        override["required"] = required_value
+        overrides[field_key_value] = override
+        save_catalog(catalog)
+        sync_workbook_structure(category["key"])
+        return {
+            "field": virtual_field["label"],
+            "scope": virtual_field["scope"],
+            "selection_mode": virtual_field["selection_mode"],
+            "required": required_value,
+            "path": str(DATA_PATH),
+            "backup": "",
+        }
+
+    field = stored_field
 
     for existing in category["fields"]:
         if existing["key"] != field_key_value and normalize_label(existing["label"]) == normalize_label(label_clean):
@@ -4111,6 +4169,7 @@ def update_field(
     field["label"] = label_clean
     field["scope"] = new_scope
     field["selection_mode"] = field_selection_mode(selection_mode)
+    field["required"] = required_value
     if previous_scope != new_scope:
         field["description_order"] = max(
             (_field_description_order(existing_field, 0) for existing_field in category["fields"] if existing_field.get("scope") == new_scope),
@@ -4123,6 +4182,7 @@ def update_field(
         "field": field["label"],
         "scope": field["scope"],
         "selection_mode": field["selection_mode"],
+        "required": bool(field["required"]),
         "path": str(DATA_PATH),
         "backup": "",
     }

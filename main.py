@@ -2298,9 +2298,16 @@ async def campos_adicionar_post(
     field_label: str = Form(...),
     field_scope: str = Form(...),
     field_selection_mode: str = Form(...),
+    field_required: str = Form("sim"),
 ):
     try:
-        result = excel_bancos.add_field(category_key, field_label, field_scope, field_selection_mode)
+        result = excel_bancos.add_field(
+            category_key,
+            field_label,
+            field_scope,
+            field_selection_mode,
+            field_required,
+        )
         message = f"Campo criado: {result['field']}."
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote(message)}",
@@ -2321,6 +2328,7 @@ async def campos_editar_post(
     field_label: str = Form(...),
     field_scope: str = Form(...),
     field_selection_mode: str = Form(...),
+    field_required: str = Form("sim"),
 ):
     try:
         result = excel_bancos.update_field(
@@ -2329,6 +2337,7 @@ async def campos_editar_post(
             field_label,
             field_scope,
             field_selection_mode,
+            field_required,
         )
         message = f"Campo atualizado: {result['field']}."
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
