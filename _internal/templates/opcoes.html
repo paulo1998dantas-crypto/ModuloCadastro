@@ -533,7 +533,8 @@
                                 {% if rule.origin == 'system' %}Padrão do sistema{% else %}Configurada{% endif %}
                             </span>
                             <p class="text-sm text-slate-600">
-                                {% if rule.action == 'show' %}Exibe
+                                {% if rule.action == 'omit_description' %}Não inclui na
+                                {% elif rule.action == 'show' %}Exibe
                                 {% elif rule.action == 'set_primary' %}Torna primário
                                 {% elif rule.action == 'set_secondary' %}Torna secundário
                                 {% else %}Oculta{% endif %}
@@ -544,9 +545,11 @@
                             </p>
                         </div>
                         <div class="flex gap-2">
+                            {% if rule.action != 'omit_description' %}
                             <button type="button"
                                 class="conditional-rule-edit rounded-lg border border-blue-300 bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-700"
                                 data-rule='{{ rule | tojson | forceescape }}'>Editar</button>
+                            {% endif %}
                             {% if rule.origin == 'catalog' %}
                             <form method="post" action="/regras/excluir" onsubmit="return confirm('Excluir esta regra?')">
                                 <input type="hidden" name="category_key" value="{{ selected_category.key }}">

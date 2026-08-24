@@ -539,6 +539,12 @@ def import_catalog_workbook(content: bytes) -> dict[str, int]:
                 continue
             if operation not in {"", "UPSERT", "ATUALIZAR", "INCLUIR"}:
                 raise ValueError(f"Linha {row_number} de {SHEET_RULES}: ACAO_REGISTRO inválida.")
+            # Linhas PADRAO_SISTEMA são documentais: a aplicação as fornece
+            # pelo código, não permite sobrescrever seu comportamento por XLSX
+            # e mantém o relatório seguro para ser baixado e reenviado.
+            if _normalized(row.get("ORIGEM_ATUAL")) == "PADRAO SISTEMA":
+                result["rows_ignored"] += 1
+                continue
             try:
                 category = _find_category(catalog, row["CHAVE_CATEGORIA"], row["CATEGORIA"])
                 status = _upsert_rule(category, row)
@@ -593,6 +599,7 @@ def export_catalog_workbook() -> bytes:
     )
     rules_ws["A1"].comment = Comment(
         "Ações aceitas: HIDE, SHOW, TURN_PRIMARY, TURN_SECONDARY e JOIN_FIELDS. "
+        "Linhas PADRAO_SISTEMA são apenas consulta e são ignoradas na reimportação. "
         "Separe múltiplos valores gatilho por ponto e vírgula (;). Para JOIN_FIELDS, "
         "informe os campos de origem, destino, adicionais (se houver) e o SEPARADOR.",
         "JI Montadora",
@@ -637,6 +644,7 @@ def export_catalog_workbook() -> bytes:
                     {
                         "set_primary": "TURN_PRIMARY",
                         "set_secondary": "TURN_SECONDARY",
+                        "omit_description": "OMITIR_DA_DESCRICAO",
                     }.get(rule.get("action"), (rule.get("action") or "hide").upper()),
                     rule.get("source_field_label"),
                     rule.get("source_field_key"),

@@ -744,6 +744,27 @@ CONJUNTO_BANCO_ESPECIFICIDADE_OPTIONS = [
     "MASTER - PME",
 ]
 
+# Regras de plataforma que não pertencem ao catálogo editável. Elas são
+# disponibilizadas na mesma tela e na exportação das regras para que a equipe
+# consiga enxergar todos os comportamentos que influenciam o cadastro.
+SYSTEM_CONDITIONAL_RULES_BY_CATEGORY = {
+    REVESTIMENTO_CATEGORY_KEY: [
+        {
+            "key": "cond_revestimento_na_omite_descricao",
+            "source_type": "field",
+            "source_field_key": "",
+            "source_field_label": "QUALQUER CAMPO VISÍVEL",
+            "source_field_scope": "primaria/secundaria",
+            "source_values": ["N/A"],
+            "target_field_key": "",
+            "target_field_label": "DESCRIÇÃO PRIMÁRIA E SECUNDÁRIA",
+            "target_field_scope": "ambas",
+            "action": "omit_description",
+            "match_by": "option",
+        }
+    ]
+}
+
 # Compatibilidade de leitura com os conjuntos migrados antes da unificacao. Os
 # novos salvamentos usam exclusivamente as chaves canonicas, sem duplicar
 # conceitos entre banco unitario e conjunto.
@@ -2118,10 +2139,14 @@ def get_conditional_rules(category_key_value: str) -> list[dict[str, Any]]:
     category = _find_category(catalog, category_key_value)
     fields = _fields_for_category(category)
     pn_groups = catalog.get("pn_groups") or _default_pn_groups()
-    system_rules = (
-        _resolve_conditional_rules(fields, DEFAULT_CONDITIONAL_RULES, "system", pn_groups)
-        if category.get("key") == DEFAULT_CATEGORY_KEY
-        else []
+    system_rule_definitions: list[dict[str, Any]] = []
+    if category.get("key") == DEFAULT_CATEGORY_KEY:
+        system_rule_definitions.extend(DEFAULT_CONDITIONAL_RULES)
+    system_rule_definitions.extend(
+        SYSTEM_CONDITIONAL_RULES_BY_CATEGORY.get(category.get("key"), [])
+    )
+    system_rules = _resolve_conditional_rules(
+        fields, system_rule_definitions, "system", pn_groups
     )
     catalog_rules = _resolve_conditional_rules(
         fields, category.get("conditional_rules") or [], "catalog", pn_groups
@@ -2159,6 +2184,10 @@ def get_conditional_rules_for_form(category_key_value: str) -> list[dict[str, An
     rules = get_conditional_rules(category_key_value)
     form_rules: list[dict[str, Any]] = []
     for rule in rules:
+        # Regra de composição: é exibida e exportada para auditoria, mas não é
+        # uma regra de visibilidade do formulário.
+        if rule.get("action") == "omit_description":
+            continue
         source_values = list(rule.get("source_values") or [])
         targets: list[dict[str, Any]] = []
         if rule.get("target_field"):
