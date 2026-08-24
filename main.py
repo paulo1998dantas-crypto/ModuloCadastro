@@ -2043,6 +2043,52 @@ async def opcoes_atualizar_descricoes(category_key: str = Form(...)):
         )
 
 
+@app.get("/opcoes/cadastros/campos-tecnicos-template.xlsx")
+async def opcoes_campos_tecnicos_template(category_key: str):
+    try:
+        if not _supabase_mode():
+            raise ValueError("O template de campos técnicos requer o modo Supabase ativo.")
+        category = excel_bancos.selected_category(category_key)
+        content = supabase_store.technical_fields_reconciliation_template(category["key"])
+        safe_name = excel_bancos.normalize_label(category["label"]).replace(" ", "_")
+        return _xlsx_download(content, f"Campos_Tecnicos_{safe_name}.xlsx")
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/opcoes/cadastros/reconciliar-campos-tecnicos")
+async def opcoes_reconciliar_campos_tecnicos(
+    category_key: str = Form(...),
+    arquivo_campos_tecnicos: UploadFile = File(...),
+):
+    try:
+        if not _supabase_mode():
+            raise ValueError("A atualização controlada requer o modo Supabase ativo.")
+        filename = Path(arquivo_campos_tecnicos.filename or "").name.strip()
+        if not filename.lower().endswith(".xlsx"):
+            raise ValueError("Envie o template de campos técnicos no formato XLSX.")
+        result = supabase_store.reconcile_technical_fields_workbook(
+            category_key,
+            await arquivo_campos_tecnicos.read(),
+            actor="cadastro:opcoes",
+        )
+        message = (
+            f"Atualização controlada concluída em {result['category_label']}: "
+            f"{result['updated']} de {result['total']} cadastro(s) ativo(s) tiveram os campos e descrições atualizados."
+        )
+        if result.get("options_added"):
+            message += f" {result['options_added']} opção(ões) nova(s) foram incluídas no catálogo da categoria."
+        return RedirectResponse(
+            url=f"/opcoes?categoria={quote(result['category_key'])}&sucesso={quote(message)}",
+            status_code=303,
+        )
+    except Exception as exc:
+        return RedirectResponse(
+            url=f"/opcoes?categoria={quote(category_key)}&erro={quote(str(exc))}",
+            status_code=303,
+        )
+
+
 @app.post("/opcoes/revestimentos/reconciliar")
 async def opcoes_reconciliar_revestimentos(
     category_key: str = Form("cat_18_revestimento"),

@@ -18,6 +18,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 
 import excel_bancos
 import revestimento_reconciliation
+import technical_fields_reconciliation
 from xlsx_templates import build_import_template
 
 
@@ -902,6 +903,137 @@ def reconcile_revestimento_workbook(content: bytes, actor: str = "cadastro:opcoe
         # updated_at history, and the import remains safe to re-execute.
         pass
 
+    return {
+        "category_key": category["key"],
+        "category_label": category["label"],
+        "total": reconciliation["total"],
+        "updated": reconciliation["changed"],
+        "options_added": sum(len(values) for values in added_options.values()),
+    }
+
+
+def _technical_fields_reconciliation_payload(
+    row: dict[str, Any],
+    category: dict[str, Any],
+    fields: list[dict[str, Any]],
+    form_data: dict[str, list[str]],
+) -> dict[str, Any]:
+    """Persist only technical form fields and the derived description projection."""
+    original = row.get("form_values") if isinstance(row.get("form_values"), dict) else {}
+    normalized = _field_groups(fields, form_data)
+    # The generic importer owns all technical catalogue fields. Keep metadata
+    # outside the field catalogue (B.O.M., migrations and operational links).
+    technical_keys = {field["key"] for field in fields}
+    preserved = {key: value for key, value in original.items() if key not in technical_keys}
+    groups = {**preserved, **normalized}
+    descriptions = excel_bancos.build_descriptions(fields, groups, category["key"])
+    sku = clean_text(row.get("sku"))
+    unidade = normalize_unit(row.get("unidade"))
+    field_values = _field_values(fields, normalized)
+    return {
+        "id": row.get("id"),
+        "descricao_primaria": descriptions["primaria"],
+        "descricao_secundaria": descriptions["secundaria"],
+        "sufixo": descriptions.get("sufixo") or "",
+        "caracteres_primario": len(descriptions["primaria"]),
+        "caracteres_secundario": len(descriptions["secundaria"]),
+        "form_values": groups,
+        "field_values": field_values,
+        "field_codes": _field_codes(fields, normalized),
+        "search_text": _search_text(
+            sku,
+            category["label"],
+            descriptions["primaria"],
+            descriptions["secundaria"],
+            unidade,
+            " ".join(field_values.values()),
+        ),
+    }
+
+
+def technical_fields_reconciliation_template(category_key: str) -> bytes:
+    """Return an exact, category-specific technical-fields workbook template."""
+    category = _category(clean_text(category_key))
+    fields = excel_bancos.get_banco_fields(category["key"])
+    active_rows = _request_all(
+        REGISTRATIONS_TABLE,
+        [
+            ("select", "id,sku,form_values"),
+            ("category_key", f"eq.{category['key']}"),
+            ("ativo", "eq.true"),
+        ],
+    )
+    return technical_fields_reconciliation.build_template(category, fields, active_rows)
+
+
+def reconcile_technical_fields_workbook(
+    category_key: str,
+    content: bytes,
+    actor: str = "cadastro:opcoes",
+) -> dict[str, Any]:
+    """Safely apply a complete technical-field snapshot to one category.
+
+    The validation phase happens twice: first with a preview of any genuinely
+    new options, then again with the saved canonical option codes.  Therefore
+    no registration is changed if the workbook is incomplete or invalid.
+    """
+    category = _category(clean_text(category_key))
+    fields = excel_bancos.get_banco_fields(category["key"])
+    active_rows = _request_all(
+        REGISTRATIONS_TABLE,
+        [
+            ("select", "id,sku,unidade,ativo,form_values,descricao_primaria,descricao_secundaria,field_values,field_codes"),
+            ("category_key", f"eq.{category['key']}"),
+            ("ativo", "eq.true"),
+        ],
+    )
+    pending_options = technical_fields_reconciliation.missing_field_options(content, category, fields)
+    preview_fields = technical_fields_reconciliation.fields_with_pending_options(fields, pending_options)
+    technical_fields_reconciliation.prepare_reconciliation(
+        content,
+        category,
+        preview_fields,
+        active_rows,
+        lambda row, groups: _technical_fields_reconciliation_payload(row, category, preview_fields, groups),
+    )
+    added_options = excel_bancos.add_category_field_options(category["key"], pending_options)
+    fields = excel_bancos.get_banco_fields(category["key"])
+    reconciliation = technical_fields_reconciliation.prepare_reconciliation(
+        content,
+        category,
+        fields,
+        active_rows,
+        lambda row, groups: _technical_fields_reconciliation_payload(row, category, fields, groups),
+    )
+    for start in range(0, len(reconciliation["payloads"]), 200):
+        _request(
+            "POST",
+            REGISTRATIONS_TABLE,
+            payload=reconciliation["payloads"][start : start + 200],
+            prefer="resolution=merge-duplicates,return=minimal",
+        )
+    try:
+        _request(
+            "POST",
+            "erp_audit_events",
+            payload={
+                "entity_type": "CADASTRO_CAMPOS_TECNICOS",
+                "entity_id": None,
+                "action": "RECONCILIACAO_CONTROLADA",
+                "actor": clean_text(actor) or "cadastro:opcoes",
+                "origin": "CADASTRO",
+                "before_data": {"ativos": reconciliation["total"], "categoria": category["key"]},
+                "after_data": {
+                    "atualizados": reconciliation["changed"],
+                    "skus_alterados": reconciliation["changed_skus"][:100],
+                    "opcoes_incluidas": added_options,
+                },
+                "reason": "Atualização controlada dos campos técnicos por arquivo XLSX.",
+            },
+            prefer="return=minimal",
+        )
+    except Exception:
+        pass
     return {
         "category_key": category["key"],
         "category_label": category["label"],
