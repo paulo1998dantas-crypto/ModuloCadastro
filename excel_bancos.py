@@ -26,6 +26,7 @@ DEFAULT_NEW_WORKBOOK_NAME = "Cadastro Bancos.xlsx"
 DEFAULT_CATEGORY_KEY = "bancos"
 DEFAULT_CATEGORY_LABEL = "Bancos"
 LEGACY_CJ_BCO_CATEGORY_KEY = "cat_20_bco"
+REVESTIMENTO_CATEGORY_KEY = "cat_18_revestimento"
 CONJUNTO_BANCO_GROUP_CODE = "30"
 PN_GROUP_FORM_KEY = "grupo_codigo"
 FIRST_DATA_ROW = 3
@@ -354,6 +355,21 @@ def option_code(value: Any) -> str:
     if match:
         return match.group(1).strip()
     return ""
+
+
+def _is_not_applicable_option(value: Any) -> bool:
+    """Identifica N/A independentemente do código exibido na opção."""
+    return rule_option_token(value) in {"NA", "NAOAPLICAVEL"}
+
+
+def _description_values(field: dict[str, Any], data: Any, category_key_value: str) -> list[str]:
+    """Valores que participam da descrição, considerando regras sistêmicas."""
+    values = _serialize_field_values(field, data)
+    if clean_text(category_key_value) == REVESTIMENTO_CATEGORY_KEY:
+        # Em Revestimento, N/A representa ausência daquela característica e não
+        # deve poluir a descrição primária ou secundária.
+        return [value for value in values if not _is_not_applicable_option(value)]
+    return values
 
 
 def option_identity(value: Any) -> str:
@@ -2794,7 +2810,7 @@ def build_descriptions(
             continue
         if field["key"] in joined_target_keys:
             continue
-        values = _serialize_field_values(field, data)
+        values = _description_values(field, data, category_key_value)
         rule = join_rules_by_source.get(field["key"])
         joined_values: list[str] = []
         if rule:
@@ -2809,7 +2825,7 @@ def build_descriptions(
             for joined_field in [field, *(fields_by_key.get(key) for key in target_keys)]:
                 if joined_field is None or joined_field["key"] not in visible_field_keys:
                     continue
-                current_values = _serialize_field_values(joined_field, data)
+                current_values = _description_values(joined_field, data, category_key_value)
                 current_label = _format_field_description(joined_field, current_values) if current_values else ""
                 if current_label:
                     joined_parts.append(current_label)

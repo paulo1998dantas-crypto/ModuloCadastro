@@ -2,6 +2,35 @@ import unittest
 from unittest.mock import patch
 
 import excel_bancos
+
+
+class RevestimentoDescriptionRulesTests(unittest.TestCase):
+    def test_na_de_revestimento_nao_compõe_descricao(self):
+        fields = [
+            {
+                "key": "estagio",
+                "label": "ESTAGIO",
+                "scope": "primaria",
+                "selection_mode": "unitaria",
+                "description_order": 1,
+            },
+            {
+                "key": "fornecedor",
+                "label": "FORNECEDOR",
+                "scope": "secundaria",
+                "selection_mode": "unitaria",
+                "description_order": 2,
+            },
+        ]
+
+        description = excel_bancos.build_descriptions(
+            fields,
+            {"estagio": "1- CJ", "fornecedor": "2- N/A"},
+            "cat_18_revestimento",
+        )
+
+        self.assertEqual(description["primaria"], "CJ")
+        self.assertEqual(description["secundaria"], "CJ")
 import supabase_store
 
 
