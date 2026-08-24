@@ -80,6 +80,11 @@ class DescriptionRefreshTests(unittest.TestCase):
         post = next(call for call in calls if call[0] == "POST")
         payload = post[3][0]
         self.assertEqual(payload["id"], rows[0]["id"])
+        self.assertEqual(payload["category_key"], "teste")
+        self.assertEqual(payload["category_label"], "10 - TESTE")
+        self.assertEqual(payload["sku"], "10100001")
+        self.assertEqual(payload["unidade"], "pc")
+        self.assertTrue(payload["ativo"])
         self.assertEqual(payload["descricao_primaria"], "MODELO A")
         self.assertTrue(payload["form_values"]["possui_bom"])
         self.assertEqual(payload["form_values"]["marcador_legado"], {"origem": "importacao"})

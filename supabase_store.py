@@ -711,6 +711,28 @@ def save_registration(form_data: Any) -> dict[str, Any]:
     }
 
 
+def _registration_upsert_identity(
+    row: dict[str, Any],
+    category: dict[str, Any],
+) -> dict[str, Any]:
+    """Complete the required identity columns for a safe bulk upsert.
+
+    PostgreSQL validates NOT NULL columns before resolving an INSERT conflict.
+    Therefore a partial payload containing only ``id`` and descriptive fields
+    cannot be sent as an upsert: it would be rejected as a new row with a null
+    category/SKU before reaching ``ON CONFLICT``.
+    """
+    return {
+        "id": row.get("id"),
+        "category_key": category["key"],
+        "category_label": category["label"],
+        "sheet": _sheet_name(category),
+        "sku": clean_text(row.get("sku")),
+        "unidade": normalize_unit(row.get("unidade")),
+        "ativo": status_to_active(row.get("ativo"), default=True),
+    }
+
+
 def _description_refresh_payload(
     row: dict[str, Any],
     category: dict[str, Any],
@@ -732,7 +754,7 @@ def _description_refresh_payload(
     sku = clean_text(row.get("sku"))
     unidade = normalize_unit(row.get("unidade"))
     return {
-        "id": registration_id,
+        **_registration_upsert_identity(row, category),
         "descricao_primaria": descriptions["primaria"],
         "descricao_secundaria": descriptions["secundaria"],
         "sufixo": descriptions.get("sufixo") or "",
@@ -758,7 +780,7 @@ def refresh_registration_descriptions(category_key: str) -> dict[str, Any]:
     fields = excel_bancos.get_banco_fields(category["key"])
     rows = _request_all(
         REGISTRATIONS_TABLE,
-        [("select", "id,sku,unidade,form_values"), ("category_key", f"eq.{category['key']}")],
+        [("select", "id,sku,unidade,ativo,form_values"), ("category_key", f"eq.{category['key']}")],
     )
     payloads: list[dict[str, Any]] = []
     skipped: list[str] = []
@@ -931,7 +953,7 @@ def _technical_fields_reconciliation_payload(
     unidade = normalize_unit(row.get("unidade"))
     field_values = _field_values(fields, normalized)
     return {
-        "id": row.get("id"),
+        **_registration_upsert_identity(row, category),
         "descricao_primaria": descriptions["primaria"],
         "descricao_secundaria": descriptions["secundaria"],
         "sufixo": descriptions.get("sufixo") or "",

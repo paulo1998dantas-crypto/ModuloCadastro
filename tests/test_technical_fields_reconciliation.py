@@ -4,6 +4,7 @@ import unittest
 from openpyxl import Workbook
 
 import excel_bancos
+import supabase_store
 import technical_fields_reconciliation as reconciliation
 
 
@@ -132,6 +133,32 @@ class TechnicalFieldsReconciliationTests(unittest.TestCase):
             result["payloads"][0]["form_values"][excel_bancos.PN_GROUP_FORM_KEY],
             ["10 - INSUMO"],
         )
+
+    def test_supabase_payload_contains_required_identity_for_bulk_upsert(self):
+        row = {
+            "id": 504,
+            "sku": "10180001",
+            "unidade": "pc",
+            "ativo": True,
+            "form_values": {
+                excel_bancos.PN_GROUP_FORM_KEY: ["10 - INSUMO"],
+                "fornecedor": ["1- SALT"],
+                "especificidade": ["1- N/A"],
+            },
+        }
+        payload = supabase_store._technical_fields_reconciliation_payload(
+            row,
+            CATEGORY,
+            _fields(),
+            row["form_values"],
+        )
+
+        self.assertEqual(payload["id"], 504)
+        self.assertEqual(payload["category_key"], CATEGORY["key"])
+        self.assertEqual(payload["category_label"], CATEGORY["label"])
+        self.assertEqual(payload["sku"], "10180001")
+        self.assertEqual(payload["unidade"], "pc")
+        self.assertTrue(payload["ativo"])
 
 
 if __name__ == "__main__":
