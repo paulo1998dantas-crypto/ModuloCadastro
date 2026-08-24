@@ -160,6 +160,45 @@ class TechnicalFieldsReconciliationTests(unittest.TestCase):
         self.assertEqual(payload["unidade"], "pc")
         self.assertTrue(payload["ativo"])
 
+    def test_payload_preserva_grupo_mesmo_se_catalogo_contiver_chave_protegida(self):
+        fields = [
+            *_fields(),
+            {
+                "key": excel_bancos.PN_GROUP_FORM_KEY,
+                "label": "GRUPO",
+                "scope": "primaria",
+                "selection_mode": excel_bancos.SELECTION_MODE_UNITARIA,
+                "description_order": 99,
+                "required": False,
+                "free_text": False,
+                "options": ["10 - INSUMO", "30 - CONJUNTO"],
+            },
+        ]
+        row = {
+            "id": 504,
+            "sku": "30180001",
+            "unidade": "cj",
+            "ativo": True,
+            "form_values": {
+                excel_bancos.PN_GROUP_FORM_KEY: ["30"],
+                "fornecedor": ["1- SALT"],
+                "especificidade": ["1- N/A"],
+            },
+        }
+        attempted = {
+            **row["form_values"],
+            excel_bancos.PN_GROUP_FORM_KEY: ["10 - INSUMO"],
+        }
+
+        payload = supabase_store._technical_fields_reconciliation_payload(
+            row,
+            CATEGORY,
+            fields,
+            attempted,
+        )
+
+        self.assertEqual(payload["form_values"][excel_bancos.PN_GROUP_FORM_KEY], ["30"])
+
 
 if __name__ == "__main__":
     unittest.main()

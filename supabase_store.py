@@ -945,9 +945,29 @@ def _technical_fields_reconciliation_payload(
     normalized = _field_groups(fields, form_data)
     # The generic importer owns all technical catalogue fields. Keep metadata
     # outside the field catalogue (B.O.M., migrations and operational links).
-    technical_keys = {field["key"] for field in fields}
+    protected_identity_keys = {
+        excel_bancos.PN_GROUP_FORM_KEY,
+        "pn_grupo_codigo",
+        "grupo",
+        "grupo_codigo",
+        "category_key",
+        "categoria",
+        "categoria_codigo",
+    }
+    technical_keys = {
+        field["key"]
+        for field in fields
+        if field["key"] not in protected_identity_keys
+    }
     preserved = {key: value for key, value in original.items() if key not in technical_keys}
-    groups = {**preserved, **normalized}
+    technical_values = {
+        key: value
+        for key, value in normalized.items()
+        if key not in protected_identity_keys
+    }
+    groups = {**preserved, **technical_values}
+    if excel_bancos.PN_GROUP_FORM_KEY in original:
+        groups[excel_bancos.PN_GROUP_FORM_KEY] = original[excel_bancos.PN_GROUP_FORM_KEY]
     descriptions = excel_bancos.build_descriptions(fields, groups, category["key"])
     sku = clean_text(row.get("sku"))
     unidade = normalize_unit(row.get("unidade"))

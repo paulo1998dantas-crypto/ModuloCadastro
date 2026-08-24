@@ -263,7 +263,11 @@ def prepare_reconciliation(
         original_groups = registration.get("form_values")
         if not isinstance(original_groups, dict):
             original_groups = {}
-        selected = {**original_groups, excel_bancos.PN_GROUP_FORM_KEY: [source["GRUPO"]]}
+        # GRUPO is an identity attribute, not a technical description field.
+        # Keep the value already persisted in Cadastro even when an older or
+        # manually edited workbook contains a different group. Deliberate
+        # group migrations must use the dedicated cadastro edit workflow.
+        selected = {**original_groups}
         for workbook_column, field_key in WORKBOOK_COLUMNS.items():
             canonical = _canonical_option(fields_by_key[field_key], source[workbook_column], source["COD"])
             selected[field_key] = [canonical] if canonical else []

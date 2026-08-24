@@ -78,6 +78,27 @@ class RevestimentoReconciliationTests(unittest.TestCase):
                 lambda row, groups: {"id": row["id"], "form_values": groups},
             )
 
+    def test_grupo_da_planilha_e_informativo_e_nao_altera_cadastro(self):
+        fields = _fields()
+        active = [
+            {
+                "id": "1",
+                "sku": "20180001",
+                "form_values": {excel_bancos.PN_GROUP_FORM_KEY: ["20"]},
+            }
+        ]
+        result = reconciliation.prepare_reconciliation(
+            _workbook_bytes(sku="20180001", group="10 - INSUMO"),
+            fields,
+            active,
+            lambda row, groups: {"id": row["id"], "form_values": groups},
+        )
+
+        self.assertEqual(
+            result["payloads"][0]["form_values"][excel_bancos.PN_GROUP_FORM_KEY],
+            ["20"],
+        )
+
     def test_adicao_em_lote_salva_o_catalogo_uma_unica_vez(self):
         catalog = {
             "version": 2,
