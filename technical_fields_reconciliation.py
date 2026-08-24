@@ -103,7 +103,9 @@ def build_template(
     instructions = workbook.create_sheet("INSTRUCOES")
     instructions.append(["ATUALIZAÇÃO CONTROLADA DE CAMPOS TÉCNICOS"])
     instructions.append([f"Categoria: {category.get('label')}"])
-    instructions.append(["Não altere COD, CATEGORIA ou GRUPO."])
+    instructions.append([
+        "Não altere COD nem CATEGORIA. GRUPO é apenas informativo: o grupo já gravado no Cadastro será preservado."
+    ])
     instructions.append(["Mantenha todos os SKUs ativos: o arquivo deve representar exatamente a categoria."])
     instructions.append(["As colunas técnicas usam os mesmos nomes de campos exibidos no Cadastro."])
     instructions.append(["Para seleção múltipla, separe os valores por |. Deixe vazio para limpar um campo."])
@@ -297,13 +299,10 @@ def prepare_reconciliation(
     for source in source_rows:
         registration = rows_by_sku[source["sku"]]
         original = registration.get("form_values") if isinstance(registration.get("form_values"), dict) else {}
-        existing_group = _group_code((original.get(excel_bancos.PN_GROUP_FORM_KEY) or [""])[0])
-        if source["group"] != existing_group:
-            raise ValueError(
-                f"SKU {source['sku']}: GRUPO é somente conferência e deve permanecer "
-                f"{existing_group or '(vazio)'} ."
-            )
         selected = {field["key"]: _canonical_values(field, source["values"][field["key"]], source["sku"]) for field in fields}
+        # The spreadsheet's GRUPO column is solely a visual cross-check.  A
+        # technical-field reconciliation must never move an existing SKU to a
+        # different group, even when a legacy template contains stale values.
         selected[excel_bancos.PN_GROUP_FORM_KEY] = original.get(excel_bancos.PN_GROUP_FORM_KEY) or []
         payload = payload_builder(registration, selected)
         payloads.append(payload)

@@ -113,21 +113,25 @@ class TechnicalFieldsReconciliationTests(unittest.TestCase):
             ["1- N/A", "2- LATERAL"],
         )
 
-    def test_group_is_conference_only(self):
+    def test_group_is_informative_and_preserved_from_registration(self):
         content = _workbook_bytes(
             [
                 ["12180001", "12 - VIDROS", "30 - CONJUNTO", "SALT", "N/A"],
                 ["12180002", "12 - VIDROS", "10 - INSUMO", "SALT", "LATERAL"],
             ]
         )
-        with self.assertRaisesRegex(ValueError, "GRUPO é somente conferência"):
-            reconciliation.prepare_reconciliation(
-                content,
-                CATEGORY,
-                _fields(),
-                _rows(),
-                lambda row, values: {"id": row["id"], "form_values": values},
-            )
+        result = reconciliation.prepare_reconciliation(
+            content,
+            CATEGORY,
+            _fields(),
+            _rows(),
+            lambda row, values: {"id": row["id"], "form_values": values},
+        )
+        self.assertEqual(result["total"], 2)
+        self.assertEqual(
+            result["payloads"][0]["form_values"][excel_bancos.PN_GROUP_FORM_KEY],
+            ["10 - INSUMO"],
+        )
 
 
 if __name__ == "__main__":
