@@ -546,7 +546,8 @@
                                 {% if rule.origin == 'system' %}Padrão do sistema{% else %}Configurada{% endif %}
                             </span>
                             <p class="text-sm text-slate-600">
-                                {% if rule.action == 'omit_description' %}Não inclui na
+                                {% if rule.action == 'system_profile' %}Aplica
+                                {% elif rule.action == 'omit_description' %}Não inclui na
                                 {% elif rule.action == 'show' %}Exibe
                                 {% elif rule.action == 'set_primary' %}Torna primário
                                 {% elif rule.action == 'set_secondary' %}Torna secundário
@@ -556,9 +557,12 @@
                                 <span class="text-slate-500">(classificação original: {{ rule.target_field_scope }})</span>
                                 {% elif rule.target_field_scope %}<span class="text-slate-500">({{ rule.target_field_scope }})</span>{% endif %}
                             </p>
+                            {% if rule.description %}
+                            <p class="text-xs leading-5 text-slate-500">{{ rule.description }}</p>
+                            {% endif %}
                         </div>
                         <div class="flex gap-2">
-                            {% if rule.action != 'omit_description' %}
+                            {% if rule.origin == 'catalog' and rule.action != 'omit_description' %}
                             <button type="button"
                                 class="conditional-rule-edit rounded-lg border border-blue-300 bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-700"
                                 data-rule='{{ rule | tojson | forceescape }}'>Editar</button>

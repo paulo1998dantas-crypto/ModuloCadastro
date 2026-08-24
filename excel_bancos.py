@@ -765,6 +765,63 @@ SYSTEM_CONDITIONAL_RULES_BY_CATEGORY = {
     ]
 }
 
+
+def _banco_system_profile_rules(fields: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Documenta as regras internas que definem o perfil 1020/3020.
+
+    A escolha entre banco unitário e conjunto já era aplicada pelo motor do
+    formulário, mas não aparecia em Opções nem na exportação. Estas regras são
+    apenas documentais: não duplicam a lógica de visibilidade e não podem ser
+    alteradas pelo catálogo, porém deixam a regra efetiva auditável.
+    """
+    conjunto_fields = [
+        field["label"]
+        for field in fields
+        if clean_text(field.get("banco_mode")) == "conjunto"
+    ]
+    insumo_fields = [
+        field["label"]
+        for field in fields
+        if clean_text(field.get("banco_mode")) == "insumo"
+    ]
+    conjunto_summary = ", ".join(conjunto_fields) or "campos exclusivos do conjunto"
+    insumo_summary = ", ".join(insumo_fields) or "campos exclusivos do insumo"
+    return [
+        {
+            "key": "cond_bancos_grupo_conjunto_perfil_campos",
+            "source_type": "group",
+            "source_field_key": PN_GROUP_FORM_KEY,
+            "source_values": [CONJUNTO_BANCO_GROUP_CODE],
+            "target_field_key": "",
+            "target_field_label": "PERFIL DE CAMPOS DO CONJUNTO",
+            "target_field_scope": "estrutura",
+            "action": "system_profile",
+            "match_by": "option",
+            "documentation_only": True,
+            "description": (
+                f"Com o grupo 30 - CONJUNTO / KIT, exibe {conjunto_summary} "
+                f"e oculta {insumo_summary}."
+            ),
+        },
+        {
+            "key": "cond_bancos_prefixo_cj_perfil_conjunto",
+            "source_type": "field",
+            "source_field_key": "pre_fixo",
+            "source_values": ["8- CJ"],
+            "target_field_key": "",
+            "target_field_label": "GRUPO 30 E PERFIL DE CONJUNTO",
+            "target_field_scope": "estrutura",
+            "action": "system_profile",
+            "match_by": "option",
+            "documentation_only": True,
+            "description": (
+                "O pré-fixo CJ identifica o cadastro como conjunto, aplica o "
+                "grupo 30 - CONJUNTO / KIT no PN e usa os campos do conjunto "
+                "mesmo ao abrir ou editar um cadastro já existente."
+            ),
+        },
+    ]
+
 # Compatibilidade de leitura com os conjuntos migrados antes da unificacao. Os
 # novos salvamentos usam exclusivamente as chaves canonicas, sem duplicar
 # conceitos entre banco unitario e conjunto.
@@ -2111,12 +2168,14 @@ def _resolve_conditional_rules(
                 "source_field": source_field,
                 "target_field": target_field,
                 "origin": origin,
+                "documentation_only": bool(rule.get("documentation_only")),
+                "description": clean_text(rule.get("description")),
             }
         )
     return resolved
 
 
-def _conditional_rule_signature(rule: dict[str, Any]) -> tuple[str, str, str, str, str, tuple[str, ...]]:
+def _conditional_rule_signature(rule: dict[str, Any]) -> tuple[str, str, str, str, str, tuple[str, ...], bool]:
     return (
         clean_text(rule.get("source_type")).lower() or "field",
         clean_text(rule.get("source_field_key")),
@@ -2124,7 +2183,24 @@ def _conditional_rule_signature(rule: dict[str, Any]) -> tuple[str, str, str, st
         rule_option_token(clean_text(rule.get("target_field_label"))),
         clean_text(rule.get("action")).lower(),
         tuple(sorted(rule_option_token(value) for value in (rule.get("source_values") or []))),
+        bool(rule.get("documentation_only")),
     )
+
+
+def _system_rule_reference(rule: dict[str, Any]) -> dict[str, Any]:
+    """Mantém visível uma regra padrão quando o catálogo a sobrescreve.
+
+    A referência é somente para a tela e a planilha de auditoria. A regra do
+    catálogo continua sendo a que o motor aplica quando ela diverge da padrão.
+    """
+    reference = deepcopy(rule)
+    reference["key"] = f"{clean_text(rule.get('key'))}__padrao_sistema"
+    reference["documentation_only"] = True
+    reference["description"] = (
+        clean_text(reference.get("description"))
+        or "Regra padrão do sistema. Há uma configuração específica no catálogo para este mesmo gatilho."
+    )
+    return reference
 
 
 def get_conditional_rules(category_key_value: str) -> list[dict[str, Any]]:
@@ -2142,6 +2218,7 @@ def get_conditional_rules(category_key_value: str) -> list[dict[str, Any]]:
     system_rule_definitions: list[dict[str, Any]] = []
     if category.get("key") == DEFAULT_CATEGORY_KEY:
         system_rule_definitions.extend(DEFAULT_CONDITIONAL_RULES)
+        system_rule_definitions.extend(_banco_system_profile_rules(fields))
     system_rule_definitions.extend(
         SYSTEM_CONDITIONAL_RULES_BY_CATEGORY.get(category.get("key"), [])
     )
@@ -2152,10 +2229,41 @@ def get_conditional_rules(category_key_value: str) -> list[dict[str, Any]]:
         fields, category.get("conditional_rules") or [], "catalog", pn_groups
     )
 
+    # Versões antigas salvavam alguns padrões no próprio catálogo. Quando a
+    # cópia é idêntica, ela deixa de mascarar a origem real da regra. Quando há
+    # divergência, preservamos o comportamento configurado e incluímos uma
+    # referência não executável ao padrão para que a gestão enxergue ambos.
+    system_by_key = {
+        clean_text(rule.get("key")): rule
+        for rule in system_rules
+        if clean_text(rule.get("key"))
+    }
+    system_by_signature = {
+        _conditional_rule_signature(rule): rule
+        for rule in system_rules
+    }
+    system_references: list[dict[str, Any]] = []
+    referenced_keys: set[str] = set()
+    effective_catalog_rules: list[dict[str, Any]] = []
+    for catalog_rule in catalog_rules:
+        rule_key = clean_text(catalog_rule.get("key"))
+        signature = _conditional_rule_signature(catalog_rule)
+        system_rule = system_by_key.get(rule_key) or system_by_signature.get(signature)
+        if system_rule is None:
+            effective_catalog_rules.append(catalog_rule)
+            continue
+        if _conditional_rule_signature(system_rule) == signature:
+            continue
+        system_key = clean_text(system_rule.get("key"))
+        if system_key and system_key not in referenced_keys:
+            system_references.append(_system_rule_reference(system_rule))
+            referenced_keys.add(system_key)
+        effective_catalog_rules.append(catalog_rule)
+
     merged: list[dict[str, Any]] = []
     positions_by_key: dict[str, int] = {}
-    positions_by_signature: dict[tuple[str, str, str, str, str, tuple[str, ...]], int] = {}
-    for rule in system_rules + catalog_rules:
+    positions_by_signature: dict[tuple[str, str, str, str, str, tuple[str, ...], bool], int] = {}
+    for rule in system_references + system_rules + effective_catalog_rules:
         rule_key = clean_text(rule.get("key"))
         signature = _conditional_rule_signature(rule)
         position = positions_by_key.get(rule_key) if rule_key else None
@@ -2184,9 +2292,9 @@ def get_conditional_rules_for_form(category_key_value: str) -> list[dict[str, An
     rules = get_conditional_rules(category_key_value)
     form_rules: list[dict[str, Any]] = []
     for rule in rules:
-        # Regra de composição: é exibida e exportada para auditoria, mas não é
-        # uma regra de visibilidade do formulário.
-        if rule.get("action") == "omit_description":
+        # Regras documentais e de composição são exibidas e exportadas para
+        # auditoria, mas não podem ser transformadas em JavaScript de tela.
+        if rule.get("documentation_only") or rule.get("action") == "omit_description":
             continue
         source_values = list(rule.get("source_values") or [])
         targets: list[dict[str, Any]] = []

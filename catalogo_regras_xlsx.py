@@ -599,6 +599,7 @@ def export_catalog_workbook() -> bytes:
     )
     rules_ws["A1"].comment = Comment(
         "Ações aceitas: HIDE, SHOW, TURN_PRIMARY, TURN_SECONDARY e JOIN_FIELDS. "
+        "PERFIL_SISTEMA é apenas informativo e identifica lógica interna. "
         "Linhas PADRAO_SISTEMA são apenas consulta e são ignoradas na reimportação. "
         "Separe múltiplos valores gatilho por ponto e vírgula (;). Para JOIN_FIELDS, "
         "informe os campos de origem, destino, adicionais (se houver) e o SEPARADOR.",
@@ -645,6 +646,7 @@ def export_catalog_workbook() -> bytes:
                         "set_primary": "TURN_PRIMARY",
                         "set_secondary": "TURN_SECONDARY",
                         "omit_description": "OMITIR_DA_DESCRICAO",
+                        "system_profile": "PERFIL_SISTEMA",
                     }.get(rule.get("action"), (rule.get("action") or "hide").upper()),
                     rule.get("source_field_label"),
                     rule.get("source_field_key"),

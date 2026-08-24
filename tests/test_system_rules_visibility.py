@@ -48,6 +48,34 @@ class SystemRulesVisibilityTests(unittest.TestCase):
         self.assertEqual(rule["action"], "omit_description")
         self.assertEqual(rule["source_value_labels"], ["N/A"])
 
+    def test_bancos_exibe_perfis_internos_como_regras_de_sistema(self):
+        catalog = excel_bancos._default_catalog()
+        with patch.object(excel_bancos, "load_catalog", return_value=deepcopy(catalog)):
+            rules = excel_bancos.get_conditional_rules(excel_bancos.DEFAULT_CATEGORY_KEY)
+
+        group_profile = next(
+            rule
+            for rule in rules
+            if rule["key"] == "cond_bancos_grupo_conjunto_perfil_campos"
+        )
+        prefix_profile = next(
+            rule
+            for rule in rules
+            if rule["key"] == "cond_bancos_prefixo_cj_perfil_conjunto"
+        )
+        self.assertEqual(group_profile["origin"], "system")
+        self.assertTrue(group_profile["documentation_only"])
+        self.assertIn("grupo 30", group_profile["description"].lower())
+        self.assertEqual(prefix_profile["origin"], "system")
+        self.assertTrue(prefix_profile["documentation_only"])
+
+    def test_perfis_internos_nao_sao_enviados_para_o_javascript_do_formulario(self):
+        catalog = excel_bancos._default_catalog()
+        with patch.object(excel_bancos, "load_catalog", return_value=deepcopy(catalog)):
+            form_rules = excel_bancos.get_conditional_rules_for_form(excel_bancos.DEFAULT_CATEGORY_KEY)
+
+        self.assertFalse(any(rule["action"] == "system_profile" for rule in form_rules))
+
     def test_exporta_regra_padrao_e_a_reimportacao_a_mantem_somente_para_consulta(self):
         catalog = _catalog()
         with patch.object(excel_bancos, "load_catalog", return_value=deepcopy(catalog)):
