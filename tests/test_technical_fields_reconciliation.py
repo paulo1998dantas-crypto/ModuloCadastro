@@ -62,7 +62,7 @@ def _workbook_bytes(rows):
     workbook = Workbook()
     worksheet = workbook.active
     worksheet.title = "CAMPOS_TECNICOS"
-    worksheet.append(["COD", "CATEGORIA", "GRUPO", "CAMPO:fornecedor", "CAMPO:especificidade"])
+    worksheet.append(["COD", "CATEGORIA", "GRUPO", "FORNECEDOR", "ESPECIFICIDADE"])
     for row in rows:
         worksheet.append(row)
     output = io.BytesIO()

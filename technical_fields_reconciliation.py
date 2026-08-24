@@ -44,7 +44,8 @@ def _group_code(value: Any) -> str:
 
 
 def _field_header(field: dict[str, Any]) -> str:
-    return f"{FIELD_PREFIX}{field['key']}"
+    """Use the same field title shown to the Cadastro user in Excel."""
+    return _text(field.get("label")) or field["key"]
 
 
 def _display_value(field: dict[str, Any], values: Any) -> str:
@@ -70,9 +71,8 @@ def build_template(
         cell = worksheet.cell(1, index)
         cell.fill = header_fill
         cell.font = Font(color="FFFFFF", bold=True)
-        if header.startswith(FIELD_PREFIX):
-            field_key = header[len(FIELD_PREFIX) :]
-            field = next(field for field in fields if field["key"] == field_key)
+        if index > len(BASE_COLUMNS):
+            field = fields[index - len(BASE_COLUMNS) - 1]
             mode = (
                 "múltipla: separe valores por |"
                 if field.get("selection_mode") == excel_bancos.SELECTION_MODE_MULTIPLA
@@ -105,7 +105,7 @@ def build_template(
     instructions.append([f"Categoria: {category.get('label')}"])
     instructions.append(["Não altere COD, CATEGORIA ou GRUPO."])
     instructions.append(["Mantenha todos os SKUs ativos: o arquivo deve representar exatamente a categoria."])
-    instructions.append(["Campos CAMPO:<chave> atualizam somente valores técnicos e as descrições derivadas."])
+    instructions.append(["As colunas técnicas usam os mesmos nomes de campos exibidos no Cadastro."])
     instructions.append(["Para seleção múltipla, separe os valores por |. Deixe vazio para limpar um campo."])
     instructions.column_dimensions["A"].width = 125
     instructions.sheet_view.showGridLines = False
@@ -138,8 +138,11 @@ def _matching_options(field: dict[str, Any], raw_value: str) -> list[str]:
 
 def _resolve_header_map(worksheet: Any, fields: list[dict[str, Any]]) -> tuple[int, dict[str, int]]:
     field_headers = {_header(_field_header(field)): field["key"] for field in fields}
-    # Accept a unique display label too, while keeping the generated key header
-    # as the stable documented input format.
+    # Older downloaded templates used CAMPO:<chave>; keep them importable while
+    # all newly downloaded templates show the field labels of the application.
+    legacy_headers = {_header(f"{FIELD_PREFIX}{field['key']}"): field["key"] for field in fields}
+    # Accept a unique display label too. This is also useful for controlled
+    # spreadsheets generated before the template became category-specific.
     label_to_key: dict[str, str] = {}
     duplicates: set[str] = set()
     for field in fields:
@@ -160,6 +163,9 @@ def _resolve_header_map(worksheet: Any, fields: list[dict[str, Any]]) -> tuple[i
         mapped = {"COD": raw_headers["COD"], "CATEGORIA": raw_headers["CATEGORIA"], "GRUPO": raw_headers["GRUPO"]}
         for normalized, field_key in field_headers.items():
             if normalized in raw_headers:
+                mapped[field_key] = raw_headers[normalized]
+        for normalized, field_key in legacy_headers.items():
+            if field_key not in mapped and normalized in raw_headers:
                 mapped[field_key] = raw_headers[normalized]
         for normalized, field_key in label_to_key.items():
             if field_key not in mapped and normalized in raw_headers:
