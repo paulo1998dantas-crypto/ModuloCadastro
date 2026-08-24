@@ -91,6 +91,26 @@ class CatalogFieldPersistenceTests(unittest.TestCase):
         self.assertFalse(result["required"])
         self.assertFalse(self.catalog["categories"][0]["fields"][0]["required"])
 
+    def test_update_field_can_make_a_field_free_text(self):
+        with (
+            patch.object(excel_bancos, "load_catalog", return_value=self.catalog),
+            patch.object(excel_bancos, "save_catalog"),
+            patch.object(excel_bancos, "sync_workbook_structure"),
+        ):
+            result = excel_bancos.update_field(
+                "cat_10_ar_condicionado",
+                "descritor_base",
+                "DESCRITOR BASE",
+                "primaria",
+                "texto_livre",
+                "sim",
+            )
+
+        field = self.catalog["categories"][0]["fields"][0]
+        self.assertTrue(result["free_text"])
+        self.assertTrue(field["free_text"])
+        self.assertEqual("unitaria", field["selection_mode"])
+
     def test_update_virtual_banco_field_persists_required_override(self):
         catalog = {
             "version": 2,
@@ -122,6 +142,40 @@ class CatalogFieldPersistenceTests(unittest.TestCase):
 
         self.assertTrue(result["required"])
         self.assertTrue(catalog["categories"][0]["field_overrides"]["cj_layout"]["required"])
+
+    def test_update_virtual_banco_field_persists_free_text_override(self):
+        catalog = {
+            "version": 2,
+            "active_category": excel_bancos.DEFAULT_CATEGORY_KEY,
+            "categories": [
+                {
+                    "key": excel_bancos.DEFAULT_CATEGORY_KEY,
+                    "label": "BANCOS",
+                    "sheet_name": "BANCOS",
+                    "fields": [],
+                    "conditional_rules": [],
+                }
+            ],
+            "pn_groups": [],
+        }
+        with (
+            patch.object(excel_bancos, "load_catalog", return_value=catalog),
+            patch.object(excel_bancos, "save_catalog"),
+            patch.object(excel_bancos, "sync_workbook_structure"),
+        ):
+            result = excel_bancos.update_field(
+                excel_bancos.DEFAULT_CATEGORY_KEY,
+                "cj_layout",
+                "LAYOUT",
+                "primaria",
+                "texto_livre",
+                "sim",
+            )
+
+        override = catalog["categories"][0]["field_overrides"]["cj_layout"]
+        self.assertTrue(result["free_text"])
+        self.assertTrue(override["free_text"])
+        self.assertEqual("unitaria", override["selection_mode"])
 
     def test_update_field_option_changes_persisted_catalog_object(self):
         with (

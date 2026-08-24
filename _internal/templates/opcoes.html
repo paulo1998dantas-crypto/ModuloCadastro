@@ -228,10 +228,11 @@
                         </select>
                     </label>
                     <label class="space-y-1">
-                        <span class="block text-xs font-bold uppercase text-slate-500">Tipo de seleção</span>
+                        <span class="block text-xs font-bold uppercase text-slate-500">Tipo do campo</span>
                         <select name="field_selection_mode" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="unitaria">Unitária</option>
                             <option value="multipla">Múltipla</option>
+                            <option value="texto_livre">Texto livre</option>
                         </select>
                     </label>
                     <label class="space-y-1">
@@ -257,7 +258,7 @@
                         <span class="block text-xs font-bold uppercase text-slate-500">Campo</span>
                         <select name="field_key" id="field-key-select" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" required>
                             {% for field in fields %}
-                            <option value="{{ field.key }}">{{ field.label }} - {{ field.scope }} - {{ 'múltipla' if field.selection_mode == 'multipla' else 'unitária' }} ({{ field.options|length }} opções)</option>
+                            <option value="{{ field.key }}">{{ field.label }} - {{ field.scope }} - {{ 'texto livre' if field.free_text else ('múltipla' if field.selection_mode == 'multipla' else 'unitária') }} ({{ field.options|length }} opções)</option>
                             {% endfor %}
                         </select>
                     </label>
@@ -308,7 +309,7 @@
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
                             <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase text-slate-600">{{ field.scope }}</span>
-                            <span class="rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700">{{ 'Seleção múltipla' if field.selection_mode == 'multipla' else 'Seleção unitária' }}</span>
+                            <span data-field-summary-input-mode class="rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700">{{ 'Texto livre' if field.free_text else ('Seleção múltipla' if field.selection_mode == 'multipla' else 'Seleção unitária') }}</span>
                             <span data-field-summary-required class="rounded-full px-3 py-1 text-xs font-bold {{ 'bg-emerald-50 text-emerald-700' if field.required else 'bg-amber-50 text-amber-700' }}">{{ 'Obrigatório' if field.required else 'Opcional' }}</span>
                             <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{{ field.options|length }} opções</span>
                             <span class="text-xs font-bold text-slate-400 group-open:hidden">Abrir</span>
@@ -333,10 +334,11 @@
                                     </select>
                                 </label>
                                 <label class="space-y-1">
-                                    <span class="block text-xs font-bold uppercase text-slate-500">Tipo de seleção</span>
+                                    <span class="block text-xs font-bold uppercase text-slate-500">Tipo do campo</span>
                                     <select name="field_selection_mode" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option value="unitaria" {% if field.selection_mode != 'multipla' %}selected{% endif %}>Unitária</option>
-                                        <option value="multipla" {% if field.selection_mode == 'multipla' %}selected{% endif %}>Múltipla</option>
+                                        <option value="unitaria" {% if not field.free_text and field.selection_mode != 'multipla' %}selected{% endif %}>Unitária</option>
+                                        <option value="multipla" {% if not field.free_text and field.selection_mode == 'multipla' %}selected{% endif %}>Múltipla</option>
+                                        <option value="texto_livre" {% if field.free_text %}selected{% endif %}>Texto livre</option>
                                     </select>
                                 </label>
                                 <label class="space-y-1">
@@ -807,6 +809,13 @@
             if (requiredBadge) {
                 requiredBadge.textContent = required ? "Obrigatório" : "Opcional";
                 requiredBadge.className = `rounded-full px-3 py-1 text-xs font-bold ${required ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`;
+            }
+            const inputMode = form.querySelector('select[name="field_selection_mode"]')?.value;
+            const inputModeBadge = panel.querySelector("[data-field-summary-input-mode]");
+            if (inputModeBadge) {
+                inputModeBadge.textContent = inputMode === "texto_livre"
+                    ? "Texto livre"
+                    : (inputMode === "multipla" ? "Seleção múltipla" : "Seleção unitária");
             }
             notifyWorkspace(payload.message || "Campo salvo.");
             updateDirtySummary();
