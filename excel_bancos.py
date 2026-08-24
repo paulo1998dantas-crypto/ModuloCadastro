@@ -3776,6 +3776,48 @@ def add_field_options(
     }
 
 
+def add_category_field_options(
+    category_key_value: str,
+    options_by_field: dict[str, list[str]],
+) -> dict[str, list[str]]:
+    """Append options to several fields in one atomic catalogue save.
+
+    Used by controlled category imports. All incoming labels are checked before
+    the catalogue is persisted, so a malformed value cannot leave half of the
+    category with newly-created options.
+    """
+    catalog = load_catalog()
+    category = _find_category(catalog, category_key_value)
+    prepared: dict[str, list[str]] = {}
+    for field_key_value, incoming_values in options_by_field.items():
+        if not incoming_values:
+            continue
+        _ensure_catalog_managed_field(field_key_value)
+        field = _find_field(catalog, category_key_value, field_key_value)
+        options = field.setdefault("options", [])
+        existing_identities = {option_identity(value) for value in options}
+        working_options = list(options)
+        additions: list[str] = []
+        for incoming in incoming_values:
+            raw_value = clean_text(incoming)
+            if not raw_value:
+                raise ValueError("A atualização contém uma opção vazia.")
+            formatted = _format_option_value(raw_value, working_options)
+            identity = option_identity(formatted)
+            if identity in existing_identities or identity in {option_identity(item) for item in additions}:
+                continue
+            additions.append(formatted)
+            working_options.append(formatted)
+        if additions:
+            prepared[field_key_value] = additions
+
+    for field_key_value, additions in prepared.items():
+        _find_field(catalog, category_key_value, field_key_value).setdefault("options", []).extend(additions)
+    if prepared:
+        save_catalog(catalog)
+    return prepared
+
+
 def update_field_option(category_key_value: str, field_key_value: str, row_value: int, option_value: str) -> dict[str, str]:
     _ensure_catalog_managed_field(field_key_value)
     catalog = load_catalog()

@@ -2043,6 +2043,41 @@ async def opcoes_atualizar_descricoes(category_key: str = Form(...)):
         )
 
 
+@app.post("/opcoes/revestimentos/reconciliar")
+async def opcoes_reconciliar_revestimentos(
+    category_key: str = Form("cat_18_revestimento"),
+    arquivo_revestimento: UploadFile = File(...),
+):
+    """Import only the supplied active Revestimento catalogue after full validation."""
+    try:
+        if not _supabase_mode():
+            raise ValueError("A atualização controlada requer o modo Supabase ativo.")
+        if category_key != "cat_18_revestimento":
+            raise ValueError("Esta rotina é exclusiva para a categoria 18 - REVESTIMENTO.")
+        filename = Path(arquivo_revestimento.filename or "").name.strip()
+        if not filename.lower().endswith(".xlsx"):
+            raise ValueError("Envie a planilha de Revestimento no formato XLSX.")
+        result = supabase_store.reconcile_revestimento_workbook(
+            await arquivo_revestimento.read(),
+            actor="cadastro:opcoes",
+        )
+        message = (
+            f"Atualização controlada concluída: {result['updated']} de "
+            f"{result['total']} Revestimento(s) ativo(s) tiveram os campos e descrições atualizados."
+        )
+        if result.get("options_added"):
+            message += f" {result['options_added']} opção(ões) nova(s) foram incluídas no catálogo da categoria."
+        return RedirectResponse(
+            url=f"/opcoes?categoria={quote(result['category_key'])}&sucesso={quote(message)}",
+            status_code=303,
+        )
+    except Exception as exc:
+        return RedirectResponse(
+            url=f"/opcoes?categoria={quote(category_key)}&erro={quote(str(exc))}",
+            status_code=303,
+        )
+
+
 @app.post("/opcoes")
 async def opcoes_post(
     request: Request,

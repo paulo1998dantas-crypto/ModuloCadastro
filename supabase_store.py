@@ -17,6 +17,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
 import excel_bancos
+import revestimento_reconciliation
 from xlsx_templates import build_import_template
 
 
@@ -781,6 +782,132 @@ def refresh_registration_descriptions(category_key: str) -> dict[str, Any]:
         "updated": len(payloads),
         "skipped": len(skipped),
         "skipped_identifiers": skipped[:25],
+    }
+
+
+def _revestimento_reconciliation_payload(
+    row: dict[str, Any],
+    category: dict[str, Any],
+    fields: list[dict[str, Any]],
+    form_data: dict[str, list[str]],
+) -> dict[str, Any]:
+    """Build a safe update for a Revestimento record imported from XLSX.
+
+    The workbook owns only the structured catalogue fields. Operational
+    markers kept in form_values (such as possui_bom and migration metadata)
+    are deliberately preserved here.
+    """
+    payload = _description_refresh_payload(
+        {**row, "form_values": form_data},
+        category,
+        fields,
+    )
+    if payload is None:
+        raise SupabaseStoreError("Cadastro de Revestimento sem identificador válido.")
+
+    original = row.get("form_values") if isinstance(row.get("form_values"), dict) else {}
+    normalized = _field_groups(fields, form_data)
+    payload["form_values"] = {**original, **normalized}
+    descriptions = excel_bancos.build_descriptions(fields, payload["form_values"], category["key"])
+    payload.update(
+        {
+            "descricao_primaria": descriptions["primaria"],
+            "descricao_secundaria": descriptions["secundaria"],
+            "sufixo": descriptions.get("sufixo") or "",
+            "caracteres_primario": len(descriptions["primaria"]),
+            "caracteres_secundario": len(descriptions["secundaria"]),
+            "field_values": _field_values(fields, normalized),
+            "field_codes": _field_codes(fields, normalized),
+        }
+    )
+    payload["search_text"] = _search_text(
+        clean_text(row.get("sku")),
+        category["label"],
+        payload["descricao_primaria"],
+        payload["descricao_secundaria"],
+        normalize_unit(row.get("unidade")),
+        " ".join(payload["field_values"].values()),
+    )
+    return payload
+
+
+def reconcile_revestimento_workbook(content: bytes, actor: str = "cadastro:opcoes") -> dict[str, Any]:
+    """Apply a fully validated update for active 18 - REVESTIMENTO records.
+
+    This deliberately has no support for partial imports: the workbook must
+    contain exactly the active SKU set in production before any row is saved.
+    """
+    category = _category(revestimento_reconciliation.CATEGORY_KEY)
+    fields = excel_bancos.get_banco_fields(category["key"])
+    active_rows = _request_all(
+        REGISTRATIONS_TABLE,
+        [
+            (
+                "select",
+                "id,sku,unidade,ativo,form_values,descricao_primaria,descricao_secundaria,field_values,field_codes",
+            ),
+            ("category_key", f"eq.{category['key']}"),
+            ("ativo", "eq.true"),
+        ],
+    )
+    # Validate SKU coverage and every field against an in-memory version of
+    # the catalogue first. This prevents a catalogue extension from being
+    # saved if the workbook itself is incomplete or points to an invalid SKU.
+    pending_options = revestimento_reconciliation.missing_field_options(content, fields)
+    preview_fields = revestimento_reconciliation.fields_with_pending_options(fields, pending_options)
+    revestimento_reconciliation.prepare_reconciliation(
+        content,
+        preview_fields,
+        active_rows,
+        lambda row, groups: _revestimento_reconciliation_payload(row, category, preview_fields, groups),
+    )
+
+    added_options = excel_bancos.add_category_field_options(category["key"], pending_options)
+    # Fetch the canonical, saved options (including their generated codes)
+    # before composing fields/descriptions that will be persisted per SKU.
+    fields = excel_bancos.get_banco_fields(category["key"])
+    reconciliation = revestimento_reconciliation.prepare_reconciliation(
+        content,
+        fields,
+        active_rows,
+        lambda row, groups: _revestimento_reconciliation_payload(row, category, fields, groups),
+    )
+    for start in range(0, len(reconciliation["payloads"]), 200):
+        _request(
+            "POST",
+            REGISTRATIONS_TABLE,
+            payload=reconciliation["payloads"][start : start + 200],
+            prefer="resolution=merge-duplicates,return=minimal",
+        )
+
+    audit_payload = {
+        "entity_type": "CADASTRO_REVESTIMENTO",
+        "entity_id": None,
+        "action": "RECONCILIACAO_CONTROLADA",
+        "actor": clean_text(actor) or "cadastro:opcoes",
+        "origin": "CADASTRO",
+        "before_data": {"ativos": reconciliation["total"]},
+        "after_data": {
+            "atualizados": reconciliation["changed"],
+            "skus_alterados": reconciliation["changed_skus"][:100],
+            "opcoes_incluidas": added_options,
+        },
+        "reason": "Atualização controlada dos campos de Revestimento por arquivo XLSX.",
+    }
+    try:
+        _request("POST", "erp_audit_events", payload=audit_payload, prefer="return=minimal")
+    except Exception:
+        # The update has already committed; avoid reporting it as a failure and
+        # inviting a blind re-run. The changed registrations preserve their own
+        # updated_at history, and the import remains safe to re-execute.
+        pass
+
+    return {
+        "category_key": category["key"],
+        "category_label": category["label"],
+        "total": reconciliation["total"],
+        "updated": reconciliation["changed"],
+        "options_added": sum(len(values) for values in added_options.values()),
     }
 
 
