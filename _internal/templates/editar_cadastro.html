@@ -240,7 +240,11 @@
             return normalizeText((value || "").replace(/^\s*\d+\s*[-–—]\s*/, "")).replace(/\s+/g, "");
         };
 
-        const findBlock = (label, scope) => {
+        const findBlock = (label, scope, key = "") => {
+            if (key) {
+                const keyedBlock = fieldBlocks.find((block) => block.dataset.fieldKey === key);
+                if (keyedBlock) return keyedBlock;
+            }
             const labels = Array.isArray(label) ? label : [label];
             return fieldBlocks.find((block) => {
                 return labels.some((candidate) => normalizeText(block.dataset.fieldLabel) === normalizeText(candidate))
@@ -374,13 +378,16 @@
                     const selectedGroup = normalizeGroupCode(groupSelect?.value);
                     matches = rule.values.some((value) => normalizeGroupCode(value) === selectedGroup);
                 } else {
-                    const sourceBlock = findBlock(rule.sourceLabel, rule.sourceScope);
+                    const sourceBlock = findBlock(rule.sourceLabel, rule.sourceScope, rule.sourceKey);
                     if (!sourceBlock) return;
                     const selectedTokens = rule.matchBy === "prefix"
                         ? getSelectedPrefixes(sourceBlock)
                         : getSelectedTokens(sourceBlock);
                     matches = selectedTokens.some((token) => {
-                        return rule.values.some((value) => token === value || token.startsWith(value));
+                        return rule.values.some((value) => {
+                            const normalizedValue = normalizeOptionValue(value);
+                            return normalizedValue && (token === normalizedValue || token.startsWith(normalizedValue));
+                        });
                     });
                 }
                 const action = rule.action || (rule.mode === "showWhen" ? "show" : "hide");
@@ -388,7 +395,7 @@
                 if (action === "set_primary" || action === "set_secondary") {
                     if (matches) {
                         rule.targets.forEach((target) => {
-                            const targetBlock = findBlock(target.label, target.scope);
+                            const targetBlock = findBlock(target.label, target.scope, target.key);
                             if (targetBlock) {
                                 effectiveScopes.set(targetBlock, action === "set_primary" ? "primaria" : "secundaria");
                             }
@@ -398,7 +405,7 @@
                 }
 
                 rule.targets.forEach((target) => {
-                    const targetBlock = findBlock(target.label, target.scope);
+                    const targetBlock = findBlock(target.label, target.scope, target.key);
                     if (!targetBlock) return;
                     const targetRules = visibilityRules.get(targetBlock);
                     if (action === "show" || rule.mode === "showWhen") targetRules.show.push(matches);

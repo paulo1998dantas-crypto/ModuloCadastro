@@ -2296,11 +2296,23 @@ def get_conditional_rules_for_form(category_key_value: str) -> list[dict[str, An
         # auditoria, mas não podem ser transformadas em JavaScript de tela.
         if rule.get("documentation_only") or rule.get("action") == "omit_description":
             continue
-        source_values = list(rule.get("source_values") or [])
+        source_values = list(
+            dict.fromkeys(
+                [
+                    clean_text(value)
+                    for value in [
+                        *(rule.get("source_values") or []),
+                        *(rule.get("source_value_labels") or []),
+                    ]
+                    if clean_text(value)
+                ]
+            )
+        )
         targets: list[dict[str, Any]] = []
         if rule.get("target_field"):
             targets.append(
                 {
+                    "key": rule["target_field"]["key"],
                     "label": rule["target_field"]["label"],
                     "scope": rule["target_field"]["scope"],
                     "requiredWhenVisible": rule["action"] == "show",
@@ -2309,6 +2321,7 @@ def get_conditional_rules_for_form(category_key_value: str) -> list[dict[str, An
         elif rule.get("target_field_label"):
             targets.append(
                 {
+                    "key": rule.get("target_field_key", ""),
                     "label": rule["target_field_label"],
                     "scope": rule["target_field_scope"],
                     "requiredWhenVisible": rule["action"] == "show",
@@ -2319,6 +2332,7 @@ def get_conditional_rules_for_form(category_key_value: str) -> list[dict[str, An
         form_rules.append(
             {
                 "sourceType": rule.get("source_type", "field"),
+                "sourceKey": rule.get("source_field_key", ""),
                 "sourceLabel": rule["source_field_label"],
                 "sourceScope": rule["source_field_scope"],
                 "action": rule["action"],

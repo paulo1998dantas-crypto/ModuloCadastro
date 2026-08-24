@@ -184,9 +184,32 @@ class EditConditionalTemplateTests(unittest.TestCase):
         self.assertIn('id="edit-primary-field-grid"', html)
         self.assertIn('id="edit-secondary-field-grid"', html)
         self.assertIn("const configuredRules =", html)
+        self.assertIn('"sourceKey": "braco"', html)
+        self.assertIn('"key": "lado_braco"', html)
         self.assertIn('"sourceLabel": "APOIO DE BRA\\u00c7O"', html)
+        self.assertIn("normalizeOptionValue(value)", html)
+        self.assertIn("rule.sourceKey", html)
+        self.assertIn("target.key", html)
         self.assertIn("const updateConditionalFields = () =>", html)
         self.assertIn("updateConditionalFields();", html)
+
+    def test_form_rules_keep_stable_keys_and_current_option_labels(self):
+        rules = excel_bancos.get_conditional_rules_for_form("bancos")
+        side_rules = [
+            rule
+            for rule in rules
+            if rule.get("sourceKey") == "braco"
+            and any(target.get("key") == "lado_braco" for target in rule.get("targets", []))
+        ]
+
+        self.assertTrue(side_rules)
+        self.assertTrue(
+            any(
+                "1- S/ AP BRACO" in rule.get("values", [])
+                or "SAPBRACO" in rule.get("values", [])
+                for rule in side_rules
+            )
+        )
 
 
 if __name__ == "__main__":
