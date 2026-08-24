@@ -105,6 +105,84 @@ class DescriptionRefreshTests(unittest.TestCase):
         self.assertEqual(result["skipped_identifiers"], ["10100002"])
         request.assert_not_called()
 
+    def test_refresh_applies_current_order_option_labels_and_conditional_rules(self):
+        fields = [
+            {
+                "key": "gatilho",
+                "label": "GATILHO",
+                "scope": "primaria",
+                "selection_mode": "unitaria",
+                "description_order": 2,
+                "options": ["1- ATIVO"],
+            },
+            {
+                "key": "detalhe",
+                "label": "DETALHE",
+                "scope": "primaria",
+                "selection_mode": "unitaria",
+                "description_order": 1,
+                "options": ["1- DETALHE NOVO"],
+            },
+            {
+                "key": "promocao",
+                "label": "PROMOCAO",
+                "scope": "secundaria",
+                "selection_mode": "unitaria",
+                "description_order": 1,
+                "options": ["1- PROMOVIDO"],
+            },
+            {
+                "key": "oculto",
+                "label": "OCULTO",
+                "scope": "secundaria",
+                "selection_mode": "unitaria",
+                "description_order": 2,
+                "options": ["1- NAO DEVE APARECER"],
+            },
+        ]
+        row = {
+            "id": "cadastro-1",
+            "sku": "10100003",
+            "unidade": "pc",
+            "ativo": True,
+            "form_values": {
+                "gatilho": ["1- ATIVO"],
+                "detalhe": ["1- DETALHE ANTIGO"],
+                "promocao": ["1- PROMOVIDO"],
+                "oculto": ["1- NAO DEVE APARECER"],
+            },
+        }
+        rules = [
+            {
+                "key": "promover",
+                "action": "set_primary",
+                "source_type": "field",
+                "source_field_key": "gatilho",
+                "source_values": ["1- ATIVO"],
+                "target_field_key": "promocao",
+            },
+            {
+                "key": "ocultar",
+                "action": "hide",
+                "source_type": "field",
+                "source_field_key": "gatilho",
+                "source_values": ["1- ATIVO"],
+                "target_field_key": "oculto",
+            },
+        ]
+
+        with (
+            patch.object(excel_bancos, "get_description_rules", return_value=[]),
+            patch.object(excel_bancos, "get_conditional_rules", return_value=rules),
+        ):
+            payload = supabase_store._description_refresh_payload(row, self.category, fields)
+
+        self.assertIsNotNone(payload)
+        self.assertEqual(payload["descricao_primaria"], "DETALHE NOVO ATIVO PROMOVIDO")
+        self.assertEqual(payload["descricao_secundaria"], "DETALHE NOVO ATIVO PROMOVIDO")
+        self.assertEqual(payload["form_values"]["detalhe"], ["1- DETALHE NOVO"])
+        self.assertNotIn("NAO DEVE APARECER", payload["descricao_secundaria"])
+
 
 if __name__ == "__main__":
     unittest.main()

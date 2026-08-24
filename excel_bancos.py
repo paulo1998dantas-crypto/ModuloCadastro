@@ -2563,18 +2563,30 @@ def _serialize_field_values(field: dict[str, Any], data: Any) -> list[str]:
 
     options = field.get("options") or []
     submitted_identities = {option_identity(value): value for value in cleaned_values}
+    submitted_codes = {
+        option_code(value): value
+        for value in cleaned_values
+        if option_code(value)
+    }
     ordered: list[str] = []
     used: set[str] = set()
 
     for option in options:
         identity = option_identity(option)
-        if identity in submitted_identities and identity not in used:
+        code = option_code(option)
+        matches_current_option = identity in submitted_identities or (code and code in submitted_codes)
+        if matches_current_option and identity not in used:
             ordered.append(option)
             used.add(identity)
 
     for value in cleaned_values:
         identity = option_identity(value)
-        if identity not in used:
+        code = option_code(value)
+        current_option_with_same_code = any(
+            code and option_code(option) == code
+            for option in options
+        )
+        if identity not in used and not current_option_with_same_code:
             ordered.append(value)
             used.add(identity)
 
