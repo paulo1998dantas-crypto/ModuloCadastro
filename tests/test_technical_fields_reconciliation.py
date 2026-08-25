@@ -155,7 +155,7 @@ class TechnicalFieldsReconciliationTests(unittest.TestCase):
                 "description_order": 2,
                 "required": False,
                 "free_text": False,
-                "options": ["4- MC/CS", "8- ORI"],
+                "options": ["4- MC/CS", "8- ORI", "12- MC"],
             },
             {
                 "key": "descritor_base",
@@ -189,7 +189,15 @@ class TechnicalFieldsReconciliationTests(unittest.TestCase):
             lambda row, values: {"id": row["id"], "form_values": values},
         )
         self.assertEqual(result["payloads"][0]["form_values"]["cor"], ["7- PRETO/CINZA"])
-        self.assertEqual(result["payloads"][0]["form_values"]["fornecedor"], ["4- MC/CS"])
+        self.assertEqual(result["payloads"][0]["form_values"]["fornecedor"], ["12- MC"])
+        self.assertEqual(
+            reconciliation._matching_options(
+                fields[1],
+                "MC/CS",
+                PECAS_BCO_CATEGORY["key"],
+            ),
+            ["4- MC/CS"],
+        )
         self.assertEqual(
             reconciliation._matching_options(
                 fields[1],

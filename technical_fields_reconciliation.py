@@ -37,7 +37,6 @@ STRICT_OPTION_ALIASES = {
             "PRETO C CINZA": "PRETO/CINZA",
         },
         "fornecedor": {
-            "MC": "MC/CS",
             "ORIGINAL": "ORI",
         },
         "descritor_base": {
