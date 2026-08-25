@@ -13,6 +13,7 @@ class RevestimentoDescriptionRulesTests(unittest.TestCase):
                 "scope": "primaria",
                 "selection_mode": "unitaria",
                 "description_order": 1,
+                "options": ["1- CJ"],
             },
             {
                 "key": "fornecedor",
@@ -20,6 +21,7 @@ class RevestimentoDescriptionRulesTests(unittest.TestCase):
                 "scope": "secundaria",
                 "selection_mode": "unitaria",
                 "description_order": 2,
+                "options": ["2- N/A"],
             },
         ]
 
@@ -31,6 +33,35 @@ class RevestimentoDescriptionRulesTests(unittest.TestCase):
 
         self.assertEqual(description["primaria"], "CJ")
         self.assertEqual(description["secundaria"], "CJ")
+
+    def test_na_e_omitido_em_qualquer_categoria_e_escopo(self):
+        fields = [
+            {
+                "key": "modelo",
+                "label": "MODELO",
+                "scope": "primaria",
+                "selection_mode": "unitaria",
+                "description_order": 1,
+                "options": ["1- N/A", "2- MODELO A"],
+            },
+            {
+                "key": "acabamento",
+                "label": "ACABAMENTO",
+                "scope": "secundaria",
+                "selection_mode": "unitaria",
+                "description_order": 2,
+                "options": ["1- N/A", "2- ACABAMENTO A"],
+            },
+        ]
+
+        description = excel_bancos.build_descriptions(
+            fields,
+            {"modelo": "1- N/A", "acabamento": "1- N/A"},
+            "cat_futura",
+        )
+
+        self.assertEqual(description["primaria"], "")
+        self.assertEqual(description["secundaria"], "")
 import supabase_store
 
 

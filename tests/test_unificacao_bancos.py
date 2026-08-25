@@ -51,7 +51,7 @@ class UnificacaoBancosTests(unittest.TestCase):
         )
         self.assertEqual(
             description["secundaria"],
-            "CJ BANCOS REC - MC - LB - 3,2,3 - 3P - TECIDO - E/S/ J | ACESSIBILIDADE: N/A",
+            "CJ BANCOS REC - MC - LB - 3,2,3 - 3P - TECIDO - E/S/ J",
         )
         self.assertEqual(description["sufixo"], "CJ")
 
@@ -162,7 +162,7 @@ class UnificacaoBancosTests(unittest.TestCase):
         self.assertEqual(description["primaria"], primaria)
         self.assertEqual(
             description["secundaria"],
-            primaria + " | REVESTIMENTO: CAPA LB PADRAO JI/COSTURA LB/LINHA LB | ACESSIBILIDADE: N/A",
+            primaria + " | REVESTIMENTO: CAPA LB PADRAO JI/COSTURA LB/LINHA LB",
         )
 
     def test_acessibilidade_do_conjunto_e_unica_numerada_e_condicional(self):
@@ -194,7 +194,7 @@ class UnificacaoBancosTests(unittest.TestCase):
             self.fields, {**base, "cj_acessibilidade": "1- N/A"}, "bancos"
         )
         self.assertNotIn(" - N/A", description_na["primaria"])
-        self.assertIn("ACESSIBILIDADE: N/A", description_na["secundaria"])
+        self.assertNotIn("ACESSIBILIDADE: N/A", description_na["secundaria"])
 
         description_foca = excel_bancos.build_descriptions(
             self.fields, {**base, "cj_acessibilidade": "2- FOCA"}, "bancos"

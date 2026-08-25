@@ -38,15 +38,28 @@ def _catalog():
 
 
 class SystemRulesVisibilityTests(unittest.TestCase):
-    def test_regra_de_revestimento_e_visivel_como_padrao_do_sistema(self):
+    def test_regra_global_de_na_e_visivel_como_padrao_do_sistema(self):
         catalog = _catalog()
         with patch.object(excel_bancos, "load_catalog", return_value=deepcopy(catalog)):
             rules = excel_bancos.get_conditional_rules(excel_bancos.REVESTIMENTO_CATEGORY_KEY)
 
-        rule = next(rule for rule in rules if rule["key"] == "cond_revestimento_na_omite_descricao")
+        rule = next(rule for rule in rules if rule["key"] == "cond_sistema_na_omite_fornecedor")
         self.assertEqual(rule["origin"], "system")
         self.assertEqual(rule["action"], "omit_description")
-        self.assertEqual(rule["source_value_labels"], ["N/A"])
+        self.assertEqual(rule["source_value_labels"], ["1- N/A"])
+        self.assertEqual(rule["source_field_key"], "fornecedor")
+        self.assertEqual(rule["target_field_key"], "fornecedor")
+
+    def test_regra_global_de_na_nao_remove_o_campo_do_formulario(self):
+        catalog = _catalog()
+        with patch.object(excel_bancos, "load_catalog", return_value=deepcopy(catalog)):
+            form_rules = excel_bancos.get_conditional_rules_for_form(
+                excel_bancos.REVESTIMENTO_CATEGORY_KEY
+            )
+
+        self.assertFalse(
+            any(rule["key"] == "cond_sistema_na_omite_fornecedor" for rule in form_rules)
+        )
 
     def test_bancos_exibe_perfis_internos_como_regras_de_sistema(self):
         catalog = excel_bancos._default_catalog()
@@ -91,7 +104,7 @@ class SystemRulesVisibilityTests(unittest.TestCase):
             row_number = next(
                 row
                 for row in range(2, rules_ws.max_row + 1)
-                if rules_ws.cell(row, key_column).value == "cond_revestimento_na_omite_descricao"
+                if rules_ws.cell(row, key_column).value == "cond_sistema_na_omite_fornecedor"
             )
             self.assertEqual(rules_ws.cell(row_number, action_column).value, "OMITIR_DA_DESCRICAO")
             self.assertEqual(rules_ws.cell(row_number, origin_column).value, "PADRAO_SISTEMA")

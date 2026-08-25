@@ -362,12 +362,25 @@ def _is_not_applicable_option(value: Any) -> bool:
     return rule_option_token(value) in {"NA", "NAOAPLICAVEL"}
 
 
+def _field_not_applicable_option(field: dict[str, Any]) -> str:
+    """Retorna a opção N/A canônica do campo, quando ela existe no catálogo."""
+    options = [
+        *(field.get("options") or []),
+        *(field.get("conjunto_only_options") or []),
+    ]
+    return next((clean_text(option) for option in options if _is_not_applicable_option(option)), "")
+
+
+def _field_supports_not_applicable(field: dict[str, Any]) -> bool:
+    return bool(_field_not_applicable_option(field))
+
+
 def _description_values(field: dict[str, Any], data: Any, category_key_value: str) -> list[str]:
     """Valores que participam da descrição, considerando regras sistêmicas."""
     values = _serialize_field_values(field, data)
-    if clean_text(category_key_value) == REVESTIMENTO_CATEGORY_KEY:
-        # Em Revestimento, N/A representa ausência daquela característica e não
-        # deve poluir a descrição primária ou secundária.
+    if _field_supports_not_applicable(field):
+        # N/A representa ausência da característica em qualquer categoria. O
+        # valor continua persistido para auditoria, mas não compõe descrições.
         return [value for value in values if not _is_not_applicable_option(value)]
     return values
 
@@ -756,23 +769,40 @@ CONJUNTO_BANCO_ESPECIFICIDADE_OPTIONS = [
 # Regras de plataforma que não pertencem ao catálogo editável. Elas são
 # disponibilizadas na mesma tela e na exportação das regras para que a equipe
 # consiga enxergar todos os comportamentos que influenciam o cadastro.
-SYSTEM_CONDITIONAL_RULES_BY_CATEGORY = {
-    REVESTIMENTO_CATEGORY_KEY: [
-        {
-            "key": "cond_revestimento_na_omite_descricao",
-            "source_type": "field",
-            "source_field_key": "",
-            "source_field_label": "QUALQUER CAMPO VISÍVEL",
-            "source_field_scope": "primaria/secundaria",
-            "source_values": ["N/A"],
-            "target_field_key": "",
-            "target_field_label": "DESCRIÇÃO PRIMÁRIA E SECUNDÁRIA",
-            "target_field_scope": "ambas",
-            "action": "omit_description",
-            "match_by": "option",
-        }
-    ]
-}
+SYSTEM_CONDITIONAL_RULES_BY_CATEGORY: dict[str, list[dict[str, Any]]] = {}
+
+
+def _not_applicable_system_rules(fields: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Cria a regra global N/A para todos os campos presentes e futuros.
+
+    A regra é derivada do catálogo em tempo de execução. Assim, qualquer campo
+    que passe a oferecer N/A recebe o comportamento sem migration ou cadastro
+    manual de uma regra por categoria.
+    """
+    rules: list[dict[str, Any]] = []
+    for field in fields:
+        not_applicable_option = _field_not_applicable_option(field)
+        if not not_applicable_option:
+            continue
+        field_key = clean_text(field.get("key"))
+        if not field_key:
+            continue
+        rules.append(
+            {
+                "key": f"cond_sistema_na_omite_{field_key}",
+                "source_type": "field",
+                "source_field_key": field_key,
+                "source_values": [not_applicable_option],
+                "target_field_key": field_key,
+                "action": "omit_description",
+                "match_by": "option",
+                "description": (
+                    "Regra global do sistema: ao selecionar N/A, o próprio campo "
+                    "é considerado ausente e não entra nas descrições primária ou secundária."
+                ),
+            }
+        )
+    return rules
 
 
 def _banco_system_profile_rules(fields: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -2228,6 +2258,7 @@ def get_conditional_rules(category_key_value: str) -> list[dict[str, Any]]:
     if category.get("key") == DEFAULT_CATEGORY_KEY:
         system_rule_definitions.extend(DEFAULT_CONDITIONAL_RULES)
         system_rule_definitions.extend(_banco_system_profile_rules(fields))
+    system_rule_definitions.extend(_not_applicable_system_rules(fields))
     system_rule_definitions.extend(
         SYSTEM_CONDITIONAL_RULES_BY_CATEGORY.get(category.get("key"), [])
     )
@@ -2781,6 +2812,9 @@ def _conjunto_value(fields_by_key: dict[str, dict[str, Any]], data: Any, key: st
 
 def _conjunto_label(fields_by_key: dict[str, dict[str, Any]], data: Any, key: str) -> str:
     values = _conjunto_value(fields_by_key, data, key)
+    field = fields_by_key.get(key)
+    if field and _field_supports_not_applicable(field):
+        values = [value for value in values if not _is_not_applicable_option(value)]
     return " / ".join(option_label(value) for value in values).strip()
 
 
