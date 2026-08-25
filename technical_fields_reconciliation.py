@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 from copy import deepcopy
+from difflib import SequenceMatcher
 from io import BytesIO
 from typing import Any, Callable
 
@@ -24,6 +25,26 @@ import excel_bancos
 MAX_FILE_SIZE = 8 * 1024 * 1024
 BASE_COLUMNS = ("COD", "CATEGORIA", "GRUPO")
 FIELD_PREFIX = "CAMPO:"
+
+# PEÇAS BCO é mantida como um catálogo fechado: a planilha controlada pode
+# usar estas grafias legadas, mas elas sempre convergem para opções canônicas
+# já existentes. Qualquer outro valor desconhecido deve ser corrigido no XLSX
+# em vez de ampliar silenciosamente o catálogo de produção.
+STRICT_OPTION_CATEGORIES = {"cat_22_pecas_bco"}
+STRICT_OPTION_ALIASES = {
+    "cat_22_pecas_bco": {
+        "cor": {
+            "PRETO C CINZA": "PRETO/CINZA",
+        },
+        "fornecedor": {
+            "MC": "MC/CS",
+            "ORIGINAL": "ORI",
+        },
+        "descritor_base": {
+            "PEGA MAO": "PEGA MAO BCO",
+        },
+    },
+}
 
 
 def _text(value: Any) -> str:
@@ -121,8 +142,19 @@ def _split_values(raw: str) -> list[str]:
     return [part.strip() for part in re.split(r"\s*\|\s*", raw) if part.strip()]
 
 
-def _matching_options(field: dict[str, Any], raw_value: str) -> list[str]:
+def _matching_options(
+    field: dict[str, Any],
+    raw_value: str,
+    category_key: str = "",
+) -> list[str]:
     expected = excel_bancos.normalize_label(raw_value)
+    alias = (
+        STRICT_OPTION_ALIASES.get(category_key, {})
+        .get(field.get("key") or "", {})
+        .get(expected)
+    )
+    if alias:
+        expected = excel_bancos.normalize_label(alias)
     matches = [
         option
         for option in field.get("options", [])
@@ -136,6 +168,21 @@ def _matching_options(field: dict[str, Any], raw_value: str) -> list[str]:
             if re.sub(r"[^A-Z0-9]+", "", excel_bancos.normalize_label(excel_bancos.option_label(option))) == compact
         ]
     return matches
+
+
+def _closest_option(field: dict[str, Any], raw_value: str) -> str:
+    """Return the best display suggestion without accepting it implicitly."""
+    expected = excel_bancos.normalize_label(raw_value)
+    ranked: list[tuple[float, str]] = []
+    for option in field.get("options", []):
+        label = excel_bancos.option_label(option) or _text(option)
+        score = SequenceMatcher(
+            None,
+            expected,
+            excel_bancos.normalize_label(label),
+        ).ratio()
+        ranked.append((score, option))
+    return max(ranked, default=(0.0, ""), key=lambda item: item[0])[1]
 
 
 def _resolve_header_map(worksheet: Any, fields: list[dict[str, Any]]) -> tuple[int, dict[str, int]]:
@@ -221,15 +268,23 @@ def load_rows(content: bytes, category: dict[str, Any], fields: list[dict[str, A
 
 def missing_field_options(content: bytes, category: dict[str, Any], fields: list[dict[str, Any]]) -> dict[str, list[str]]:
     additions: dict[str, list[str]] = {}
+    category_key = _text(category.get("key"))
     for source in load_rows(content, category, fields):
         for field in fields:
             if field.get("free_text"):
                 continue
             for raw in _split_values(source["values"][field["key"]]):
-                matches = _matching_options(field, raw)
+                matches = _matching_options(field, raw, category_key)
                 if len(matches) > 1:
                     raise ValueError(f"SKU {source['sku']}: valor {raw!r} é ambíguo no campo {field.get('label')}.")
                 if not matches:
+                    if category_key in STRICT_OPTION_CATEGORIES:
+                        suggestion = _closest_option(field, raw)
+                        detail = f" A opção mais próxima é {suggestion!r}." if suggestion else ""
+                        raise ValueError(
+                            f"SKU {source['sku']}: valor {raw!r} não existe no catálogo fechado "
+                            f"do campo {field.get('label')}.{detail} Nenhuma opção foi criada."
+                        )
                     pending = additions.setdefault(field["key"], [])
                     if excel_bancos.option_identity(raw) not in {excel_bancos.option_identity(value) for value in pending}:
                         pending.append(raw)
@@ -253,7 +308,12 @@ def fields_with_pending_options(fields: list[dict[str, Any]], additions: dict[st
     return preview
 
 
-def _canonical_values(field: dict[str, Any], raw_value: str, sku: str) -> list[str]:
+def _canonical_values(
+    field: dict[str, Any],
+    raw_value: str,
+    sku: str,
+    category_key: str = "",
+) -> list[str]:
     values = _split_values(raw_value)
     if field.get("selection_mode") != excel_bancos.SELECTION_MODE_MULTIPLA and len(values) > 1:
         raise ValueError(f"SKU {sku}: o campo {field.get('label')} aceita apenas uma opção.")
@@ -261,7 +321,7 @@ def _canonical_values(field: dict[str, Any], raw_value: str, sku: str) -> list[s
         return values
     canonical: list[str] = []
     for value in values:
-        matches = _matching_options(field, value)
+        matches = _matching_options(field, value, category_key)
         if len(matches) != 1:
             raise ValueError(f"SKU {sku}: valor {value!r} não possui correspondência única no campo {field.get('label')}.")
         canonical.append(matches[0])
@@ -299,7 +359,15 @@ def prepare_reconciliation(
     for source in source_rows:
         registration = rows_by_sku[source["sku"]]
         original = registration.get("form_values") if isinstance(registration.get("form_values"), dict) else {}
-        selected = {field["key"]: _canonical_values(field, source["values"][field["key"]], source["sku"]) for field in fields}
+        selected = {
+            field["key"]: _canonical_values(
+                field,
+                source["values"][field["key"]],
+                source["sku"],
+                _text(category.get("key")),
+            )
+            for field in fields
+        }
         # The spreadsheet's GRUPO column is solely a visual cross-check.  A
         # technical-field reconciliation must never move an existing SKU to a
         # different group, even when a legacy template contains stale values.

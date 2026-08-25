@@ -1018,6 +1018,9 @@ def reconcile_technical_fields_workbook(
     The validation phase happens twice: first with a preview of any genuinely
     new options, then again with the saved canonical option codes.  Therefore
     no registration is changed if the workbook is incomplete or invalid.
+    Categories declared as closed by technical_fields_reconciliation never
+    create options: known legacy spellings are canonicalized and every other
+    unknown value rejects the complete file before any write.
     """
     category = _category(clean_text(category_key))
     fields = excel_bancos.get_banco_fields(category["key"])

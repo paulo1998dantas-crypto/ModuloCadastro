@@ -9,6 +9,7 @@ import technical_fields_reconciliation as reconciliation
 
 
 CATEGORY = {"key": "cat_12_vidros", "label": "12 - VIDROS"}
+PECAS_BCO_CATEGORY = {"key": "cat_22_pecas_bco", "label": "22 - PEÇAS BCO"}
 
 
 def _fields():
@@ -133,6 +134,111 @@ class TechnicalFieldsReconciliationTests(unittest.TestCase):
             result["payloads"][0]["form_values"][excel_bancos.PN_GROUP_FORM_KEY],
             ["10 - INSUMO"],
         )
+
+    def test_pecas_bco_converge_aliases_sem_criar_opcoes(self):
+        fields = [
+            {
+                "key": "cor",
+                "label": "COR",
+                "scope": "primaria",
+                "selection_mode": excel_bancos.SELECTION_MODE_UNITARIA,
+                "description_order": 1,
+                "required": False,
+                "free_text": False,
+                "options": ["7- PRETO/CINZA"],
+            },
+            {
+                "key": "fornecedor",
+                "label": "FORNECEDOR",
+                "scope": "primaria",
+                "selection_mode": excel_bancos.SELECTION_MODE_UNITARIA,
+                "description_order": 2,
+                "required": False,
+                "free_text": False,
+                "options": ["4- MC/CS", "8- ORI"],
+            },
+            {
+                "key": "descritor_base",
+                "label": "IDENTIFICACAO",
+                "scope": "primaria",
+                "selection_mode": excel_bancos.SELECTION_MODE_UNITARIA,
+                "description_order": 3,
+                "required": False,
+                "free_text": False,
+                "options": ["7- PEGA MAO BCO"],
+            },
+        ]
+        rows = [
+            {
+                "id": "peca-1",
+                "sku": "10220001",
+                "form_values": {excel_bancos.PN_GROUP_FORM_KEY: ["10 - INSUMO"]},
+            }
+        ]
+        content = self._pecas_bco_workbook("PRETO C/ CINZA", "MC", "PEGA MAO")
+
+        self.assertEqual(
+            reconciliation.missing_field_options(content, PECAS_BCO_CATEGORY, fields),
+            {},
+        )
+        result = reconciliation.prepare_reconciliation(
+            content,
+            PECAS_BCO_CATEGORY,
+            fields,
+            rows,
+            lambda row, values: {"id": row["id"], "form_values": values},
+        )
+        self.assertEqual(result["payloads"][0]["form_values"]["cor"], ["7- PRETO/CINZA"])
+        self.assertEqual(result["payloads"][0]["form_values"]["fornecedor"], ["4- MC/CS"])
+        self.assertEqual(
+            reconciliation._matching_options(
+                fields[1],
+                "ORIGINAL",
+                PECAS_BCO_CATEGORY["key"],
+            ),
+            ["8- ORI"],
+        )
+        self.assertEqual(
+            result["payloads"][0]["form_values"]["descritor_base"],
+            ["7- PEGA MAO BCO"],
+        )
+
+    def test_pecas_bco_rejeita_opcao_desconhecida_sem_ampliar_catalogo(self):
+        fields = [
+            {
+                "key": "fornecedor",
+                "label": "FORNECEDOR",
+                "scope": "primaria",
+                "selection_mode": excel_bancos.SELECTION_MODE_UNITARIA,
+                "description_order": 1,
+                "required": False,
+                "free_text": False,
+                "options": ["4- MC/CS", "8- ORI"],
+            },
+        ]
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.title = "CAMPOS_TECNICOS"
+        worksheet.append(["COD", "CATEGORIA", "GRUPO", "FORNECEDOR"])
+        worksheet.append(["10220001", "22 - PEÇAS BCO", "10 - INSUMO", "FORNECEDOR NOVO"])
+        output = io.BytesIO()
+        workbook.save(output)
+        workbook.close()
+
+        with self.assertRaisesRegex(ValueError, "Nenhuma opção foi criada"):
+            reconciliation.missing_field_options(output.getvalue(), PECAS_BCO_CATEGORY, fields)
+
+    @staticmethod
+    def _pecas_bco_workbook(cor, fornecedor, identificacao):
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.title = "CAMPOS_TECNICOS"
+        worksheet.append(["COD", "CATEGORIA", "GRUPO", "COR", "FORNECEDOR", "IDENTIFICACAO"])
+        worksheet.append(["10220001", "22 - PEÇAS BCO", "10 - INSUMO", cor, fornecedor, identificacao])
+        output = io.BytesIO()
+        workbook.save(output)
+        workbook.close()
+        return output.getvalue()
 
     def test_supabase_payload_contains_required_identity_for_bulk_upsert(self):
         row = {
