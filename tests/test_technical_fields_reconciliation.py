@@ -60,13 +60,15 @@ def _rows():
     ]
 
 
-def _workbook_bytes(rows):
+def _workbook_bytes(rows, category=CATEGORY, fields=None):
+    fields = fields or _fields()
     workbook = Workbook()
     worksheet = workbook.active
     worksheet.title = "CAMPOS_TECNICOS"
     worksheet.append(["COD", "CATEGORIA", "GRUPO", "FORNECEDOR", "ESPECIFICIDADE"])
     for row in rows:
         worksheet.append(row)
+    reconciliation._write_template_metadata(workbook, category, fields)
     output = io.BytesIO()
     workbook.save(output)
     workbook.close()
@@ -79,6 +81,33 @@ class TechnicalFieldsReconciliationTests(unittest.TestCase):
         loaded = reconciliation.load_rows(content, CATEGORY, _fields())
         self.assertEqual([row["sku"] for row in loaded], ["12180001", "12180002"])
         self.assertEqual(loaded[0]["values"]["fornecedor"], "SALT")
+
+    def test_template_without_metadata_is_rejected_before_reading_rows(self):
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.title = "CAMPOS_TECNICOS"
+        worksheet.append(["COD", "CATEGORIA", "GRUPO", "FORNECEDOR", "ESPECIFICIDADE"])
+        worksheet.append(["12180001", "12 - VIDROS", "10 - INSUMO", "SALT", "N/A"])
+        output = io.BytesIO()
+        workbook.save(output)
+        workbook.close()
+
+        with self.assertRaisesRegex(ValueError, "Template legado"):
+            reconciliation.load_rows(output.getvalue(), CATEGORY, _fields())
+
+    def test_template_with_stale_field_projection_is_rejected(self):
+        content = reconciliation.build_template(CATEGORY, _fields(), _rows())
+        workbook = reconciliation.load_workbook(io.BytesIO(content))
+        metadata = workbook[reconciliation.META_SHEET]
+        for row in metadata.iter_rows(min_col=1, max_col=2):
+            if row[0].value == "field_fingerprint":
+                row[1].value = "stale"
+        output = io.BytesIO()
+        workbook.save(output)
+        workbook.close()
+
+        with self.assertRaisesRegex(ValueError, "catálogo da categoria mudou"):
+            reconciliation.load_rows(output.getvalue(), CATEGORY, _fields())
 
     def test_import_requires_exact_active_sku_set(self):
         content = _workbook_bytes([["12180001", "12 - VIDROS", "10 - INSUMO", "SALT", "N/A"]])
@@ -229,6 +258,7 @@ class TechnicalFieldsReconciliationTests(unittest.TestCase):
         worksheet.title = "CAMPOS_TECNICOS"
         worksheet.append(["COD", "CATEGORIA", "GRUPO", "FORNECEDOR"])
         worksheet.append(["10220001", "22 - PEÇAS BCO", "10 - INSUMO", "FORNECEDOR NOVO"])
+        reconciliation._write_template_metadata(workbook, PECAS_BCO_CATEGORY, fields)
         output = io.BytesIO()
         workbook.save(output)
         workbook.close()
@@ -243,6 +273,27 @@ class TechnicalFieldsReconciliationTests(unittest.TestCase):
         worksheet.title = "CAMPOS_TECNICOS"
         worksheet.append(["COD", "CATEGORIA", "GRUPO", "COR", "FORNECEDOR", "IDENTIFICACAO"])
         worksheet.append(["10220001", "22 - PEÇAS BCO", "10 - INSUMO", cor, fornecedor, identificacao])
+        fields = [
+            {
+                "key": "cor", "label": "COR", "scope": "primaria",
+                "selection_mode": excel_bancos.SELECTION_MODE_UNITARIA,
+                "description_order": 1, "required": False, "free_text": False,
+                "options": ["7- PRETO/CINZA"],
+            },
+            {
+                "key": "fornecedor", "label": "FORNECEDOR", "scope": "primaria",
+                "selection_mode": excel_bancos.SELECTION_MODE_UNITARIA,
+                "description_order": 2, "required": False, "free_text": False,
+                "options": ["4- MC/CS", "8- ORI", "12- MC"],
+            },
+            {
+                "key": "descritor_base", "label": "IDENTIFICACAO", "scope": "primaria",
+                "selection_mode": excel_bancos.SELECTION_MODE_UNITARIA,
+                "description_order": 3, "required": False, "free_text": False,
+                "options": ["7- PEGA MAO BCO"],
+            },
+        ]
+        reconciliation._write_template_metadata(workbook, PECAS_BCO_CATEGORY, fields)
         output = io.BytesIO()
         workbook.save(output)
         workbook.close()

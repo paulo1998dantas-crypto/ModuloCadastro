@@ -9,6 +9,8 @@ uploaded workbook must cover exactly the active SKU set for that category.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from copy import deepcopy
 from difflib import SequenceMatcher
@@ -25,6 +27,8 @@ import excel_bancos
 MAX_FILE_SIZE = 8 * 1024 * 1024
 BASE_COLUMNS = ("COD", "CATEGORIA", "GRUPO")
 FIELD_PREFIX = "CAMPO:"
+META_SHEET = "_META"
+TEMPLATE_FORMAT_VERSION = "2"
 
 # PEÇAS BCO é mantida como um catálogo fechado: a planilha controlada pode
 # usar estas grafias legadas, mas elas sempre convergem para opções canônicas
@@ -75,6 +79,82 @@ def _display_value(field: dict[str, Any], values: Any) -> str:
     return " | ".join(labels)
 
 
+def _field_fingerprint(category: dict[str, Any], fields: list[dict[str, Any]]) -> str:
+    """Identify the exact category/field projection used by a template.
+
+    Options are intentionally excluded: catalogue options may be added between
+    download and upload.  Keys, labels and description semantics may not move,
+    because accepting that kind of stale template can assign one column to a
+    different technical field.
+    """
+    projection = {
+        "category_key": _text(category.get("key")),
+        "category_label": _text(category.get("label")),
+        "fields": [
+            {
+                "key": _text(field.get("key")),
+                "label": _field_header(field),
+                "scope": _text(field.get("scope")),
+                "selection_mode": _text(field.get("selection_mode")),
+                "required": bool(field.get("required")),
+                "free_text": bool(field.get("free_text")),
+                "description_order": field.get("description_order"),
+            }
+            for field in fields
+        ],
+    }
+    encoded = json.dumps(projection, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _write_template_metadata(
+    workbook: Any,
+    category: dict[str, Any],
+    fields: list[dict[str, Any]],
+) -> None:
+    metadata = workbook.create_sheet(META_SHEET)
+    for key, value in (
+        ("template_format_version", TEMPLATE_FORMAT_VERSION),
+        ("category_key", _text(category.get("key"))),
+        ("category_label", _text(category.get("label"))),
+        ("field_count", str(len(fields))),
+        ("field_fingerprint", _field_fingerprint(category, fields)),
+    ):
+        metadata.append([key, value])
+    metadata.sheet_state = "veryHidden"
+
+
+def _validate_template_metadata(
+    workbook: Any,
+    category: dict[str, Any],
+    fields: list[dict[str, Any]],
+) -> None:
+    if META_SHEET not in workbook.sheetnames:
+        raise ValueError(
+            "Template legado ou sem identificação estrutural. Baixe um novo template "
+            "da categoria e transfira os valores antes de enviar; nenhuma alteração foi gravada."
+        )
+    metadata_sheet = workbook[META_SHEET]
+    metadata = {
+        _text(row[0]): _text(row[1])
+        for row in metadata_sheet.iter_rows(min_col=1, max_col=2, values_only=True)
+        if row and _text(row[0])
+    }
+    expected = {
+        "template_format_version": TEMPLATE_FORMAT_VERSION,
+        "category_key": _text(category.get("key")),
+        "category_label": _text(category.get("label")),
+        "field_count": str(len(fields)),
+        "field_fingerprint": _field_fingerprint(category, fields),
+    }
+    divergences = [key for key, value in expected.items() if metadata.get(key) != value]
+    if divergences:
+        raise ValueError(
+            "O catálogo da categoria mudou depois que este template foi baixado "
+            f"({', '.join(divergences)}). Baixe um novo template; nenhuma alteração foi gravada."
+        )
+
+
 def build_template(
     category: dict[str, Any],
     fields: list[dict[str, Any]],
@@ -99,7 +179,7 @@ def build_template(
                 else "unitária"
             )
             cell.comment = Comment(
-                f"{field.get('label') or field_key}. Seleção {mode}. "
+                f"{field.get('label') or field['key']}. Seleção {mode}. "
                 "Valores novos com opção devem ser revisados antes do envio.",
                 "Módulo Cadastro",
             )
@@ -131,6 +211,7 @@ def build_template(
     instructions.append(["Para seleção múltipla, separe os valores por |. Deixe vazio para limpar um campo."])
     instructions.column_dimensions["A"].width = 125
     instructions.sheet_view.showGridLines = False
+    _write_template_metadata(workbook, category, fields)
     output = BytesIO()
     workbook.save(output)
     workbook.close()
@@ -234,11 +315,12 @@ def load_rows(content: bytes, category: dict[str, Any], fields: list[dict[str, A
         workbook = load_workbook(BytesIO(content), data_only=True, read_only=True)
     except Exception as exc:  # pragma: no cover
         raise ValueError("Não foi possível ler a planilha XLSX de campos técnicos.") from exc
-    worksheet = workbook["CAMPOS_TECNICOS"] if "CAMPOS_TECNICOS" in workbook.sheetnames else workbook.active
-    header_row, headers = _resolve_header_map(worksheet, fields)
     rows: list[dict[str, Any]] = []
     seen_skus: set[str] = set()
     try:
+        _validate_template_metadata(workbook, category, fields)
+        worksheet = workbook["CAMPOS_TECNICOS"] if "CAMPOS_TECNICOS" in workbook.sheetnames else workbook.active
+        header_row, headers = _resolve_header_map(worksheet, fields)
         for row_number, source_row in enumerate(worksheet.iter_rows(min_row=header_row + 1, values_only=True), start=header_row + 1):
             sku = _text(source_row[headers["COD"] - 1])
             if not sku and not any(_text(value) for value in source_row):
