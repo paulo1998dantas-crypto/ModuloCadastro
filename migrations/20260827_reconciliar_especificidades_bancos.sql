@@ -69,7 +69,7 @@ with canonical_values as (
             ' | ' order by selected.position
         ) as field_value,
         string_agg(
-            substring(
+            btrim(split_part(
                 case selected.value
                     when 'PME 1A' then '14- PME 1A'
                     when 'PME 2A' then '15- PME 2A'
@@ -78,9 +78,9 @@ with canonical_values as (
                     when '4L REC' then '18- 4L REC'
                     when 'MASTER - PME' then '19- MASTER - PME'
                     else selected.value
-                end
-                from '^\s*([0-9]+)\s*-'
-            ),
+                end,
+                '-', 1
+            )),
             ' | ' order by selected.position
         ) as field_code
     from public.cadastro_registros registration
@@ -102,15 +102,15 @@ with canonical_values as (
 )
 update public.cadastro_registros registration
 set form_values = jsonb_set(
-        coalesce(registration.form_values, '{}'::jsonb),
+        coalesce(nullif(registration.form_values, 'null'::jsonb), '{}'::jsonb),
         '{especificidade}', canonical_values.form_value, true
     ),
     field_values = jsonb_set(
-        coalesce(registration.field_values, '{}'::jsonb),
+        coalesce(nullif(registration.field_values, 'null'::jsonb), '{}'::jsonb),
         '{especificidade}', to_jsonb(canonical_values.field_value), true
     ),
     field_codes = jsonb_set(
-        coalesce(registration.field_codes, '{}'::jsonb),
+        coalesce(nullif(registration.field_codes, 'null'::jsonb), '{}'::jsonb),
         '{especificidade}', to_jsonb(canonical_values.field_code), true
     ),
     updated_at = now()
