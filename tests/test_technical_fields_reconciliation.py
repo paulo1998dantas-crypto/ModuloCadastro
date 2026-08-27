@@ -120,29 +120,15 @@ class TechnicalFieldsReconciliationTests(unittest.TestCase):
                 lambda row, values: {"id": row["id"], "form_values": values},
             )
 
-    def test_new_option_is_previewed_and_multiple_values_are_canonicalized(self):
+    def test_unknown_option_rejects_complete_upload(self):
         content = _workbook_bytes(
             [
                 ["12180001", "12 - VIDROS", "10 - INSUMO", "VTRX", "N/A | LATERAL"],
                 ["12180002", "12 - VIDROS", "10 - INSUMO", "SALT", "LATERAL"],
             ]
         )
-        additions = reconciliation.missing_field_options(content, CATEGORY, _fields())
-        self.assertEqual(additions, {"fornecedor": ["VTRX"]})
-        preview = reconciliation.fields_with_pending_options(_fields(), additions)
-        result = reconciliation.prepare_reconciliation(
-            content,
-            CATEGORY,
-            preview,
-            _rows(),
-            lambda row, values: {"id": row["id"], "form_values": values},
-        )
-        self.assertEqual(result["total"], 2)
-        self.assertEqual(result["payloads"][0]["form_values"]["fornecedor"], ["2- VTRX"])
-        self.assertEqual(
-            result["payloads"][0]["form_values"]["especificidade"],
-            ["1- N/A", "2- LATERAL"],
-        )
+        with self.assertRaisesRegex(ValueError, "VTRX.*não existe no catálogo fechado"):
+            reconciliation.missing_field_options(content, CATEGORY, _fields())
 
     def test_group_is_informative_and_preserved_from_registration(self):
         content = _workbook_bytes(

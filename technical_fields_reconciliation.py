@@ -30,11 +30,10 @@ FIELD_PREFIX = "CAMPO:"
 META_SHEET = "_META"
 TEMPLATE_FORMAT_VERSION = "2"
 
-# PEÇAS BCO é mantida como um catálogo fechado: a planilha controlada pode
-# usar estas grafias legadas, mas elas sempre convergem para opções canônicas
-# já existentes. Qualquer outro valor desconhecido deve ser corrigido no XLSX
-# em vez de ampliar silenciosamente o catálogo de produção.
-STRICT_OPTION_CATEGORIES = {"cat_22_pecas_bco"}
+# Toda atualização controlada usa catálogo fechado. Campos de texto livre
+# continuam aceitando conteúdo livre; campos de opção somente aceitam valores
+# já cadastrados. Isso impede que um erro de digitação no XLSX crie uma opção
+# técnica nova e sem revisão no ambiente de produção.
 STRICT_OPTION_ALIASES = {
     "cat_22_pecas_bco": {
         "cor": {
@@ -180,7 +179,8 @@ def build_template(
             )
             cell.comment = Comment(
                 f"{field.get('label') or field['key']}. Seleção {mode}. "
-                "Valores novos com opção devem ser revisados antes do envio.",
+                "Use somente opções já existentes no catálogo. Valores divergentes "
+                "bloqueiam o arquivo inteiro antes de qualquer gravação.",
                 "Módulo Cadastro",
             )
         worksheet.column_dimensions[cell.column_letter].width = 24
@@ -359,16 +359,12 @@ def missing_field_options(content: bytes, category: dict[str, Any], fields: list
                 if len(matches) > 1:
                     raise ValueError(f"SKU {source['sku']}: valor {raw!r} é ambíguo no campo {field.get('label')}.")
                 if not matches:
-                    if category_key in STRICT_OPTION_CATEGORIES:
-                        suggestion = _closest_option(field, raw)
-                        detail = f" A opção mais próxima é {suggestion!r}." if suggestion else ""
-                        raise ValueError(
-                            f"SKU {source['sku']}: valor {raw!r} não existe no catálogo fechado "
-                            f"do campo {field.get('label')}.{detail} Nenhuma opção foi criada."
-                        )
-                    pending = additions.setdefault(field["key"], [])
-                    if excel_bancos.option_identity(raw) not in {excel_bancos.option_identity(value) for value in pending}:
-                        pending.append(raw)
+                    suggestion = _closest_option(field, raw)
+                    detail = f" A opção mais próxima é {suggestion!r}." if suggestion else ""
+                    raise ValueError(
+                        f"SKU {source['sku']}: valor {raw!r} não existe no catálogo fechado "
+                        f"do campo {field.get('label')}.{detail} Nenhuma opção foi criada."
+                    )
     return additions
 
 

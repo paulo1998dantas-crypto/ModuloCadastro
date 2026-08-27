@@ -85,6 +85,21 @@ class UnificacaoBancosTests(unittest.TestCase):
         keys = {field["key"] for field in self.fields}
         self.assertNotIn("cj_detalhe_revestimento", keys)
 
+    def test_especificidades_de_conjunto_existem_no_catalogo_com_codigo(self):
+        field = next(item for item in self.fields if item["key"] == "especificidade")
+        expected = [
+            "14- PME 1A",
+            "15- PME 2A",
+            "16- PME 3A",
+            "17- EXECUTIVO",
+            "18- 4L REC",
+            "19- MASTER - PME",
+        ]
+
+        self.assertEqual(field["options"][-6:], expected)
+        self.assertEqual(field["conjunto_only_options"], expected)
+        self.assertEqual(len(field["options"]), 19)
+
     def test_descricao_normaliza_campos_legados_e_ordem_tecnica(self):
         data = {
             "grupo_codigo": "30",

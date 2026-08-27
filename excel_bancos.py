@@ -754,16 +754,17 @@ CONJUNTO_BANCO_SHARED_FIELDS = {
     "cor_do_revestimento",
 }
 
-# O mesmo campo ESPECIFICIDADE atende banco unitario e conjunto. No grupo 10
-# ele continua unitario e com as opcoes originais; no grupo 30 a interface
-# libera selecao multipla e acrescenta somente os valores tecnicos de conjunto.
+# O mesmo campo ESPECIFICIDADE atende banco unitario e conjunto. Estas opcoes
+# precisam existir no catalogo persistido e possuir codigo, porque a tela de
+# Opcoes edita/exclui por posicao real do catalogo. Nunca acrescente opcoes
+# virtuais somente na projecao da interface.
 CONJUNTO_BANCO_ESPECIFICIDADE_OPTIONS = [
-    "PME 1A",
-    "PME 2A",
-    "PME 3A",
-    "EXECUTIVO",
-    "4L REC",
-    "MASTER - PME",
+    "14- PME 1A",
+    "15- PME 2A",
+    "16- PME 3A",
+    "17- EXECUTIVO",
+    "18- 4L REC",
+    "19- MASTER - PME",
 ]
 
 # Regras de plataforma que não pertencem ao catálogo editável. Elas são
@@ -2119,11 +2120,16 @@ def _fields_for_category(category: dict[str, Any]) -> list[dict[str, Any]]:
                 if not any(option_identity(option) == "CJ" for option in (field.get("options") or [])):
                     field["options"] = list(field.get("options") or []) + ["8- CJ"]
             if field["key"] == "especificidade":
+                conjunto_identities = {
+                    option_identity(option)
+                    for option in CONJUNTO_BANCO_ESPECIFICIDADE_OPTIONS
+                }
                 conjunto_only = [
-                    option for option in CONJUNTO_BANCO_ESPECIFICIDADE_OPTIONS if option not in (field.get("options") or [])
+                    option
+                    for option in (field.get("options") or [])
+                    if option_identity(option) in conjunto_identities
                 ]
                 field["selection_mode"] = SELECTION_MODE_MULTIPLA
-                field["options"] = list(field.get("options") or []) + conjunto_only
                 field["conjunto_only_options"] = conjunto_only
         existing_keys = {field["key"] for field in fields}
         fields.extend(

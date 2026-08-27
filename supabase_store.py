@@ -1016,12 +1016,10 @@ def reconcile_technical_fields_workbook(
 ) -> dict[str, Any]:
     """Safely apply a complete technical-field snapshot to one category.
 
-    The validation phase happens twice: first with a preview of any genuinely
-    new options, then again with the saved canonical option codes.  Therefore
-    no registration is changed if the workbook is incomplete or invalid.
-    Categories declared as closed by technical_fields_reconciliation never
-    create options: known legacy spellings are canonicalized and every other
-    unknown value rejects the complete file before any write.
+    The catalogue is closed for controlled technical-field uploads. Known
+    aliases are canonicalized; every unknown option rejects the complete file
+    before any registration is written. New options must first be reviewed and
+    created explicitly in the Options screen.
     """
     category = _category(clean_text(category_key))
     fields = excel_bancos.get_banco_fields(category["key"])
@@ -1033,17 +1031,7 @@ def reconcile_technical_fields_workbook(
             ("ativo", "eq.true"),
         ],
     )
-    pending_options = technical_fields_reconciliation.missing_field_options(content, category, fields)
-    preview_fields = technical_fields_reconciliation.fields_with_pending_options(fields, pending_options)
-    technical_fields_reconciliation.prepare_reconciliation(
-        content,
-        category,
-        preview_fields,
-        active_rows,
-        lambda row, groups: _technical_fields_reconciliation_payload(row, category, preview_fields, groups),
-    )
-    added_options = excel_bancos.add_category_field_options(category["key"], pending_options)
-    fields = excel_bancos.get_banco_fields(category["key"])
+    technical_fields_reconciliation.missing_field_options(content, category, fields)
     reconciliation = technical_fields_reconciliation.prepare_reconciliation(
         content,
         category,
@@ -1072,7 +1060,7 @@ def reconcile_technical_fields_workbook(
                 "after_data": {
                     "atualizados": reconciliation["changed"],
                     "skus_alterados": reconciliation["changed_skus"][:100],
-                    "opcoes_incluidas": added_options,
+                    "opcoes_incluidas": {},
                 },
                 "reason": "Atualização controlada dos campos técnicos por arquivo XLSX.",
             },
@@ -1085,7 +1073,7 @@ def reconcile_technical_fields_workbook(
         "category_label": category["label"],
         "total": reconciliation["total"],
         "updated": reconciliation["changed"],
-        "options_added": sum(len(values) for values in added_options.values()),
+        "options_added": 0,
     }
 
 
