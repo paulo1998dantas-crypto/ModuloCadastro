@@ -99,6 +99,27 @@ class ConditionalRuleBulkTests(unittest.TestCase):
         self.assertEqual(catalog["categories"][0]["conditional_rules"], original)
         save_catalog.assert_not_called()
 
+    def test_option_rule_keeps_target_field_and_saves_multiple_hidden_options(self):
+        catalog = _catalog()
+        catalog["categories"][0]["fields"][1]["options"] = ["1- DISPONIVEL", "2- OCULTA A", "3- OCULTA B"]
+        with patch.object(excel_bancos, "load_catalog", return_value=catalog), patch.object(
+            excel_bancos, "save_catalog"
+        ) as save_catalog:
+            result = excel_bancos.add_conditional_rules(
+                "teste",
+                "origem",
+                ["1- ATIVO", "2- INATIVO"],
+                ["destino_a"],
+                action_value="hide_option",
+                target_option_values_value=["2- OCULTA A", "3- OCULTA B"],
+            )
+
+        rule = result["rules"][0]
+        self.assertEqual(rule["action"], "hide_option")
+        self.assertEqual(rule["target_field_key"], "destino_a")
+        self.assertEqual(rule["target_option_values"], ["OCULTAA", "OCULTAB"])
+        save_catalog.assert_called_once_with(catalog)
+
 
 if __name__ == "__main__":
     unittest.main()

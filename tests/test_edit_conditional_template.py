@@ -191,6 +191,9 @@ class EditConditionalTemplateTests(unittest.TestCase):
         self.assertIn("rule.sourceKey", html)
         self.assertIn("target.key", html)
         self.assertIn("const updateConditionalFields = () =>", html)
+        self.assertIn('if (action === "hide_option")', html)
+        self.assertIn("target.optionValues", html)
+        self.assertIn("option.hidden = isUnavailable", html)
         self.assertIn("updateConditionalFields();", html)
 
     def test_form_rules_keep_stable_keys_and_current_option_labels(self):

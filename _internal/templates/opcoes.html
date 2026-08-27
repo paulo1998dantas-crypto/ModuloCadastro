@@ -490,12 +490,12 @@
                         <select name="action" id="conditional-action" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="hide">Ocultar campo alvo</option>
                             <option value="show">Exibir somente quando combinar</option>
-                            <option value="hide_option">Ocultar opções do campo alvo</option>
+                            <option value="hide_option">Ocultar opções específicas (manter o campo)</option>
                             <option value="set_primary">Tornar campo alvo primário</option>
                             <option value="set_secondary">Tornar campo alvo secundário</option>
                         </select>
                     </label>
-                    <label class="space-y-1">
+                    <label id="conditional-target-field-wrapper" class="space-y-1">
                         <span class="block text-xs font-bold uppercase text-slate-500">Campos alvo existentes</span>
                         <select name="target_field_key" id="conditional-target-field" multiple size="5" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="">Usar nome personalizado abaixo</option>
@@ -505,16 +505,33 @@
                         </select>
                         <span class="block text-[11px] font-semibold text-slate-400">A mesma ação será aplicada a todos os campos selecionados.</span>
                     </label>
-                    <label id="conditional-target-options-wrapper" class="hidden space-y-1 md:col-span-2">
-                        <span class="block text-xs font-bold uppercase text-slate-500">Opções do campo alvo a ocultar</span>
-                        <select name="target_option_values" id="conditional-target-options" multiple size="5" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"></select>
-                        <span class="block text-[11px] font-semibold text-slate-400">Use Ctrl para selecionar uma ou mais opções.</span>
-                    </label>
-                    <label class="space-y-1">
+                    <div id="conditional-target-options-wrapper" class="hidden space-y-4 rounded-lg border border-blue-200 bg-blue-50 p-4 md:col-span-2">
+                        <div>
+                            <p class="text-sm font-black text-blue-900">Ocultar opções sem ocultar o campo</p>
+                            <p class="mt-1 text-xs font-semibold text-blue-700">Escolha um campo existente e, abaixo, uma ou mais opções internas. O campo continuará aparecendo no cadastro.</p>
+                        </div>
+                        <label class="block space-y-1">
+                            <span class="block text-xs font-bold uppercase text-slate-600">Campo alvo existente</span>
+                            <select name="target_field_key" id="conditional-option-target-field" class="w-full rounded-lg border border-blue-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" disabled>
+                                <option value="">Selecione um campo com opções</option>
+                                {% for field in fields %}
+                                {% if field.options %}<option value="{{ field.key }}">{{ field.label }} - {{ field.scope }}</option>{% endif %}
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label class="block space-y-1">
+                            <span class="block text-xs font-bold uppercase text-slate-600">Opções alvo a ocultar</span>
+                            <select name="target_option_values" id="conditional-target-options" multiple size="6" class="w-full rounded-lg border border-blue-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" disabled>
+                                <option value="">Escolha primeiro o campo alvo acima</option>
+                            </select>
+                            <span class="block text-[11px] font-semibold text-slate-500">Selecione uma ou mais opções. Use Ctrl para marcar opções separadas.</span>
+                        </label>
+                    </div>
+                    <label id="conditional-target-label-wrapper" class="space-y-1">
                         <span class="block text-xs font-bold uppercase text-slate-500">Nome do campo alvo</span>
                         <input name="target_field_label" id="conditional-target-label" class="w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: POSIÇÃO DO BRAÇO">
                     </label>
-                    <label class="space-y-1">
+                    <label id="conditional-target-scope-wrapper" class="space-y-1">
                         <span class="block text-xs font-bold uppercase text-slate-500">Descrição do campo alvo</span>
                         <select name="target_field_scope" id="conditional-target-scope" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="primaria">Primária</option>
@@ -532,7 +549,8 @@
                     <p class="mt-2 text-sm text-slate-600">
                         Selecione se o gatilho vem de um campo da categoria ou do grupo do SKU, um ou mais valores que disparam a regra e a ação desejada.
                         Uma única configuração pode atuar em vários campos alvo; o sistema mantém cada destino como uma regra compatível e editável.
-                        Para ocultar opções ou tornar um campo primário ou secundário, escolha obrigatoriamente um campo alvo existente;
+                        Para manter o campo visível e ocultar apenas opções internas, escolha a ação “Ocultar opções específicas”,
+                        depois selecione um campo alvo existente e uma ou mais opções alvo. Para tornar um campo primário ou secundário, escolha obrigatoriamente um campo alvo existente;
                         a coluna original da planilha será preservada.
                     </p>
                 </div>
@@ -999,12 +1017,16 @@
         const conditionalTargetLabel = document.getElementById("conditional-target-label");
         const conditionalAction = document.getElementById("conditional-action");
         const conditionalTargetScope = document.getElementById("conditional-target-scope");
+        const conditionalTargetFieldWrapper = document.getElementById("conditional-target-field-wrapper");
+        const conditionalTargetLabelWrapper = document.getElementById("conditional-target-label-wrapper");
+        const conditionalTargetScopeWrapper = document.getElementById("conditional-target-scope-wrapper");
         const conditionalRuleForm = document.getElementById("conditional-rule-form");
         const conditionalRuleKey = document.getElementById("conditional-rule-key");
         const conditionalRuleSubmit = document.getElementById("conditional-rule-submit");
         const conditionalRuleCancel = document.getElementById("conditional-rule-cancel");
         const conditionalTargetOptions = document.getElementById("conditional-target-options");
         const conditionalTargetOptionsWrapper = document.getElementById("conditional-target-options-wrapper");
+        const conditionalOptionTargetField = document.getElementById("conditional-option-target-field");
 
         const renderSourceOptions = () => {
             if (!conditionalSourceField || !conditionalSourceValue) {
@@ -1040,11 +1062,37 @@
             }
         };
 
+        const renderTargetOptions = () => {
+            if (!conditionalTargetOptions || !conditionalOptionTargetField) return;
+            conditionalTargetOptions.innerHTML = "";
+            const targetField = conditionalFields.find((field) => field.key === conditionalOptionTargetField.value);
+            const availableOptions = targetField?.options || [];
+            if (!availableOptions.length) {
+                const placeholder = document.createElement("option");
+                placeholder.value = "";
+                placeholder.textContent = conditionalOptionTargetField.value
+                    ? "Este campo não possui opções cadastradas"
+                    : "Escolha primeiro o campo alvo acima";
+                conditionalTargetOptions.appendChild(placeholder);
+                conditionalTargetOptions.disabled = true;
+                conditionalTargetOptions.required = false;
+                return;
+            }
+            availableOptions.forEach((option) => {
+                const targetOption = document.createElement("option");
+                targetOption.value = option;
+                targetOption.textContent = option;
+                conditionalTargetOptions.appendChild(targetOption);
+            });
+            conditionalTargetOptions.disabled = false;
+            conditionalTargetOptions.required = true;
+        };
+
         const syncTargetLabelState = () => {
             if (!conditionalTargetField || !conditionalTargetLabel) {
                 return;
             }
-            const needsExistingTarget = conditionalAction && ["set_primary", "set_secondary", "hide_option"].includes(conditionalAction.value);
+            const needsExistingTarget = conditionalAction && ["set_primary", "set_secondary"].includes(conditionalAction.value);
             const hidesOptions = conditionalAction && conditionalAction.value === "hide_option";
             const selectedTargetKeys = Array.from(conditionalTargetField.selectedOptions)
                 .map((option) => option.value)
@@ -1056,27 +1104,30 @@
             if (customOption) {
                 customOption.disabled = needsExistingTarget;
             }
-            const usingCustomLabel = !needsExistingTarget && selectedTargetKeys.length === 0;
-            conditionalTargetField.required = needsExistingTarget;
-            conditionalTargetField.multiple = !hidesOptions;
-            conditionalTargetField.size = hidesOptions ? 1 : 5;
+            const usingCustomLabel = !hidesOptions && !needsExistingTarget && selectedTargetKeys.length === 0;
+            conditionalTargetField.disabled = hidesOptions;
+            conditionalTargetField.required = needsExistingTarget && !hidesOptions;
+            conditionalTargetFieldWrapper?.classList.toggle("hidden", hidesOptions);
             conditionalTargetLabel.required = usingCustomLabel;
-            conditionalTargetLabel.disabled = !usingCustomLabel;
+            conditionalTargetLabel.disabled = hidesOptions || !usingCustomLabel;
+            conditionalTargetLabelWrapper?.classList.toggle("hidden", hidesOptions);
             if (conditionalTargetScope) {
-                conditionalTargetScope.disabled = needsExistingTarget || !usingCustomLabel;
+                conditionalTargetScope.disabled = hidesOptions || needsExistingTarget || !usingCustomLabel;
             }
+            conditionalTargetScopeWrapper?.classList.toggle("hidden", hidesOptions);
             conditionalTargetOptionsWrapper?.classList.toggle("hidden", !hidesOptions);
-            if (conditionalTargetOptions) {
-                conditionalTargetOptions.disabled = !hidesOptions;
-                conditionalTargetOptions.required = hidesOptions;
-                conditionalTargetOptions.innerHTML = "";
-                const targetField = conditionalFields.find((field) => field.key === selectedTargetKeys[0]);
-                (targetField?.options || []).forEach((option) => {
-                    const targetOption = document.createElement("option");
-                    targetOption.value = option;
-                    targetOption.textContent = option;
-                    conditionalTargetOptions.appendChild(targetOption);
-                });
+            if (conditionalOptionTargetField) {
+                conditionalOptionTargetField.disabled = !hidesOptions;
+                conditionalOptionTargetField.required = hidesOptions;
+                if (hidesOptions && !conditionalOptionTargetField.value && selectedTargetKeys.length === 1) {
+                    const targetField = conditionalFields.find((field) => field.key === selectedTargetKeys[0]);
+                    if (targetField?.options?.length) conditionalOptionTargetField.value = selectedTargetKeys[0];
+                }
+            }
+            if (hidesOptions) renderTargetOptions();
+            else if (conditionalTargetOptions) {
+                conditionalTargetOptions.disabled = true;
+                conditionalTargetOptions.required = false;
             }
             if (!usingCustomLabel) {
                 conditionalTargetLabel.value = "";
@@ -1095,6 +1146,7 @@
         if (conditionalAction) {
             conditionalAction.addEventListener("change", syncTargetLabelState);
         }
+        conditionalOptionTargetField?.addEventListener("change", renderTargetOptions);
 
         const resetConditionalRuleForm = () => {
             conditionalRuleForm?.reset();
@@ -1126,8 +1178,11 @@
                 if (conditionalAction) conditionalAction.value = rule.action || "hide";
                 if (conditionalTargetField) {
                     Array.from(conditionalTargetField.options).forEach((option) => {
-                        option.selected = option.value === (rule.target_field_key || "");
+                        option.selected = rule.action !== "hide_option" && option.value === (rule.target_field_key || "");
                     });
+                }
+                if (conditionalOptionTargetField) {
+                    conditionalOptionTargetField.value = rule.action === "hide_option" ? (rule.target_field_key || "") : "";
                 }
                 if (conditionalTargetLabel) conditionalTargetLabel.value = rule.target_field_key ? "" : (rule.target_field_label || "");
                 if (conditionalTargetScope) conditionalTargetScope.value = rule.target_field_scope || "secundaria";
