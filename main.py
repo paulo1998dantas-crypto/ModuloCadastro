@@ -2258,6 +2258,7 @@ async def regras_adicionar_post(
     target_field_label: str = Form(""),
     target_field_scope: str = Form("secundaria"),
     action: str = Form("hide"),
+    target_option_values: list[str] = Form([]),
 ):
     try:
         result = excel_bancos.add_conditional_rules(
@@ -2269,13 +2270,14 @@ async def regras_adicionar_post(
             action,
             rule_key,
             source_type,
+            target_option_values,
         )
         selected_target_keys = [
             excel_bancos.clean_text(value)
             for value in target_field_key
             if excel_bancos.clean_text(value)
         ]
-        if not selected_target_keys and excel_bancos.clean_text(target_field_label):
+        if action != "hide_option" and not selected_target_keys and excel_bancos.clean_text(target_field_label):
             catalog = excel_bancos.load_catalog()
             category = next((item for item in catalog["categories"] if item["key"] == category_key), None)
             if category is not None:

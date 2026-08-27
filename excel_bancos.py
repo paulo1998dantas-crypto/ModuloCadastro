@@ -1164,15 +1164,26 @@ def _sanitize_conditional_rules(
         if not source_values:
             continue
         action = clean_text(rule.get("action")).lower()
-        if action not in {"hide", "show", "set_primary", "set_secondary"}:
+        if action not in {"hide", "show", "set_primary", "set_secondary", "hide_option"}:
             action = "hide"
         match_by = clean_text(rule.get("match_by")).lower()
         if match_by not in {"option", "prefix"}:
             match_by = "option"
-        if action in {"set_primary", "set_secondary"} and (
+        if action in {"set_primary", "set_secondary", "hide_option"} and (
             (source_type == "field" and source_field is None) or target_field is None
         ):
             continue
+        target_option_values: list[str] = []
+        if action == "hide_option":
+            available_target_options = {
+                rule_option_token(option) for option in (target_field.get("options") or [])
+            }
+            for value in rule.get("target_option_values") or []:
+                token = rule_option_token(clean_text(value))
+                if token and token in available_target_options and token not in target_option_values:
+                    target_option_values.append(token)
+            if not target_option_values:
+                continue
         cleaned.append(
             {
                 "key": clean_text(rule.get("key")) or uuid.uuid4().hex[:12],
@@ -1198,6 +1209,7 @@ def _sanitize_conditional_rules(
                 "target_field_scope": target_field["scope"] if target_field else clean_text(rule.get("target_field_scope")) or "secundaria",
                 "action": action,
                 "match_by": match_by,
+                "target_option_values": target_option_values,
             }
         )
 
@@ -2174,6 +2186,10 @@ def _resolve_conditional_rules(
                 token_map.get(source_key, {}).get(rule_option_token(value), value)
                 for value in (rule.get("source_values") or [])
             ]
+        target_option_value_labels = [
+            token_map.get(target_key, {}).get(rule_option_token(value), value)
+            for value in (rule.get("target_option_values") or [])
+        ]
         resolved.append(
             {
                 "key": clean_text(rule.get("key")) or uuid.uuid4().hex[:12],
@@ -2204,6 +2220,8 @@ def _resolve_conditional_rules(
                 ),
                 "action": clean_text(rule.get("action")).lower() or "hide",
                 "match_by": rule.get("match_by", "option"),
+                "target_option_values": list(rule.get("target_option_values") or []),
+                "target_option_value_labels": target_option_value_labels,
                 "source_field": source_field,
                 "target_field": target_field,
                 "origin": origin,
@@ -2214,7 +2232,7 @@ def _resolve_conditional_rules(
     return resolved
 
 
-def _conditional_rule_signature(rule: dict[str, Any]) -> tuple[str, str, str, str, str, tuple[str, ...], bool]:
+def _conditional_rule_signature(rule: dict[str, Any]) -> tuple[str, str, str, str, str, tuple[str, ...], tuple[str, ...], bool]:
     return (
         clean_text(rule.get("source_type")).lower() or "field",
         clean_text(rule.get("source_field_key")),
@@ -2222,6 +2240,7 @@ def _conditional_rule_signature(rule: dict[str, Any]) -> tuple[str, str, str, st
         rule_option_token(clean_text(rule.get("target_field_label"))),
         clean_text(rule.get("action")).lower(),
         tuple(sorted(rule_option_token(value) for value in (rule.get("source_values") or []))),
+        tuple(sorted(rule_option_token(value) for value in (rule.get("target_option_values") or []))),
         bool(rule.get("documentation_only")),
     )
 
@@ -2302,7 +2321,7 @@ def get_conditional_rules(category_key_value: str) -> list[dict[str, Any]]:
 
     merged: list[dict[str, Any]] = []
     positions_by_key: dict[str, int] = {}
-    positions_by_signature: dict[tuple[str, str, str, str, str, tuple[str, ...], bool], int] = {}
+    positions_by_signature: dict[tuple[str, str, str, str, str, tuple[str, ...], tuple[str, ...], bool], int] = {}
     for rule in system_references + system_rules + effective_catalog_rules:
         rule_key = clean_text(rule.get("key"))
         signature = _conditional_rule_signature(rule)
@@ -2356,6 +2375,7 @@ def get_conditional_rules_for_form(category_key_value: str) -> list[dict[str, An
                     "label": rule["target_field"]["label"],
                     "scope": rule["target_field"]["scope"],
                     "requiredWhenVisible": rule["action"] == "show",
+                    "optionValues": list(rule.get("target_option_values") or []),
                 }
             )
         elif rule.get("target_field_label"):
@@ -2365,6 +2385,7 @@ def get_conditional_rules_for_form(category_key_value: str) -> list[dict[str, An
                     "label": rule["target_field_label"],
                     "scope": rule["target_field_scope"],
                     "requiredWhenVisible": rule["action"] == "show",
+                    "optionValues": list(rule.get("target_option_values") or []),
                 }
             )
         if not targets:
@@ -3238,7 +3259,7 @@ def _visible_field_keys(fields: list[dict[str, Any]], category_key_value: str, d
 
     for rule in _combined_conditional_rules(category_key_value):
         action = clean_text(rule.get("action")).lower()
-        if action in {"set_primary", "set_secondary"}:
+        if action in {"set_primary", "set_secondary", "hide_option"}:
             continue
         target_key = clean_text(rule.get("target_field_key"))
         target_field = field_map.get(target_key)
@@ -3267,6 +3288,41 @@ def _visible_field_keys(fields: list[dict[str, Any]], category_key_value: str, d
         if show_ok and not hide_hit and mode_ok:
             visible.add(field_key)
     return visible
+
+
+def _hidden_option_tokens_by_field(
+    fields: list[dict[str, Any]],
+    category_key_value: str,
+    data: Any,
+) -> dict[str, set[str]]:
+    """Return all options suppressed by the active option-conditional rules."""
+    hidden: dict[str, set[str]] = {field["key"]: set() for field in fields}
+    for rule in _combined_conditional_rules(category_key_value):
+        if clean_text(rule.get("action")).lower() != "hide_option":
+            continue
+        target_key = clean_text(rule.get("target_field_key"))
+        if target_key not in hidden or not _conditional_rule_matches(fields, data, rule):
+            continue
+        hidden[target_key].update(
+            token
+            for token in (rule_option_token(value) for value in rule.get("target_option_values") or [])
+            if token
+        )
+    return hidden
+
+
+def _validate_hidden_option_values(
+    fields: list[dict[str, Any]],
+    category_key_value: str,
+    data: Any,
+) -> None:
+    hidden = _hidden_option_tokens_by_field(fields, category_key_value, data)
+    invalid_fields: list[str] = []
+    for field in fields:
+        if set(_selected_conditional_tokens(field, data)) & hidden.get(field["key"], set()):
+            invalid_fields.append(field["label"])
+    if invalid_fields:
+        raise ValueError("Há opção(ões) indisponível(is) pela regra condicional em: " + ", ".join(invalid_fields) + ".")
 
 
 def _validate_visible_field_requirements(
@@ -3761,6 +3817,7 @@ def save_banco_registration(form_data: Any) -> dict[str, str]:
     if category["key"] == DEFAULT_CATEGORY_KEY:
         _validate_banco_dependencies(fields, form_data)
         _validate_visible_field_requirements(fields, category["key"], form_data)
+    _validate_hidden_option_values(fields, category["key"], form_data)
     workbook = ensure_workbook_exists()
     workbook_source = _copy_to_temp(workbook)
     wb = _load(workbook_source)
@@ -4030,6 +4087,7 @@ def add_conditional_rules(
     action_value: str = "hide",
     rule_key_value: str = "",
     source_type_value: str = "field",
+    target_option_values_value: list[str] | None = None,
 ) -> dict[str, Any]:
     catalog = load_catalog()
     category = _find_category(catalog, category_key_value)
@@ -4084,10 +4142,23 @@ def add_conditional_rules(
     if not source_values:
         raise ValueError("Informe ao menos um grupo ou uma opÃ§Ã£o condicional.")
     action = clean_text(action_value).lower()
-    if action not in {"hide", "show", "set_primary", "set_secondary"}:
+    if action not in {"hide", "show", "set_primary", "set_secondary", "hide_option"}:
         action = "hide"
-    if action in {"set_primary", "set_secondary"} and not target_fields:
+    if action in {"set_primary", "set_secondary", "hide_option"} and not target_fields:
         raise ValueError("Selecione um campo alvo existente para alterar a descri\u00e7\u00e3o.")
+    target_option_values: list[str] = []
+    if action == "hide_option":
+        if len(target_fields) != 1:
+            raise ValueError("Para ocultar opções, selecione exatamente um campo alvo.")
+        available_target_options = {
+            rule_option_token(option) for option in (target_fields[0].get("options") or [])
+        }
+        for value in target_option_values_value or []:
+            token = rule_option_token(clean_text(value))
+            if token and token in available_target_options and token not in target_option_values:
+                target_option_values.append(token)
+        if not target_option_values:
+            raise ValueError("Selecione pelo menos uma opção do campo alvo para ocultar.")
 
     rules = category.setdefault("conditional_rules", [])
     edited_key = clean_text(rule_key_value)
@@ -4118,6 +4189,7 @@ def add_conditional_rules(
                     == rule_option_token(candidate_target_label)
                 )
                 and bool(existing_values & source_value_set)
+                and set(rule.get("target_option_values") or []) == set(target_option_values)
             )
             if not same_trigger_and_target:
                 continue
@@ -4140,6 +4212,7 @@ def add_conditional_rules(
                 "target_field_label": candidate_target_label,
                 "target_field_scope": target_field["scope"] if target_field else "secundaria",
                 "action": action,
+                "target_option_values": target_option_values,
             }
         )
 
@@ -4170,6 +4243,7 @@ def add_conditional_rule(
     action_value: str = "hide",
     rule_key_value: str = "",
     source_type_value: str = "field",
+    target_option_values_value: list[str] | None = None,
 ) -> dict[str, Any]:
     return add_conditional_rules(
         category_key_value,
@@ -4180,6 +4254,7 @@ def add_conditional_rule(
         action_value,
         rule_key_value,
         source_type_value,
+        target_option_values_value,
     )
 
 

@@ -649,6 +649,7 @@ def _registration_payload(
     if category["key"] == excel_bancos.DEFAULT_CATEGORY_KEY:
         excel_bancos._validate_banco_dependencies(fields, form_data)
         excel_bancos._validate_visible_field_requirements(fields, category["key"], form_data)
+    excel_bancos._validate_hidden_option_values(fields, category["key"], form_data)
 
     descriptions = excel_bancos.build_descriptions(fields, form_data, category["key"])
     groups = _field_groups(fields, form_data)

@@ -1001,6 +1001,7 @@
             const visibilityRules = new Map(fieldBlocks.map((block) => [block, { show: [], hide: [] }]));
             const effectiveScopes = new Map(fieldBlocks.map((block) => [block, block.dataset.fieldScope]));
             const bancoModeVisibility = updateBancoMode();
+            const hiddenOptions = new Map(fieldBlocks.map((block) => [block, new Set()]));
 
             rules.forEach((rule) => {
                 let matches = false;
@@ -1034,6 +1035,18 @@
                     return;
                 }
 
+                if (action === "hide_option") {
+                    if (!matches) return;
+                    rule.targets.forEach((target) => {
+                        const targetBlock = findBlock(target.label, target.scope, target.key);
+                        if (!targetBlock) return;
+                        (target.optionValues || []).forEach((value) => {
+                            hiddenOptions.get(targetBlock).add(normalizeOptionValue(value));
+                        });
+                    });
+                    return;
+                }
+
                 rule.targets.forEach((target) => {
                     const targetBlock = findBlock(target.label, target.scope, target.key);
                     if (!targetBlock) {
@@ -1055,6 +1068,20 @@
                 const shouldShow = Boolean(bancoModeVisibility.get(block)) && showOk && !hideHit;
                 clearAndToggleBlock(block, shouldShow);
                 block.dataset.effectiveScope = effectiveScopes.get(block);
+            });
+            fieldBlocks.forEach((block) => {
+                const unavailable = hiddenOptions.get(block);
+                block.querySelectorAll("option[value]").forEach((option) => {
+                    const isUnavailable = unavailable.has(normalizeOptionValue(option.value));
+                    if (option.dataset.conditionalInitialDisabled === undefined) {
+                        option.dataset.conditionalInitialDisabled = option.disabled ? "true" : "false";
+                    }
+                    option.hidden = isUnavailable;
+                    option.disabled = isUnavailable || option.dataset.conditionalInitialDisabled === "true";
+                    if (!isUnavailable || !option.selected || option.parentElement?.tagName !== "SELECT") return;
+                    if (option.parentElement.multiple) option.selected = false;
+                    else option.parentElement.value = "";
+                });
             });
             arrangeFieldsByScope(effectiveScopes);
             setComponentsEnabled(requiresComponents());

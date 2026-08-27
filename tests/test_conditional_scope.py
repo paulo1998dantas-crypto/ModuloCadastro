@@ -96,6 +96,30 @@ class ConditionalScopeTests(unittest.TestCase):
 
         self.assertNotIn("alvo_secundario", visible)
 
+    def test_option_rules_hide_multiple_options_from_the_same_target(self):
+        self.fields[2]["options"] = ["8- VALOR S", "9- OUTRA OPCAO", "10- DISPONIVEL"]
+        first_rule = {
+            **self._rule("hide_option", "alvo_secundario"),
+            "target_option_values": ["VALOR S", "OUTRA OPCAO"],
+        }
+        second_rule = {
+            **self._rule("hide_option", "alvo_secundario"),
+            "target_option_values": ["DISPONIVEL"],
+        }
+        with patch.object(excel_bancos, "_combined_conditional_rules", return_value=[first_rule, second_rule]):
+            hidden = excel_bancos._hidden_option_tokens_by_field(self.fields, "teste", self.data)
+
+        self.assertEqual(hidden["alvo_secundario"], {"VALORS", "OUTRAOPCAO", "DISPONIVEL"})
+
+    def test_hidden_option_is_rejected_by_server_validation(self):
+        rule = {
+            **self._rule("hide_option", "alvo_secundario"),
+            "target_option_values": ["VALOR S"],
+        }
+        with patch.object(excel_bancos, "_combined_conditional_rules", return_value=[rule]):
+            with self.assertRaisesRegex(ValueError, "indisponível"):
+                excel_bancos._validate_hidden_option_values(self.fields, "teste", self.data)
+
     def test_group_rule_can_hide_a_field(self):
         rule = {
             **self._rule("hide", "alvo_secundario"),
