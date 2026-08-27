@@ -48,6 +48,8 @@ STRICT_OPTION_ALIASES = {
     },
 }
 
+CANONICAL_SKU_GROUPS = {"10", "20", "30"}
+
 
 def _text(value: Any) -> str:
     if value is None:
@@ -64,6 +66,13 @@ def _header(value: Any) -> str:
 def _group_code(value: Any) -> str:
     match = re.match(r"\s*(\d+)", _text(value))
     return match.group(1).zfill(2) if match else ""
+
+
+def _sku_group_code(value: Any) -> str:
+    """Return the structural group encoded in a standard Cadastro SKU."""
+    sku = _text(value)
+    prefix = sku[:2]
+    return prefix if prefix in CANONICAL_SKU_GROUPS else ""
 
 
 def _field_header(field: dict[str, Any]) -> str:
@@ -188,7 +197,8 @@ def build_template(
     for row in sorted(active_rows, key=lambda value: _text(value.get("sku"))):
         form_values = row.get("form_values") if isinstance(row.get("form_values"), dict) else {}
         group_values = form_values.get(excel_bancos.PN_GROUP_FORM_KEY) or []
-        group = _text(group_values[0] if isinstance(group_values, list) and group_values else "")
+        stored_group = _text(group_values[0] if isinstance(group_values, list) and group_values else group_values)
+        group = _sku_group_code(row.get("sku")) or _group_code(stored_group)
         worksheet.append(
             [
                 _text(row.get("sku")),
@@ -204,7 +214,8 @@ def build_template(
     instructions.append(["ATUALIZAÇÃO CONTROLADA DE CAMPOS TÉCNICOS"])
     instructions.append([f"Categoria: {category.get('label')}"])
     instructions.append([
-        "Não altere COD nem CATEGORIA. GRUPO é apenas informativo: o grupo já gravado no Cadastro será preservado."
+        "Não altere COD nem CATEGORIA. GRUPO é conferência estrutural: 10 = INSUMO, "
+        "20 = PRODUTO PROCESSO e 30 = CONJUNTO / KIT. Um grupo divergente do prefixo do SKU bloqueia o arquivo."
     ])
     instructions.append(["Mantenha todos os SKUs ativos: o arquivo deve representar exatamente a categoria."])
     instructions.append(["As colunas técnicas usam os mesmos nomes de campos exibidos no Cadastro."])
@@ -436,6 +447,12 @@ def prepare_reconciliation(
     for source in source_rows:
         registration = rows_by_sku[source["sku"]]
         original = registration.get("form_values") if isinstance(registration.get("form_values"), dict) else {}
+        canonical_group = _sku_group_code(source["sku"])
+        if canonical_group and source["group"] and source["group"] != canonical_group:
+            raise ValueError(
+                f"SKU {source['sku']}: GRUPO {source['group']} diverge do prefixo do SKU "
+                f"(esperado {canonical_group}). Corrija a planilha; nenhuma alteração foi gravada."
+            )
         selected = {
             field["key"]: _canonical_values(
                 field,
@@ -445,10 +462,13 @@ def prepare_reconciliation(
             )
             for field in fields
         }
-        # The spreadsheet's GRUPO column is solely a visual cross-check.  A
-        # technical-field reconciliation must never move an existing SKU to a
-        # different group, even when a legacy template contains stale values.
-        selected[excel_bancos.PN_GROUP_FORM_KEY] = original.get(excel_bancos.PN_GROUP_FORM_KEY) or []
+        # Group is an immutable structural property of standard SKUs.  Legacy
+        # codes outside the 10/20/30 convention keep their stored metadata.
+        selected[excel_bancos.PN_GROUP_FORM_KEY] = (
+            [canonical_group]
+            if canonical_group
+            else original.get(excel_bancos.PN_GROUP_FORM_KEY) or []
+        )
         payload = payload_builder(registration, selected)
         payloads.append(payload)
         if any(payload.get(key) != registration.get(key) for key in ("descricao_primaria", "descricao_secundaria", "form_values", "field_values", "field_codes")):

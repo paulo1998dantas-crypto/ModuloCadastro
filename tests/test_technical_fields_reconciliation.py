@@ -130,24 +130,51 @@ class TechnicalFieldsReconciliationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "VTRX.*não existe no catálogo fechado"):
             reconciliation.missing_field_options(content, CATEGORY, _fields())
 
-    def test_group_is_informative_and_preserved_from_registration(self):
+    def test_group_divergente_do_prefixo_bloqueia_upload(self):
+        rows = [
+            {**row, "sku": f"1012000{index}"}
+            for index, row in enumerate(_rows(), start=1)
+        ]
         content = _workbook_bytes(
             [
-                ["12180001", "12 - VIDROS", "30 - CONJUNTO", "SALT", "N/A"],
-                ["12180002", "12 - VIDROS", "10 - INSUMO", "SALT", "LATERAL"],
+                ["10120001", "12 - VIDROS", "30 - CONJUNTO", "SALT", "N/A"],
+                ["10120002", "12 - VIDROS", "10 - INSUMO", "SALT", "LATERAL"],
             ]
+        )
+        with self.assertRaisesRegex(ValueError, "GRUPO 30 diverge do prefixo"):
+            reconciliation.prepare_reconciliation(
+                content,
+                CATEGORY,
+                _fields(),
+                rows,
+                lambda row, values: {"id": row["id"], "form_values": values},
+            )
+
+    def test_standard_sku_reconcilia_grupo_gravado_incorreto(self):
+        rows = [
+            {
+                "id": "item-1",
+                "sku": "30120001",
+                "form_values": {
+                    excel_bancos.PN_GROUP_FORM_KEY: ["10"],
+                    "fornecedor": ["1- SALT"],
+                    "especificidade": ["1- N/A"],
+                },
+            }
+        ]
+        content = _workbook_bytes(
+            [["30120001", "12 - VIDROS", "30 - CONJUNTO / KIT", "SALT", "N/A"]]
         )
         result = reconciliation.prepare_reconciliation(
             content,
             CATEGORY,
             _fields(),
-            _rows(),
+            rows,
             lambda row, values: {"id": row["id"], "form_values": values},
         )
-        self.assertEqual(result["total"], 2)
         self.assertEqual(
             result["payloads"][0]["form_values"][excel_bancos.PN_GROUP_FORM_KEY],
-            ["10 - INSUMO"],
+            ["30"],
         )
 
     def test_pecas_bco_converge_aliases_sem_criar_opcoes(self):
@@ -349,6 +376,33 @@ class TechnicalFieldsReconciliationTests(unittest.TestCase):
         )
 
         self.assertEqual(payload["form_values"][excel_bancos.PN_GROUP_FORM_KEY], ["30"])
+
+    def test_payload_corrige_grupo_legado_pelo_prefixo_do_sku(self):
+        row = {
+            "id": 504,
+            "sku": "30220001",
+            "unidade": "cj",
+            "ativo": True,
+            "form_values": {
+                excel_bancos.PN_GROUP_FORM_KEY: ["10"],
+                "fornecedor": ["1- SALT"],
+                "especificidade": ["1- N/A"],
+            },
+        }
+        payload = supabase_store._technical_fields_reconciliation_payload(
+            row,
+            PECAS_BCO_CATEGORY,
+            _fields(),
+            row["form_values"],
+        )
+        self.assertEqual(payload["form_values"][excel_bancos.PN_GROUP_FORM_KEY], ["30"])
+
+    def test_consulta_prioriza_prefixo_do_sku_sobre_grupo_gravado(self):
+        row = {
+            "sku": "20220001",
+            "form_values": {excel_bancos.PN_GROUP_FORM_KEY: ["30"]},
+        }
+        self.assertEqual(supabase_store._row_group_code(row), "20")
 
 
 if __name__ == "__main__":

@@ -37,6 +37,7 @@ DUPLICATE_PARENT_SEPARATOR = "__BOM__"
 UNIT_OPTIONS = ["pc", "un", "cj", "ch", "br", "m", "mm"]
 SKU_MIGRATION_FORM_KEY = "_sku_migration"
 PREVIOUS_SKU_FORM_KEY = "_sku_anterior"
+CANONICAL_SKU_GROUPS = {"10", "20", "30"}
 
 
 class SupabaseStoreError(RuntimeError):
@@ -49,6 +50,13 @@ def clean_text(value: Any) -> str:
 
 def normalize_unit(value: Any) -> str:
     return clean_text(value).lower()
+
+
+def _sku_group_code(value: Any) -> str:
+    """Return the canonical structural group encoded in a standard SKU."""
+    sku = clean_text(value)
+    prefix = sku[:2]
+    return prefix if prefix in CANONICAL_SKU_GROUPS else ""
 
 
 def unidade_options() -> list[str]:
@@ -745,10 +753,16 @@ def _description_refresh_payload(
     if registration_id in {None, ""} or not isinstance(original_groups, dict):
         return None
 
-    normalized_groups = _field_groups(fields, original_groups)
+    canonical_group = _sku_group_code(row.get("sku"))
+    source_groups = dict(original_groups)
+    if canonical_group:
+        source_groups[excel_bancos.PN_GROUP_FORM_KEY] = [canonical_group]
+    normalized_groups = _field_groups(fields, source_groups)
     # Preserve markers not controlled by catalog fields, such as B.O.M. and
     # migration metadata. A description refresh must never erase them.
     refreshed_groups = {**original_groups, **normalized_groups}
+    if canonical_group:
+        refreshed_groups[excel_bancos.PN_GROUP_FORM_KEY] = [canonical_group]
     descriptions = excel_bancos.build_descriptions(fields, refreshed_groups, category["key"])
     field_values = _field_values(fields, normalized_groups)
     field_codes = _field_codes(fields, normalized_groups)
@@ -1317,7 +1331,10 @@ def _technical_fields_reconciliation_payload(
         if key not in protected_identity_keys
     }
     groups = {**preserved, **technical_values}
-    if excel_bancos.PN_GROUP_FORM_KEY in original:
+    canonical_group = _sku_group_code(row.get("sku"))
+    if canonical_group:
+        groups[excel_bancos.PN_GROUP_FORM_KEY] = [canonical_group]
+    elif excel_bancos.PN_GROUP_FORM_KEY in original:
         groups[excel_bancos.PN_GROUP_FORM_KEY] = original[excel_bancos.PN_GROUP_FORM_KEY]
     descriptions = excel_bancos.build_descriptions(fields, groups, category["key"])
     sku = clean_text(row.get("sku"))
@@ -1544,6 +1561,9 @@ def _group_label_map() -> dict[str, str]:
 
 
 def _row_group_code(row: dict[str, Any]) -> str:
+    canonical_group = _sku_group_code(row.get("sku"))
+    if canonical_group:
+        return canonical_group
     form_values = row.get("form_values") if isinstance(row.get("form_values"), dict) else {}
     value = form_values.get(excel_bancos.PN_GROUP_FORM_KEY)
     if isinstance(value, list):
