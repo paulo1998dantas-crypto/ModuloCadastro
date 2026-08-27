@@ -266,6 +266,11 @@
     </main>
     <script>
         const fieldBlocks = Array.from(document.querySelectorAll("[data-field-block]"));
+        fieldBlocks.forEach((block) => {
+            block.querySelectorAll("option[value]").forEach((option) => {
+                option.dataset.conditionalInitialDisabled = option.disabled ? "true" : "false";
+            });
+        });
         const enforceRequiredVisibleFields = {{ 'true' if selected_category.key == 'bancos' else 'false' }};
         const currentCategoryKey = {{ selected_category.key | tojson }};
         const categoriesForDraft = {{ categories | tojson }};

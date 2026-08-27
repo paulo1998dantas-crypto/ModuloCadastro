@@ -217,6 +217,11 @@
         const replaceBomNo = document.getElementById("replace-bom-no");
         const replaceBomCancel = document.getElementById("replace-bom-cancel");
         const fieldBlocks = Array.from(document.querySelectorAll("[data-field-block]"));
+        fieldBlocks.forEach((block) => {
+            block.querySelectorAll("option[value]").forEach((option) => {
+                option.dataset.conditionalInitialDisabled = option.disabled ? "true" : "false";
+            });
+        });
         const isBanco = {{ 'true' if selected_category.key == 'bancos' else 'false' }};
         const configuredRules = {{ conditional_rules | tojson }};
         const scopeContainers = {

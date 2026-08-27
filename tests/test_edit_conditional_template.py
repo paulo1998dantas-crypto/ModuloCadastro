@@ -214,6 +214,59 @@ class EditConditionalTemplateTests(unittest.TestCase):
             )
         )
 
+    def test_bank_group_options_preserve_only_the_original_disabled_state(self):
+        values = {
+            "pre_fixo": ["1- BCO"],
+            "especificidade": [],
+        }
+        fields = excel_bancos.get_banco_fields_for_display("bancos")
+        common_context = {
+            "categories": [{"key": "bancos", "label": "Bancos"}],
+            "pn_groups": excel_bancos.list_pn_groups(),
+            "selected_category": {"key": "bancos", "label": "Bancos"},
+            "selected_group_code": "10",
+            "ordered_fields": main._enrich_fields(fields, values),
+            "conditional_rules": excel_bancos.get_conditional_rules_for_form("bancos"),
+            "workbook_path": "teste",
+            "unit_options": ["pc", "cj"],
+            "erro": "",
+            "sucesso": "",
+        }
+
+        create_html = main.templates.env.get_template("cadastro_bancos.html").render(
+            **common_context,
+            selected_unit="pc",
+            selected_bom_option="0",
+            fields=common_context["ordered_fields"],
+            active_draft=None,
+            supabase_mode=True,
+            active_page="cadastro",
+            component_rows=[],
+        )
+        edit_html = main.templates.env.get_template("editar_cadastro.html").render(
+            **common_context,
+            source_category={"key": "bancos", "label": "Bancos"},
+            record={
+                "id": 1,
+                "sku": "10200001",
+                "descricao_primaria": "TESTE",
+                "descricao_secundaria": "TESTE",
+                "replacement_sku": "",
+                "unidade": "pc",
+                "possui_bom": False,
+                "ativo": True,
+            },
+            component_rows=[],
+        )
+
+        for html in (create_html, edit_html):
+            self.assertIn('value="14- PME 1A" data-conjunto-only="true"', html)
+            capture_position = html.index(
+                'option.dataset.conditionalInitialDisabled = option.disabled ? "true" : "false";'
+            )
+            dynamic_mode_position = html.index("const updateBancoMode = () =>")
+            self.assertLess(capture_position, dynamic_mode_position)
+
 
 if __name__ == "__main__":
     unittest.main()
