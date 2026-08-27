@@ -752,6 +752,7 @@ CONJUNTO_BANCO_SHARED_FIELDS = {
     "tipo_costura",
     "cor_da_linha",
     "cor_do_revestimento",
+    "cj_acessibilidade",
 }
 
 # O mesmo campo ESPECIFICIDADE atende banco unitario e conjunto. Estas opcoes
@@ -826,6 +827,17 @@ def _banco_system_profile_rules(fields: list[dict[str, Any]]) -> list[dict[str, 
     ]
     conjunto_summary = ", ".join(conjunto_fields) or "campos exclusivos do conjunto"
     insumo_summary = ", ".join(insumo_fields) or "campos exclusivos do insumo"
+    acessibilidade_compartilhada = any(
+        clean_text(field.get("key")) == "cj_acessibilidade"
+        and clean_text(field.get("banco_mode")) == "shared"
+        for field in fields
+    )
+    acessibilidade_summary = (
+        " ACESSIBILIDADE permanece visível tanto para o grupo 10 - INSUMO "
+        "quanto para o grupo 30 - CONJUNTO / KIT."
+        if acessibilidade_compartilhada
+        else ""
+    )
     return [
         {
             "key": "cond_bancos_grupo_conjunto_perfil_campos",
@@ -840,7 +852,7 @@ def _banco_system_profile_rules(fields: list[dict[str, Any]]) -> list[dict[str, 
             "documentation_only": True,
             "description": (
                 f"Com o grupo 30 - CONJUNTO / KIT, exibe {conjunto_summary} "
-                f"e oculta {insumo_summary}."
+                f"e oculta {insumo_summary}.{acessibilidade_summary}"
             ),
         },
         {
@@ -896,7 +908,7 @@ CONJUNTO_BANCO_FIELDS = [
             "4- PLATAFORMA BI-PARTIDA",
             "5- PLATAFORMA FECHADA",
         ],
-        "banco_mode": "conjunto",
+        "banco_mode": "shared",
         "required": False,
     },
     {

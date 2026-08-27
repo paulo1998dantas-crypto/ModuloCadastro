@@ -79,6 +79,8 @@ class SystemRulesVisibilityTests(unittest.TestCase):
         self.assertEqual(group_profile["origin"], "system")
         self.assertTrue(group_profile["documentation_only"])
         self.assertIn("grupo 30", group_profile["description"].lower())
+        self.assertIn("acessibilidade permanece visível", group_profile["description"].lower())
+        self.assertIn("grupo 10 - insumo", group_profile["description"].lower())
         self.assertEqual(prefix_profile["origin"], "system")
         self.assertTrue(prefix_profile["documentation_only"])
 

@@ -55,7 +55,7 @@ class UnificacaoBancosTests(unittest.TestCase):
         )
         self.assertEqual(description["sufixo"], "CJ")
 
-    def test_campos_do_conjunto_sao_visiveis_somente_no_grupo_30(self):
+    def test_acessibilidade_e_compartilhada_entre_insumo_e_conjunto(self):
         conjunto = excel_bancos._visible_field_keys(
             self.fields,
             "bancos",
@@ -79,7 +79,8 @@ class UnificacaoBancosTests(unittest.TestCase):
         self.assertNotIn("cj_sufixo", conjunto)
         self.assertNotIn("cj_sufixo", insumo)
         self.assertNotIn("cj_layout", insumo)
-        self.assertNotIn("cj_acessibilidade", insumo)
+        self.assertIn("cj_acessibilidade", conjunto)
+        self.assertIn("cj_acessibilidade", insumo)
 
     def test_conjunto_nao_expoe_detalhe_de_revestimento(self):
         keys = {field["key"] for field in self.fields}
@@ -215,6 +216,27 @@ class UnificacaoBancosTests(unittest.TestCase):
             self.fields, {**base, "cj_acessibilidade": "2- FOCA"}, "bancos"
         )
         self.assertTrue(description_foca["primaria"].endswith(" - FOCA"))
+
+        insumo_base = {
+            "grupo_codigo": "10",
+            "pre_fixo": "1- BCO",
+            "fornecedor": "1- MC",
+            "linha": "1- LB",
+        }
+        insumo_foca = excel_bancos.build_descriptions(
+            self.fields,
+            {**insumo_base, "cj_acessibilidade": "2- FOCA"},
+            "bancos",
+        )
+        self.assertIn("FOCA", insumo_foca["primaria"])
+
+        insumo_na = excel_bancos.build_descriptions(
+            self.fields,
+            {**insumo_base, "cj_acessibilidade": "1- N/A"},
+            "bancos",
+        )
+        self.assertNotIn("N/A", insumo_na["primaria"])
+        self.assertNotIn("N/A", insumo_na["secundaria"])
 
     def test_regras_condicionais_do_sistema_sao_expostas_em_opcoes(self):
         rules = excel_bancos.get_conditional_rules("bancos")
