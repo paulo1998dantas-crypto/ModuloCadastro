@@ -775,8 +775,114 @@ def _description_refresh_payload(
     }
 
 
-def refresh_registration_descriptions(category_key: str) -> dict[str, Any]:
-    """Apply current rules to descriptions in one category without changing identity."""
+def _catalog_compatible_values(
+    raw_value: Any,
+    allowed_options: list[str],
+) -> tuple[list[str], list[str], bool]:
+    """Canonicalize values that still belong to a closed option catalogue.
+
+    Matching the textual identity has priority. A numeric option code is used
+    only when it identifies exactly one current option, which prevents a stale
+    value from being silently redirected to an ambiguous catalogue entry.
+    """
+    if isinstance(raw_value, list):
+        raw_values = raw_value
+    elif raw_value is None or raw_value == "":
+        raw_values = []
+    else:
+        raw_values = [raw_value]
+
+    canonical_options: list[str] = []
+    seen_options: set[str] = set()
+    for raw_option in allowed_options:
+        option = excel_bancos.normalize_option_text(raw_option)
+        if option and option not in seen_options:
+            canonical_options.append(option)
+            seen_options.add(option)
+
+    options_by_identity: dict[str, list[str]] = {}
+    options_by_code: dict[str, list[str]] = {}
+    for option in canonical_options:
+        identity = excel_bancos.option_identity(option)
+        code = excel_bancos.option_code(option)
+        if identity:
+            options_by_identity.setdefault(identity, []).append(option)
+        if code:
+            options_by_code.setdefault(code, []).append(option)
+
+    kept: list[str] = []
+    removed: list[str] = []
+    seen_kept: set[str] = set()
+    canonicalized = False
+    for raw_item in raw_values:
+        item = excel_bancos.normalize_option_text(raw_item)
+        if not item:
+            continue
+        identity = excel_bancos.option_identity(item)
+        code = excel_bancos.option_code(item)
+        identity_matches = options_by_identity.get(identity, [])
+        canonical = identity_matches[0] if identity_matches else None
+        if canonical is None and code:
+            code_matches = options_by_code.get(code, [])
+            if len(code_matches) == 1:
+                canonical = code_matches[0]
+        if canonical is None:
+            removed.append(item)
+            continue
+        canonical_identity = excel_bancos.option_identity(canonical)
+        if canonical_identity not in seen_kept:
+            kept.append(canonical)
+            seen_kept.add(canonical_identity)
+        if canonical != item:
+            canonicalized = True
+    return kept, removed, canonicalized
+
+
+def _groups_with_catalog_compatible_values(
+    fields: list[dict[str, Any]],
+    original_groups: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, list[str]], int]:
+    """Remove orphan values from catalogue-controlled technical fields.
+
+    Free-text fields and metadata outside the category field catalogue are
+    deliberately preserved. Fields without configured options are also left
+    untouched because they may be legacy/open fields not yet classified.
+    """
+    refreshed_groups = dict(original_groups)
+    removed_by_field: dict[str, list[str]] = {}
+    canonicalized_fields = 0
+    for field in fields:
+        field_key = clean_text(field.get("key"))
+        if not field_key or field_key not in original_groups or field.get("free_text"):
+            continue
+        allowed_options = [
+            clean_text(option)
+            for option in [
+                *(field.get("options") or []),
+                *(field.get("conjunto_only_options") or []),
+            ]
+            if clean_text(option)
+        ]
+        if not allowed_options:
+            continue
+        kept, removed, canonicalized = _catalog_compatible_values(
+            original_groups.get(field_key),
+            allowed_options,
+        )
+        if removed or canonicalized:
+            refreshed_groups[field_key] = kept
+        if removed:
+            removed_by_field[field_key] = removed
+        if canonicalized:
+            canonicalized_fields += 1
+    return refreshed_groups, removed_by_field, canonicalized_fields
+
+
+def refresh_registration_descriptions(
+    category_key: str,
+    actor: str = "cadastro:opcoes",
+) -> dict[str, Any]:
+    """Apply current rules and closed catalogue values to one category."""
     category = _category(clean_text(category_key))
     fields = excel_bancos.get_banco_fields(category["key"])
     rows = _request_all(
@@ -785,8 +891,30 @@ def refresh_registration_descriptions(category_key: str) -> dict[str, Any]:
     )
     payloads: list[dict[str, Any]] = []
     skipped: list[str] = []
+    affected_skus: list[str] = []
+    removed_values = 0
+    canonicalized_fields = 0
+    removed_by_field: dict[str, int] = {}
     for row in rows:
-        payload = _description_refresh_payload(row, category, fields)
+        original_groups = row.get("form_values")
+        if not isinstance(original_groups, dict):
+            skipped.append(clean_text(row.get("sku")) or str(row.get("id") or "sem identificador"))
+            continue
+        compatible_groups, removed, canonicalized = _groups_with_catalog_compatible_values(
+            fields,
+            original_groups,
+        )
+        if removed:
+            affected_skus.append(clean_text(row.get("sku")) or str(row.get("id") or "sem identificador"))
+            for field_key, values in removed.items():
+                removed_values += len(values)
+                removed_by_field[field_key] = removed_by_field.get(field_key, 0) + len(values)
+        canonicalized_fields += canonicalized
+        payload = _description_refresh_payload(
+            {**row, "form_values": compatible_groups},
+            category,
+            fields,
+        )
         if payload is None:
             skipped.append(clean_text(row.get("sku")) or str(row.get("id") or "sem identificador"))
         else:
@@ -799,11 +927,233 @@ def refresh_registration_descriptions(category_key: str) -> dict[str, Any]:
             payload=payloads[start : start + 200],
             prefer="resolution=merge-duplicates,return=minimal",
         )
+    if payloads:
+        try:
+            _request(
+                "POST",
+                "erp_audit_events",
+                payload={
+                    "entity_type": "CADASTRO_CATEGORIA",
+                    "entity_id": None,
+                    "action": "REFRESH_DESCRICOES_E_CATALOGO",
+                    "actor": clean_text(actor) or "cadastro:opcoes",
+                    "origin": "CADASTRO",
+                    "before_data": {
+                        "categoria": category["key"],
+                        "cadastros": len(rows),
+                    },
+                    "after_data": {
+                        "cadastros_recalculados": len(payloads),
+                        "cadastros_com_valores_orfaos": len(affected_skus),
+                        "valores_orfaos_removidos": removed_values,
+                        "valores_canonicalizados": canonicalized_fields,
+                        "removidos_por_campo": removed_by_field,
+                        "skus_afetados": affected_skus[:100],
+                    },
+                    "reason": "Refresh da categoria com reconciliacao do catalogo fechado de opcoes.",
+                },
+                prefer="return=minimal",
+            )
+        except Exception:
+            pass
     return {
         "category_key": category["key"],
         "category_label": category["label"],
         "total": len(rows),
         "updated": len(payloads),
+        "affected": len(affected_skus),
+        "removed_values": removed_values,
+        "canonicalized_fields": canonicalized_fields,
+        "removed_by_field": removed_by_field,
+        "affected_skus": affected_skus[:100],
+        "skipped": len(skipped),
+        "skipped_identifiers": skipped[:25],
+    }
+
+
+def _values_without_deleted_options(
+    raw_value: Any,
+    remaining_options: list[str],
+    deleted_options: list[str],
+) -> tuple[list[str], list[str]]:
+    """Remove somente valores identificados pelas opcoes excluidas.
+
+    O codigo numerico da opcao e sua identidade textual sao considerados para
+    alcancar registros legados. Valores desconhecidos e que nao correspondem a
+    uma exclusao permanecem preservados para nao apagar informacao historica.
+    """
+    if isinstance(raw_value, list):
+        raw_values = raw_value
+    elif raw_value is None or raw_value == "":
+        raw_values = []
+    else:
+        raw_values = [raw_value]
+
+    remaining_by_identity = {
+        excel_bancos.option_identity(option): option
+        for option in remaining_options
+        if excel_bancos.option_identity(option)
+    }
+    remaining_by_code = {
+        excel_bancos.option_code(option): option
+        for option in remaining_options
+        if excel_bancos.option_code(option)
+    }
+    deleted_identities = {
+        excel_bancos.option_identity(option)
+        for option in deleted_options
+        if excel_bancos.option_identity(option)
+    }
+    deleted_codes = {
+        excel_bancos.option_code(option)
+        for option in deleted_options
+        if excel_bancos.option_code(option)
+    }
+
+    kept: list[str] = []
+    removed: list[str] = []
+    kept_identities: set[str] = set()
+    for raw_item in raw_values:
+        item = excel_bancos.normalize_option_text(raw_item)
+        if not item:
+            continue
+        identity = excel_bancos.option_identity(item)
+        code = excel_bancos.option_code(item)
+        canonical = remaining_by_identity.get(identity)
+        if canonical is None and code:
+            canonical = remaining_by_code.get(code)
+        if canonical is not None:
+            canonical_identity = excel_bancos.option_identity(canonical)
+            if canonical_identity not in kept_identities:
+                kept.append(canonical)
+                kept_identities.add(canonical_identity)
+            continue
+        if identity in deleted_identities or (code and code in deleted_codes):
+            removed.append(item)
+            continue
+        if identity not in kept_identities:
+            kept.append(item)
+            kept_identities.add(identity)
+    return kept, removed
+
+
+def reconcile_deleted_field_options(
+    category_key: str,
+    field_key: str,
+    deleted_options: list[str],
+    actor: str = "cadastro:opcoes",
+) -> dict[str, Any]:
+    """Retira opcoes excluidas dos cadastros e recompõe suas descricoes.
+
+    A operacao e idempotente: uma nova execucao nao remove valores adicionais.
+    Todos os cadastros da categoria, inclusive inativos, sao recalculados para
+    que uma futura reativacao nao restaure a especificacao excluida.
+    """
+    category = _category(clean_text(category_key))
+    fields = excel_bancos.get_banco_fields(category["key"])
+    field = next((item for item in fields if item.get("key") == clean_text(field_key)), None)
+    if field is None:
+        raise SupabaseStoreError("Campo da opcao excluida nao foi encontrado na categoria.")
+
+    deleted = [clean_text(option) for option in deleted_options if clean_text(option)]
+    if not deleted:
+        return {
+            "category_key": category["key"],
+            "field_key": field["key"],
+            "total": 0,
+            "recalculated": 0,
+            "affected": 0,
+            "removed_values": 0,
+            "skipped": 0,
+        }
+
+    remaining_options = [
+        clean_text(option)
+        for option in [
+            *(field.get("options") or []),
+            *(field.get("conjunto_only_options") or []),
+        ]
+        if clean_text(option)
+    ]
+    rows = _request_all(
+        REGISTRATIONS_TABLE,
+        [("select", "id,sku,unidade,ativo,form_values"), ("category_key", f"eq.{category['key']}")],
+    )
+    payloads: list[dict[str, Any]] = []
+    affected_skus: list[str] = []
+    removed_values = 0
+    skipped: list[str] = []
+    for row in rows:
+        original_groups = row.get("form_values")
+        if not isinstance(original_groups, dict):
+            skipped.append(clean_text(row.get("sku")) or str(row.get("id") or "sem identificador"))
+            continue
+        refreshed_groups = dict(original_groups)
+        kept, removed = _values_without_deleted_options(
+            original_groups.get(field["key"]),
+            remaining_options,
+            deleted,
+        )
+        if removed:
+            refreshed_groups[field["key"]] = kept
+            affected_skus.append(clean_text(row.get("sku")) or str(row.get("id") or "sem identificador"))
+            removed_values += len(removed)
+        payload = _description_refresh_payload(
+            {**row, "form_values": refreshed_groups},
+            category,
+            fields,
+        )
+        if payload is not None:
+            payloads.append(payload)
+
+    for start in range(0, len(payloads), 200):
+        _request(
+            "POST",
+            REGISTRATIONS_TABLE,
+            payload=payloads[start : start + 200],
+            prefer="resolution=merge-duplicates,return=minimal",
+        )
+
+    try:
+        _request(
+            "POST",
+            "erp_audit_events",
+            payload={
+                "entity_type": "CADASTRO_OPCAO",
+                "entity_id": None,
+                "action": "EXCLUSAO_COM_RECONCILIACAO",
+                "actor": clean_text(actor) or "cadastro:opcoes",
+                "origin": "CADASTRO",
+                "before_data": {
+                    "categoria": category["key"],
+                    "campo": field["key"],
+                    "opcoes_excluidas": deleted,
+                },
+                "after_data": {
+                    "cadastros_recalculados": len(payloads),
+                    "cadastros_afetados": len(affected_skus),
+                    "valores_removidos": removed_values,
+                    "skus_afetados": affected_skus[:100],
+                },
+                "reason": "Opcao excluida do catalogo e removida dos campos tecnicos existentes.",
+            },
+            prefer="return=minimal",
+        )
+    except Exception:
+        # A reconciliacao principal ja foi persistida. A indisponibilidade da
+        # tabela de auditoria nao deve induzir uma repeticao cega da exclusao.
+        pass
+
+    return {
+        "category_key": category["key"],
+        "category_label": category["label"],
+        "field_key": field["key"],
+        "field_label": field.get("label") or field["key"],
+        "total": len(rows),
+        "recalculated": len(payloads),
+        "affected": len(affected_skus),
+        "removed_values": removed_values,
+        "affected_skus": affected_skus[:100],
         "skipped": len(skipped),
         "skipped_identifiers": skipped[:25],
     }

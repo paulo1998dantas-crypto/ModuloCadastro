@@ -2030,6 +2030,11 @@ async def opcoes_atualizar_descricoes(category_key: str = Form(...)):
             f"Descrições atualizadas em {result['category_label']}: "
             f"{result['updated']} cadastro(s) recalculado(s)."
         )
+        if result.get("removed_values"):
+            message += (
+                f" {result['removed_values']} valor(es) fora do catálogo foram removidos "
+                f"de {result['affected']} cadastro(s)."
+            )
         if result["skipped"]:
             message += f" {result['skipped']} cadastro(s) sem dados de campos foram preservados sem alteração."
         return RedirectResponse(
@@ -2180,6 +2185,7 @@ async def opcoes_salvar_lote_post(
     option_value: list[str] = Form(...),
     delete_option_row: list[int] | None = Form(None),
 ):
+    catalog_before = excel_bancos.load_catalog()
     try:
         result = excel_bancos.update_field_options(
             category_key,
@@ -2188,10 +2194,29 @@ async def opcoes_salvar_lote_post(
             option_value,
             delete_row_values=delete_option_row or [],
         )
+        reconciliation = None
+        if result.get("deleted") and _supabase_mode():
+            try:
+                reconciliation = supabase_store.reconcile_deleted_field_options(
+                    category_key,
+                    field_key,
+                    result["deleted"],
+                )
+            except Exception:
+                # A opcao volta ao catalogo para que a exclusao possa ser
+                # repetida com seguranca caso a reconciliacao remota falhe.
+                excel_bancos.save_catalog(catalog_before)
+                raise
+        result["reconciliation"] = reconciliation
         message = (
             f"{result['count']} opção(ões) revisada(s) e "
             f"{result['deleted_count']} excluída(s) em {result['field']}."
         )
+        if reconciliation is not None:
+            message += (
+                f" {reconciliation['affected']} cadastro(s) limpo(s) e "
+                f"{reconciliation['recalculated']} descrição(ões) recalculada(s)."
+            )
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
             return JSONResponse({"ok": True, "message": message, "result": result})
         return RedirectResponse(
@@ -2213,9 +2238,26 @@ async def opcoes_excluir_post(
     field_key: str = Form(...),
     option_row: int = Form(...),
 ):
+    catalog_before = excel_bancos.load_catalog()
     try:
         result = excel_bancos.delete_field_option(category_key, field_key, option_row)
+        reconciliation = None
+        if _supabase_mode():
+            try:
+                reconciliation = supabase_store.reconcile_deleted_field_options(
+                    category_key,
+                    field_key,
+                    [result["option"]],
+                )
+            except Exception:
+                excel_bancos.save_catalog(catalog_before)
+                raise
         message = f"Opção excluída: {result['option']}."
+        if reconciliation is not None:
+            message += (
+                f" {reconciliation['affected']} cadastro(s) limpo(s) e "
+                f"{reconciliation['recalculated']} descrição(ões) recalculada(s)."
+            )
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote(message)}",
             status_code=303,

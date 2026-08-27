@@ -136,6 +136,74 @@ class DescriptionRefreshTests(unittest.TestCase):
         self.assertEqual(result["skipped_identifiers"], ["10100002"])
         request.assert_not_called()
 
+    def test_refresh_removes_orphan_catalog_values_and_preserves_free_text(self):
+        fields = [
+            {
+                "key": "cor",
+                "label": "COR",
+                "scope": "primaria",
+                "selection_mode": "multipla",
+                "description_order": 1,
+                "options": ["1- AZUL", "3- PRETO"],
+            },
+            {
+                "key": "observacao",
+                "label": "OBSERVACAO",
+                "scope": "secundaria",
+                "selection_mode": "unitaria",
+                "description_order": 2,
+                "free_text": True,
+                "options": [],
+            },
+        ]
+        rows = [
+            {
+                "id": "cadastro-1",
+                "sku": "10100004",
+                "unidade": "pc",
+                "ativo": True,
+                "form_values": {
+                    "cor": ["1- AZUL", "2- VERDE EXCLUIDO"],
+                    "observacao": ["TEXTO OPERACIONAL LIVRE"],
+                    "possui_bom": True,
+                },
+            }
+        ]
+        calls = []
+
+        def request(method, table, query=None, payload=None, prefer=""):
+            calls.append((method, table, query, payload, prefer))
+            return []
+
+        with (
+            patch.object(supabase_store, "_category", return_value=self.category),
+            patch.object(excel_bancos, "get_banco_fields", return_value=fields),
+            patch.object(supabase_store, "_request_all", return_value=rows),
+            patch.object(supabase_store, "_request", side_effect=request),
+        ):
+            result = supabase_store.refresh_registration_descriptions("teste")
+
+        registration_call = next(call for call in calls if call[1] == supabase_store.REGISTRATIONS_TABLE)
+        payload = registration_call[3][0]
+        self.assertEqual(payload["form_values"]["cor"], ["1- AZUL"])
+        self.assertEqual(payload["form_values"]["observacao"], ["TEXTO OPERACIONAL LIVRE"])
+        self.assertTrue(payload["form_values"]["possui_bom"])
+        self.assertEqual(payload["descricao_primaria"], "AZUL")
+        self.assertNotIn("VERDE", payload["descricao_secundaria"])
+        self.assertEqual(result["removed_values"], 1)
+        self.assertEqual(result["affected"], 1)
+        self.assertEqual(result["removed_by_field"], {"cor": 1})
+
+    def test_refresh_canonicalizes_by_unique_current_option_code(self):
+        kept, removed, canonicalized = supabase_store._catalog_compatible_values(
+            ["2- NOME ANTIGO"],
+            ["1- AZUL", "2- NOME ATUAL"],
+        )
+
+        self.assertEqual(kept, ["2- NOME ATUAL"])
+        self.assertEqual(removed, [])
+        self.assertTrue(canonicalized)
+
     def test_refresh_applies_current_order_option_labels_and_conditional_rules(self):
         fields = [
             {
@@ -213,6 +281,94 @@ class DescriptionRefreshTests(unittest.TestCase):
         self.assertEqual(payload["descricao_secundaria"], "DETALHE NOVO ATIVO PROMOVIDO")
         self.assertEqual(payload["form_values"]["detalhe"], ["1- DETALHE NOVO"])
         self.assertNotIn("NAO DEVE APARECER", payload["descricao_secundaria"])
+
+
+class DeletedOptionReconciliationTests(unittest.TestCase):
+    def setUp(self):
+        self.category = {"key": "teste", "label": "10 - TESTE"}
+        self.fields = [
+            {
+                "key": "cor",
+                "label": "COR",
+                "scope": "primaria",
+                "selection_mode": "multipla",
+                "description_order": 1,
+                "options": ["1- AZUL", "3- PRETO"],
+            }
+        ]
+
+    def test_deleted_option_is_removed_and_all_descriptions_are_recalculated(self):
+        rows = [
+            {
+                "id": "cadastro-1",
+                "sku": "10100001",
+                "unidade": "pc",
+                "ativo": True,
+                "form_values": {
+                    "cor": ["1- AZUL", "2- VERDE"],
+                    "possui_bom": True,
+                    "marcador_legado": {"origem": "importacao"},
+                },
+            },
+            {
+                "id": "cadastro-2",
+                "sku": "10100002",
+                "unidade": "pc",
+                "ativo": False,
+                "form_values": {"cor": ["3- PRETO"]},
+            },
+        ]
+        calls = []
+
+        def request(method, table, query=None, payload=None, prefer=""):
+            calls.append((method, table, query, payload, prefer))
+            return []
+
+        with (
+            patch.object(supabase_store, "_category", return_value=self.category),
+            patch.object(excel_bancos, "get_banco_fields", return_value=self.fields),
+            patch.object(supabase_store, "_request_all", return_value=rows),
+            patch.object(supabase_store, "_request", side_effect=request),
+        ):
+            result = supabase_store.reconcile_deleted_field_options(
+                "teste",
+                "cor",
+                ["2- VERDE"],
+            )
+
+        registration_call = next(call for call in calls if call[1] == supabase_store.REGISTRATIONS_TABLE)
+        payloads = registration_call[3]
+        first_payload = next(payload for payload in payloads if payload["sku"] == "10100001")
+        second_payload = next(payload for payload in payloads if payload["sku"] == "10100002")
+        self.assertEqual(first_payload["form_values"]["cor"], ["1- AZUL"])
+        self.assertEqual(first_payload["descricao_primaria"], "AZUL")
+        self.assertTrue(first_payload["form_values"]["possui_bom"])
+        self.assertEqual(first_payload["form_values"]["marcador_legado"], {"origem": "importacao"})
+        self.assertEqual(second_payload["descricao_primaria"], "PRETO")
+        self.assertFalse(second_payload["ativo"])
+        self.assertEqual(result["affected"], 1)
+        self.assertEqual(result["removed_values"], 1)
+        self.assertEqual(result["recalculated"], 2)
+
+    def test_deleted_code_removes_legacy_label_but_preserves_unrelated_unknown_value(self):
+        kept, removed = supabase_store._values_without_deleted_options(
+            ["2- VERDE LEGADO", "99- INFORMACAO HISTORICA"],
+            ["1- AZUL", "3- PRETO"],
+            ["2- VERDE"],
+        )
+
+        self.assertEqual(kept, ["99- INFORMACAO HISTORICA"])
+        self.assertEqual(removed, ["2- VERDE LEGADO"])
+
+    def test_remaining_option_with_same_code_is_canonicalized_not_removed(self):
+        kept, removed = supabase_store._values_without_deleted_options(
+            ["2- VERDE ANTIGO"],
+            ["2- VERDE NOVO"],
+            ["2- VERDE ANTIGO"],
+        )
+
+        self.assertEqual(kept, ["2- VERDE NOVO"])
+        self.assertEqual(removed, [])
 
 
 if __name__ == "__main__":
