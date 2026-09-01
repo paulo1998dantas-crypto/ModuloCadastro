@@ -1428,7 +1428,15 @@ def _sanitize_catalog(catalog: dict[str, Any]) -> dict[str, Any]:
 
 def load_catalog() -> dict[str, Any]:
     global _CATALOG_CACHE, _CATALOG_CACHE_MTIME
-    if _CATALOG_CACHE is not None and _CATALOG_CACHE_MTIME == REMOTE_CATALOG_MTIME:
+    # O catálogo remoto pode ser alterado por outra instância do serviço ou por
+    # uma atualização controlada. Não reutilize indefinidamente a cópia local
+    # quando o Supabase está habilitado, pois isso deixa seletores com opções
+    # antigas até o próximo restart do processo.
+    if (
+        not _catalog_supabase_enabled()
+        and _CATALOG_CACHE is not None
+        and _CATALOG_CACHE_MTIME == REMOTE_CATALOG_MTIME
+    ):
         return deepcopy(_CATALOG_CACHE)
 
     remote_available, remote_catalog = _load_supabase_catalog()
