@@ -181,6 +181,37 @@ class UnificacaoBancosTests(unittest.TestCase):
             primaria + " | REVESTIMENTO: CAPA LB PADRAO JI/COSTURA LB/LINHA LB",
         )
 
+    def test_conjunto_compoe_campo_primario_visivel_adicionado_ao_catalogo(self):
+        fields = [
+            *self.fields,
+            {
+                "key": "campo_primario_futuro",
+                "label": "CAMPO PRIMARIO FUTURO",
+                "scope": "primaria",
+                "selection_mode": "unitaria",
+                "free_text": False,
+                "required": False,
+                "options": ["1- VALOR FUTURO"],
+                "banco_mode": "conjunto",
+                "description_order": 99,
+            },
+        ]
+        data = {
+            "grupo_codigo": "30",
+            "pre_fixo": "8- CJ",
+            "encosto": "2- RECLINAVEL",
+            "fornecedor": "1- MC",
+            "linha": "1- LB",
+            "cj_layout": "3,3",
+            "tipo_cinto": "2- 3P",
+            "tipo_revestimento": "1- TECIDO",
+            "campo_primario_futuro": "1- VALOR FUTURO",
+        }
+
+        description = excel_bancos.build_descriptions(fields, data, "bancos")
+
+        self.assertIn("VALOR FUTURO", description["primaria"])
+
     def test_acessibilidade_do_conjunto_e_unica_numerada_e_condicional(self):
         accessibility_fields = [field for field in self.fields if field["key"] == "cj_acessibilidade"]
         self.assertEqual(len(accessibility_fields), 1)

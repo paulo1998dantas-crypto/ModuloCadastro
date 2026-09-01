@@ -2956,13 +2956,31 @@ def _cor_linha_conjunto(value: str) -> str:
 def _build_conjunto_banco_descriptions(fields: list[dict[str, Any]], data: Any) -> dict[str, str]:
     by_key = {field["key"]: field for field in fields}
     effective_scopes = _effective_field_scopes(fields, DEFAULT_CATEGORY_KEY, data)
-    encosto = _conjunto_encosto(_conjunto_label(by_key, data, "encosto"))
+    visible_field_keys = _visible_field_keys(fields, DEFAULT_CATEGORY_KEY, data)
+
+    def _visible_conjunto_label(key: str) -> str:
+        if key not in visible_field_keys:
+            return ""
+        return _conjunto_label(by_key, data, key)
+
+    def _is_visible_in_scope(key: str, scope: str) -> bool:
+        return key in visible_field_keys and effective_scopes.get(
+            key, by_key.get(key, {}).get("scope")
+        ) == scope
+
+    # O titulo CJ BANCOS representa o PRE-FIXO CJ estrutural do conjunto. Os
+    # demais campos so podem entrar na descricao se continuarem visiveis e no
+    # escopo efetivo correspondente depois de todas as regras condicionais.
+    encosto_value = _visible_conjunto_label("encosto") if _is_visible_in_scope("encosto", "primaria") else ""
+    encosto = _conjunto_encosto(encosto_value)
     primary_parts = [f"CJ BANCOS {encosto}".strip()]
-    fornecedor = _normalizar_fornecedor_conjunto(_conjunto_label(by_key, data, "fornecedor"))
+    fornecedor = _normalizar_fornecedor_conjunto(
+        _visible_conjunto_label("fornecedor") if _is_visible_in_scope("fornecedor", "primaria") else ""
+    )
     if fornecedor:
         primary_parts.append(fornecedor)
     for key in ("linha", "cj_layout", "tipo_cinto"):
-        value = _conjunto_label(by_key, data, key)
+        value = _visible_conjunto_label(key) if _is_visible_in_scope(key, "primaria") else ""
         if key == "cj_layout":
             value = _normalizar_layout_conjunto(value)
         if value:
@@ -2972,10 +2990,10 @@ def _build_conjunto_banco_descriptions(fields: list[dict[str, Any]], data: Any) 
     # costura e linha entram na descrição primária apenas quando uma regra
     # condicional as classifica como primárias (atualmente, linha LE). Nas
     # demais linhas elas permanecem como detalhe da descrição secundária.
-    revestimento = _conjunto_label(by_key, data, "tipo_revestimento")
-    cor_revestimento = _conjunto_label(by_key, data, "cor_do_revestimento")
-    tipo_costura = _conjunto_label(by_key, data, "tipo_costura")
-    cor_linha = _conjunto_label(by_key, data, "cor_da_linha")
+    revestimento = _visible_conjunto_label("tipo_revestimento")
+    cor_revestimento = _visible_conjunto_label("cor_do_revestimento")
+    tipo_costura = _visible_conjunto_label("tipo_costura")
+    cor_linha = _visible_conjunto_label("cor_da_linha")
     detalhe_revestimento = [
         ("cor_do_revestimento", _cor_revestimento_conjunto(cor_revestimento) if cor_revestimento else ""),
         ("tipo_costura", _tipo_costura_conjunto(tipo_costura) if tipo_costura else ""),
@@ -2993,25 +3011,55 @@ def _build_conjunto_banco_descriptions(fields: list[dict[str, Any]], data: Any) 
             detalhes_primarios.append(formatted_value)
         else:
             detalhes_secundarios.append(formatted_value)
-    if revestimento:
+    if revestimento and _is_visible_in_scope("tipo_revestimento", "primaria"):
         primary_parts.append(" ".join(value for value in (revestimento, "/".join(detalhes_primarios)) if value))
+    elif detalhes_primarios:
+        primary_parts.extend(detalhes_primarios)
 
-    especificidades = _conjunto_value(by_key, data, "especificidade")
-    primary_parts.extend(_normalizar_especificidades_conjunto(especificidades))
+    if _is_visible_in_scope("especificidade", "primaria"):
+        especificidades = _conjunto_value(by_key, data, "especificidade")
+        primary_parts.extend(_normalizar_especificidades_conjunto(especificidades))
 
-    acessibilidade = _conjunto_label(by_key, data, "cj_acessibilidade")
+    acessibilidade = _visible_conjunto_label("cj_acessibilidade")
     acessibilidade_scope = effective_scopes.get("cj_acessibilidade", "primaria")
-    if acessibilidade and acessibilidade_scope == "primaria":
+    if acessibilidade and _is_visible_in_scope("cj_acessibilidade", "primaria") and acessibilidade_scope == "primaria":
         primary_parts.append(acessibilidade)
+
+    # A formula do conjunto preserva a ordem comercial dos campos conhecidos.
+    # Campos primarios adicionados posteriormente ao catalogo tambem precisam
+    # compor a descricao: se estao visiveis e primarios, nao podem desaparecer
+    # somente por nao fazerem parte da formula historica acima.
+    handled_primary_keys = {
+        "pre_fixo",
+        "encosto",
+        "fornecedor",
+        "linha",
+        "cj_layout",
+        "tipo_cinto",
+        "tipo_revestimento",
+        "cor_do_revestimento",
+        "tipo_costura",
+        "cor_da_linha",
+        "especificidade",
+        "cj_acessibilidade",
+    }
+    for field in _ordered_fields_for_description(fields):
+        field_key = field["key"]
+        if field_key in handled_primary_keys or not _is_visible_in_scope(field_key, "primaria"):
+            continue
+        values = _description_values(field, data, DEFAULT_CATEGORY_KEY)
+        label = _format_field_description(field, values) if values else ""
+        if label:
+            primary_parts.append(label)
 
     primary = " - ".join(part for part in primary_parts if part).strip(" -")
     secondary_parts = []
     if detalhes_secundarios:
         secondary_parts.append(f"REVESTIMENTO: {'/'.join(detalhes_secundarios)}")
-    if acessibilidade and acessibilidade_scope == "secundaria":
+    if acessibilidade and _is_visible_in_scope("cj_acessibilidade", "secundaria") and acessibilidade_scope == "secundaria":
         secondary_parts.append(f"ACESSIBILIDADE: {acessibilidade}")
-    observacao = _conjunto_label(by_key, data, "cj_observacao")
-    if observacao:
+    observacao = _visible_conjunto_label("cj_observacao")
+    if observacao and _is_visible_in_scope("cj_observacao", "secundaria"):
         secondary_parts.append(observacao)
     secondary_detail = " | ".join(secondary_parts)
     secondary = compose_secondary_description(primary, f"| {secondary_detail}" if secondary_detail else "")
