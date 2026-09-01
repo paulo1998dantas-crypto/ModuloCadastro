@@ -58,11 +58,11 @@ class UnificacaoBancosTests(unittest.TestCase):
 
         self.assertEqual(
             description["primaria"],
-            "CJ BANCOS REC - MC - LB - 3,2,3 - 3P - TECIDO - E/S/ J",
+            "CJ BANCOS REC - MC - LB - 3,2,3 - 3P - TECIDO - E/S/J",
         )
         self.assertEqual(
             description["secundaria"],
-            "CJ BANCOS REC - MC - LB - 3,2,3 - 3P - TECIDO - E/S/ J",
+            "CJ BANCOS REC - MC - LB - 3,2,3 - 3P - TECIDO - E/S/J",
         )
         self.assertEqual(description["sufixo"], "CJ")
 
@@ -112,7 +112,7 @@ class UnificacaoBancosTests(unittest.TestCase):
         self.assertEqual(field["conjunto_only_options"], expected)
         self.assertEqual(len(field["options"]), 19)
 
-    def test_descricao_normaliza_campos_legados_e_ordem_tecnica(self):
+    def test_descricao_do_conjunto_preserva_opcoes_catalogadas(self):
         data = {
             "grupo_codigo": "30",
             "cj_sufixo": "CJ",
@@ -122,14 +122,33 @@ class UnificacaoBancosTests(unittest.TestCase):
             "cj_layout": "4;3;3;3",
             "tipo_cinto": "1- 2P",
             "tipo_revestimento": "1- TECIDO",
-            "especificidade": ["4L REC BJD", "ESJ"],
-            "cj_acessibilidade": "FOCA",
+            "especificidade": ["3- BJD", "11- E/S/J", "18- 4L REC"],
         }
 
         description = excel_bancos.build_descriptions(self.fields, data, "bancos")
         self.assertEqual(
             description["primaria"],
-            "CJ BANCOS REC - MC - LB - 4,3,3,3 - 2P - TECIDO - BJD - E/S/ J - 4L REC - FOCA",
+            "CJ BANCOS REC - MC - LB - 4,3,3,3 - 2P - TECIDO - BJD - 4L REC - E/S/J",
+        )
+
+    def test_especificidade_catalogada_do_conjunto_nao_e_reduzida(self):
+        data = {
+            "grupo_codigo": "30",
+            "pre_fixo": "8- CJ",
+            "encosto": "2- RECLINAVEL",
+            "fornecedor": "1- MC",
+            "linha": "1- LB",
+            "cj_layout": "4,2,2,3,3,3",
+            "tipo_cinto": "2- 3P",
+            "tipo_revestimento": "2- COURVIN",
+            "especificidade": ["20- 517 C/ TRILHO"],
+        }
+
+        description = excel_bancos.build_descriptions(self.fields, data, "bancos")
+
+        self.assertEqual(
+            description["primaria"],
+            "CJ BANCOS REC - MC - LB - 4,2,2,3,3,3 - 3P - COURVIN - 517 C/ TRILHO",
         )
 
     def test_campos_compartilhados_nao_sao_duplicados_no_conjunto(self):
@@ -162,7 +181,7 @@ class UnificacaoBancosTests(unittest.TestCase):
         description = excel_bancos.build_descriptions(self.fields, data, "bancos")
         primaria = (
             "CJ BANCOS REC - CS - LE - 3,3 - 3P - "
-            "COURVIN MARROM/DIAMANTE/LINHA DOURADA - E/S/ J - EXECUTIVO"
+            "COURVIN MARROM/DIAMANTE/LINHA DOURADA - EXECUTIVO - E/S/J"
         )
         self.assertEqual(description["primaria"], primaria)
         self.assertEqual(description["secundaria"], primaria)
@@ -315,7 +334,7 @@ class UnificacaoBancosTests(unittest.TestCase):
         description = excel_bancos.build_descriptions(self.fields, data, "bancos")
         primaria = (
             "CJ BANCOS REC - STF - LE - 4,2-1,2-1,3 - 3P - "
-            "COURVIN PRETO/ST02/LINHA BRANCA - MASTER - PME - EXECUTIVO"
+            "COURVIN PRETO/ST02/LINHA BRANCA - EXECUTIVO - MASTER - PME"
         )
         self.assertEqual(description["primaria"], primaria)
         self.assertEqual(description["secundaria"], primaria)
@@ -331,7 +350,7 @@ class UnificacaoBancosTests(unittest.TestCase):
                 "6- COR LINHA DOURADO",
                 ["11- E/S/J", "EXECUTIVO"],
                 "CJ BANCOS REC - CS - LE - 3,3 - 3P - COURVIN "
-                "MARROM/BOOMERANG/LINHA DOURADA - E/S/ J - EXECUTIVO",
+                "MARROM/BOOMERANG/LINHA DOURADA - EXECUTIVO - E/S/J",
             ),
             (
                 "30200036",
@@ -342,7 +361,7 @@ class UnificacaoBancosTests(unittest.TestCase):
                 "7- COR LINHA CINZA",
                 ["11- E/S/J", "EXECUTIVO"],
                 "CJ BANCOS REC - CS - LE - 3,3 - 3P - COURVIN "
-                "PRETO/CINZA/DIAMANTE/LINHA CINZA - E/S/ J - EXECUTIVO",
+                "PRETO/CINZA/DIAMANTE/LINHA CINZA - EXECUTIVO - E/S/J",
             ),
             (
                 "30200039",
@@ -353,7 +372,7 @@ class UnificacaoBancosTests(unittest.TestCase):
                 "4- COR LINHA PRETA",
                 ["11- E/S/J", "EXECUTIVO"],
                 "CJ BANCOS REC - CS - LE - 3,2-1 - 3P - COURVIN "
-                "PRETO/BOOMERANG/LINHA PRETA - E/S/ J - EXECUTIVO",
+                "PRETO/BOOMERANG/LINHA PRETA - EXECUTIVO - E/S/J",
             ),
         ]
         for sku, layout, fornecedor, cor, costura, linha, especificidade, esperado in cases:

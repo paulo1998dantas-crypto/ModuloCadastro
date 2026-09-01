@@ -2878,20 +2878,6 @@ def _conjunto_encosto(value: str) -> str:
     return value.strip()
 
 
-CONJUNTO_ESPECIFICIDADE_ORDEM = (
-    "NORMAL",
-    "TRILHO",
-    "BJD",
-    "E/S/ J",
-    "PME 1A",
-    "PME 2A",
-    "PME 3A",
-    "MASTER - PME",
-    "EXECUTIVO",
-    "4L REC",
-)
-
-
 def _normalizar_fornecedor_conjunto(value: str) -> str:
     """Normaliza residuos de descricoes antigas sem inventar fornecedor."""
     normalized = normalize_label(value)
@@ -2905,23 +2891,26 @@ def _normalizar_layout_conjunto(value: str) -> str:
 
 
 def _normalizar_especificidades_conjunto(values: list[str]) -> list[str]:
-    """Converte aliases legados, separa especificidades coladas e preserva ordem canonica."""
-    aliases = {
-        "ESJ": "E/S/ J",
-        "E/S/J": "E/S/ J",
-        "E S J": "E/S/ J",
-        "E/S/ J": "E/S/ J",
+    """Preserva integralmente a opção catalogada escolhida para o conjunto."""
+    normalized_aliases = {
+        "ESJ": "E/S/J",
+        "E S J": "E/S/J",
     }
-    encontrados: set[str] = set()
+    normalized_seen: set[str] = set()
+    result: list[str] = []
     for raw_value in values:
-        normalized = normalize_label(option_label(raw_value))
+        if _is_not_applicable_option(raw_value):
+            continue
+        label = option_label(raw_value).strip()
+        normalized = normalize_label(label)
         if not normalized:
             continue
-        normalized = normalize_label(aliases.get(normalized, normalized))
-        for especificidade in CONJUNTO_ESPECIFICIDADE_ORDEM:
-            if normalized == normalize_label(especificidade) or normalize_label(especificidade) in normalized:
-                encontrados.add(especificidade)
-    return [item for item in CONJUNTO_ESPECIFICIDADE_ORDEM if item in encontrados]
+        label = normalized_aliases.get(normalized, label)
+        identity = normalize_label(label)
+        if identity not in normalized_seen:
+            result.append(label)
+            normalized_seen.add(identity)
+    return result
 
 
 def _cor_revestimento_conjunto(value: str) -> str:
