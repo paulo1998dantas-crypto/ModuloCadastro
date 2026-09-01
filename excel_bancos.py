@@ -3190,8 +3190,6 @@ def _validate_banco_dependencies(fields: list[dict[str, Any]], data: Any) -> Non
     if is_banco_conjunto(data):
         return
     values_by_key = _field_values_by_key(fields, data)
-    if len(values_by_key.get("especificidade", [])) > 1:
-        raise ValueError("Selecione somente uma ESPECIFICIDADE para o banco unitario.")
     pre_fixo_values = values_by_key.get("pre_fixo", [])
     veiculo_values = values_by_key.get("veiculo", [])
 

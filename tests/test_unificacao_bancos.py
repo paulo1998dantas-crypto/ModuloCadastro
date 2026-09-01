@@ -428,8 +428,10 @@ class UnificacaoBancosTests(unittest.TestCase):
         excel_bancos._validate_banco_dependencies(self.fields, data)
 
         data["especificidade"] = ["1- NORMAL", "3- BJD"]
-        with self.assertRaisesRegex(ValueError, "somente uma ESPECIFICIDADE"):
-            excel_bancos._validate_banco_dependencies(self.fields, data)
+        excel_bancos._validate_banco_dependencies(self.fields, data)
+        description = excel_bancos.build_descriptions(self.fields, data, "bancos")
+        self.assertIn("NORMAL", description["primaria"])
+        self.assertIn("BJD", description["primaria"])
 
     def test_categoria_legacy_e_resolvida_para_bancos(self):
         catalog = {
