@@ -302,7 +302,13 @@
         };
 
         const normalizeOptionValue = (value) => {
-            return normalizeText((value || "").replace(/^\s*\d+\s*[-–—]\s*/, "")).replace(/\s+/g, "");
+            return (value || "")
+                .trim()
+                .replace(/^\s*\d+\s*[-–—]\s*/, "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toUpperCase()
+                .replace(/[^A-Z0-9]+/g, "");
         };
 
         const findBlock = (label, scope, key = "") => {

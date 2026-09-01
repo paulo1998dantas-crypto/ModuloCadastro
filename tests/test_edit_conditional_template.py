@@ -306,6 +306,40 @@ class EditConditionalTemplateTests(unittest.TestCase):
             dynamic_mode_position = html.index("const updateBancoMode = () =>")
             self.assertLess(capture_position, dynamic_mode_position)
 
+    def test_option_rule_normalization_keeps_parenthesized_option_content(self):
+        """Regras de opção precisam distinguir 2REC/1REB de 2FIX/1REB."""
+        category = {"key": "cat_99_teste", "label": "99 - TESTE"}
+        fields = self._air_conditioning_fields()
+        context = self._edit_context(fields)
+        context.update(selected_category=category, source_category=category, categories=[category])
+        edit_html = main.templates.env.get_template("editar_cadastro.html").render(**context)
+        create_html = main.templates.env.get_template("cadastro_bancos.html").render(
+            categories=[category],
+            selected_category=category,
+            pn_groups=[],
+            selected_group_code="99",
+            selected_unit="pc",
+            selected_bom_option="0",
+            fields=fields,
+            ordered_fields=fields,
+            conditional_rules=[],
+            workbook_path="teste",
+            unit_options=["pc"],
+            erro="",
+            sucesso="",
+            active_draft=None,
+            supabase_mode=True,
+            active_page="cadastro",
+            component_rows=[],
+        )
+
+        for html in (create_html, edit_html):
+            self.assertIn('replace(/[^A-Z0-9]+/g, "");', html)
+            self.assertNotIn(
+                'return normalizeText((value || "").replace(/^\\s*\\d+\\s*[-–—]\\s*/, "")).replace(/\\s+/g, "");',
+                html,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
