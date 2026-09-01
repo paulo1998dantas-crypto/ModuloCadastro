@@ -196,6 +196,45 @@ class EditConditionalTemplateTests(unittest.TestCase):
         self.assertIn("option.hidden = isUnavailable", html)
         self.assertIn("updateConditionalFields();", html)
 
+    def test_bank_especificidade_respects_the_catalog_selection_mode(self):
+        fields = excel_bancos.get_banco_fields_for_display("bancos")
+        values = {
+            "pre_fixo": ["1- BCO"],
+            "especificidade": ["2- (2REC / 1 REB)"],
+        }
+        context = {
+            "categories": [{"key": "bancos", "label": "20 - BANCOS"}],
+            "pn_groups": excel_bancos.list_pn_groups(),
+            "selected_category": {"key": "bancos", "label": "20 - BANCOS"},
+            "selected_group_code": "10",
+            "ordered_fields": main._enrich_fields(fields, values),
+            "conditional_rules": excel_bancos.get_conditional_rules_for_form("bancos"),
+            "workbook_path": "teste",
+            "unit_options": ["pc"],
+            "erro": "",
+            "sucesso": "",
+        }
+
+        html = main.templates.env.get_template("cadastro_bancos.html").render(
+            **context,
+            fields=context["ordered_fields"],
+            selected_unit="pc",
+            selected_bom_option="0",
+            active_draft=None,
+            supabase_mode=True,
+            active_page="cadastro",
+            component_rows=[],
+        )
+
+        self.assertIn('data-field-key="especificidade"', html)
+        self.assertIn('data-field-selection-mode="multipla"', html)
+        self.assertIn(
+            'const permiteMultipla = especificidadeBlock.dataset.fieldSelectionMode === "multipla";',
+            html,
+        )
+        self.assertIn("especificidadeSelect.multiple = permiteMultipla;", html)
+        self.assertNotIn("especificidadeSelect.multiple = conjunto;", html)
+
     def test_form_rules_keep_stable_keys_and_current_option_labels(self):
         rules = excel_bancos.get_conditional_rules_for_form("bancos")
         side_rules = [

@@ -119,7 +119,7 @@
                     <h2 class="mb-4 text-sm font-black uppercase tracking-wide text-blue-700">Descricao primaria</h2>
                     <div id="edit-primary-field-grid" class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {% for field in ordered_fields if field.scope == 'primaria' %}
-                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-description-order="{{ field.description_order }}" data-banco-mode="{{ field.banco_mode or '' }}" data-field-required="{{ 'true' if field.required else 'false' }}">
+                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-field-selection-mode="{{ field.selection_mode }}" data-description-order="{{ field.description_order }}" data-banco-mode="{{ field.banco_mode or '' }}" data-field-required="{{ 'true' if field.required else 'false' }}">
                             <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
                             {% if field.free_text %}
                             <input name="{{ field.key }}" list="options-{{ field.key }}" value="{{ field.selected_value or (field.selected_values|join(' | ')) }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
@@ -149,7 +149,7 @@
                     <h2 class="mb-4 text-sm font-black uppercase tracking-wide text-emerald-700">Descricao secundaria</h2>
                     <div id="edit-secondary-field-grid" class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {% for field in ordered_fields if field.scope == 'secundaria' %}
-                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-description-order="{{ field.description_order }}" data-banco-mode="{{ field.banco_mode or '' }}" data-field-required="{{ 'true' if field.required else 'false' }}">
+                        <div class="space-y-1" data-field-block data-field-key="{{ field.key }}" data-field-label="{{ field.label }}" data-field-scope="{{ field.scope }}" data-field-selection-mode="{{ field.selection_mode }}" data-description-order="{{ field.description_order }}" data-banco-mode="{{ field.banco_mode or '' }}" data-field-required="{{ 'true' if field.required else 'false' }}">
                             <span class="block text-xs font-bold uppercase text-slate-500">{{ field.label }}</span>
                             {% if field.free_text %}
                             <input name="{{ field.key }}" list="options-{{ field.key }}" value="{{ field.selected_value or (field.selected_values|join(' | ')) }}" class="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
@@ -347,21 +347,22 @@
             const especificidadeBlock = fieldBlocks.find((block) => block.dataset.fieldKey === "especificidade");
             const especificidadeSelect = especificidadeBlock ? especificidadeBlock.querySelector("select") : null;
             if (especificidadeSelect) {
-                especificidadeSelect.multiple = conjunto;
-                especificidadeSelect.size = conjunto ? 6 : 1;
+                const permiteMultipla = especificidadeBlock.dataset.fieldSelectionMode === "multipla";
+                especificidadeSelect.multiple = permiteMultipla;
+                especificidadeSelect.size = permiteMultipla ? 6 : 1;
                 Array.from(especificidadeSelect.options).forEach((option) => {
                     const conjuntoOnly = option.dataset.conjuntoOnly === "true";
                     option.disabled = !conjunto && conjuntoOnly;
                     option.hidden = !conjunto && conjuntoOnly;
                     if (!conjunto && conjuntoOnly) option.selected = false;
                 });
-                if (!conjunto) {
+                if (!permiteMultipla) {
                     Array.from(especificidadeSelect.selectedOptions).slice(1).forEach((option) => {
                         option.selected = false;
                     });
                 }
                 const hint = especificidadeBlock.querySelector("[data-multiple-hint]");
-                if (hint) hint.classList.toggle("hidden", !conjunto);
+                if (hint) hint.classList.toggle("hidden", !permiteMultipla);
             }
 
             fieldBlocks.forEach((block) => {
