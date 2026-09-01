@@ -370,6 +370,31 @@ class DeletedOptionReconciliationTests(unittest.TestCase):
         self.assertEqual(kept, ["2- VERDE NOVO"])
         self.assertEqual(removed, [])
 
+    def test_catalog_deletion_is_audited_without_touching_registrations(self):
+        calls = []
+
+        def request(method, table, query=None, payload=None, prefer=""):
+            calls.append((method, table, query, payload, prefer))
+            return []
+
+        with (
+            patch.object(supabase_store, "_category", return_value=self.category),
+            patch.object(supabase_store, "_request", side_effect=request),
+        ):
+            result = supabase_store.audit_catalog_option_deletion_pending_refresh(
+                "teste",
+                "cor",
+                ["2- VERDE"],
+            )
+
+        self.assertEqual(result["deleted_count"], 1)
+        self.assertTrue(result["audit_recorded"])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0], "POST")
+        self.assertEqual(calls[0][1], "erp_audit_events")
+        self.assertEqual(calls[0][3]["action"], "EXCLUSAO_CATALOGO_PENDENTE_REFRESH")
+        self.assertTrue(calls[0][3]["after_data"]["campos_tecnicos_preservados"])
+
 
 if __name__ == "__main__":
     unittest.main()

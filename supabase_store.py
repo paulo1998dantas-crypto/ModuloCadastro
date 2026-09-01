@@ -985,6 +985,67 @@ def refresh_registration_descriptions(
     }
 
 
+def audit_catalog_option_deletion_pending_refresh(
+    category_key: str,
+    field_key: str,
+    deleted_options: list[str],
+    actor: str = "cadastro:opcoes",
+) -> dict[str, Any]:
+    """Registra a exclusão do catálogo sem tocar nos cadastros existentes.
+
+    A remoção efetiva dos valores órfãos dos campos técnicos é deliberadamente
+    feita somente pelo Refresh da categoria. Separar as duas ações evita que
+    uma exclusão de opção deixe a categoria parcialmente recalculada caso a
+    conexão seja interrompida no meio da operação.
+    """
+    category = _category(clean_text(category_key))
+    deleted = [clean_text(option) for option in deleted_options if clean_text(option)]
+    if not deleted:
+        return {
+            "category_key": category["key"],
+            "field_key": clean_text(field_key),
+            "deleted_count": 0,
+            "audit_recorded": False,
+        }
+
+    audit_recorded = False
+    try:
+        _request(
+            "POST",
+            "erp_audit_events",
+            payload={
+                "entity_type": "CADASTRO_OPCAO",
+                "entity_id": None,
+                "action": "EXCLUSAO_CATALOGO_PENDENTE_REFRESH",
+                "actor": clean_text(actor) or "cadastro:opcoes",
+                "origin": "CADASTRO",
+                "before_data": {
+                    "categoria": category["key"],
+                    "campo": clean_text(field_key),
+                    "opcoes_excluidas": deleted,
+                },
+                "after_data": {
+                    "campos_tecnicos_preservados": True,
+                    "refresh_categoria_pendente": True,
+                },
+                "reason": "Opção removida apenas do catálogo; o Refresh da categoria fará a limpeza técnica e a recomposição das descrições.",
+            },
+            prefer="return=minimal",
+        )
+        audit_recorded = True
+    except Exception:
+        # A exclusão do catálogo já foi concluída. A indisponibilidade da
+        # auditoria não deve induzir o usuário a repetir uma ação destrutiva.
+        pass
+
+    return {
+        "category_key": category["key"],
+        "field_key": clean_text(field_key),
+        "deleted_count": len(deleted),
+        "audit_recorded": audit_recorded,
+    }
+
+
 def _values_without_deleted_options(
     raw_value: Any,
     remaining_options: list[str],
