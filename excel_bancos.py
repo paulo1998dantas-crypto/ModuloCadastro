@@ -324,7 +324,11 @@ DEFAULT_TEMPLATE_PATH = Path(_template_env).expanduser() if _template_env else P
 def clean_text(value: Any) -> str:
     if value is None:
         return ""
-    return str(value).strip()
+    text = str(value).strip()
+    # Alguns uploads legados persistiram uma lista vazia serializada como
+    # texto. No cadastro, isso significa ausência de preenchimento e não uma
+    # opção selecionável.
+    return "" if text in {"[]", "[ ]"} else text
 
 
 def normalize_label(value: Any) -> str:

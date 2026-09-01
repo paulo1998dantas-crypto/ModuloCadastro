@@ -30,6 +30,17 @@ class UnificacaoBancosTests(unittest.TestCase):
             "1020",
         )
 
+    def test_lista_vazia_legada_e_tratada_como_campo_vazio(self):
+        self.assertEqual(excel_bancos.clean_text("[]"), "")
+        self.assertEqual(excel_bancos.clean_text("[ ]"), "")
+
+        groups = supabase_store._groups_from_record(
+            [{"key": "especificidade"}],
+            {"form_values": {}, "field_values": {"especificidade": "[]"}},
+        )
+
+        self.assertNotIn("especificidade", groups)
+
     def test_descricao_do_conjunto_nao_mistura_campos_de_insumo(self):
         data = {
             "grupo_codigo": "30",

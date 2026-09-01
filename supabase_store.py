@@ -45,7 +45,12 @@ class SupabaseStoreError(RuntimeError):
 
 
 def clean_text(value: Any) -> str:
-    return "" if value is None else str(value).strip()
+    if value is None:
+        return ""
+    text = str(value).strip()
+    # Compatibilidade com uploads legados que serializaram uma lista vazia
+    # como texto. Esse valor não é uma opção do catálogo.
+    return "" if text in {"[]", "[ ]"} else text
 
 
 def normalize_unit(value: Any) -> str:
