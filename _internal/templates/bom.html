@@ -66,6 +66,10 @@
                             <input type="checkbox" name="revisao" value="1" {% if revisao %}checked{% endif %} onchange="this.form.submit()" class="h-4 w-4">
                             Somente revisao
                         </label>
+                        <label class="inline-flex h-10 items-center gap-2 border border-slate-300 bg-slate-50 px-3 text-xs font-black uppercase text-slate-700">
+                            <input type="checkbox" name="mostrar_inativos" value="1" {% if mostrar_inativos %}checked{% endif %} onchange="this.form.submit()" class="h-4 w-4">
+                            Mostrar inativos
+                        </label>
                         {% if review_count %}
                         <span class="inline-flex h-10 items-center border border-amber-300 bg-amber-100 px-3 text-xs font-black uppercase text-amber-900">{{ review_count }} B.O.M.(s) para revisar</span>
                         {% endif %}
@@ -137,6 +141,9 @@
                                     {% if bom.needs_review %}
                                     <div class="mb-1 inline-flex border border-amber-400 bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase text-amber-800">Revisar</div>
                                     {% endif %}
+                                    {% if not bom.parent_active %}
+                                    <div class="mb-1 inline-flex border border-slate-400 bg-slate-200 px-2 py-0.5 text-[10px] font-black uppercase text-slate-700">Inativo</div>
+                                    {% endif %}
                                     <div>{{ bom.parent_descricao }}</div>
                                     {% if bom.review_reasons %}
                                     <div class="mt-1 text-[11px] font-bold text-amber-700">{{ bom.review_reasons|join(' · ') }}</div>
@@ -167,6 +174,9 @@
                                 <td class="border border-slate-200 px-2 py-1">
                                     {% if bom.needs_review %}
                                     <div class="mb-1 inline-flex border border-amber-400 bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase text-amber-800">Revisar</div>
+                                    {% endif %}
+                                    {% if not bom.parent_active %}
+                                    <div class="mb-1 inline-flex border border-slate-400 bg-slate-200 px-2 py-0.5 text-[10px] font-black uppercase text-slate-700">Inativo</div>
                                     {% endif %}
                                     {{ bom.parent_descricao }}
                                 </td>

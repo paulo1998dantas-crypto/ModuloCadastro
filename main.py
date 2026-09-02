@@ -1633,16 +1633,19 @@ async def bom_page(
     item_pai: str = "",
     item_filho: str = "",
     revisao: str = "",
+    mostrar_inativos: str = "",
     sucesso: str = "",
     erro: str = "",
 ):
     if not _supabase_mode():
         return RedirectResponse(url="/cadastro/bancos", status_code=303)
     selected_category = excel_bancos.selected_category(categoria)
+    include_inactive = excel_bancos.clean_text(mostrar_inativos) == "1"
     items = supabase_store.list_boms(
         category_key=selected_category["key"] if categoria else "",
         parent_query=item_pai,
         component_query=item_filho,
+        include_inactive=include_inactive,
         limit=1000,
     )
     review_count = sum(1 for item in items if item.get("needs_review"))
@@ -1659,6 +1662,7 @@ async def bom_page(
             "item_pai": item_pai,
             "item_filho": item_filho,
             "revisao": revisao,
+            "mostrar_inativos": "1" if include_inactive else "",
             "review_count": review_count,
             "workbook_path": _workbook_display_path(),
             "supabase_mode": True,
@@ -1706,7 +1710,12 @@ async def bom_copiar(
 
 
 @app.get("/bom/exportar")
-async def bom_exportar(categoria: str = "", item_pai: str = "", item_filho: str = ""):
+async def bom_exportar(
+    categoria: str = "",
+    item_pai: str = "",
+    item_filho: str = "",
+    mostrar_inativos: str = "",
+):
     if not _supabase_mode():
         raise HTTPException(status_code=400, detail="Exportacao de B.O.M. disponivel apenas no modo Supabase.")
     selected_category = excel_bancos.selected_category(categoria) if categoria else {"key": ""}
@@ -1714,6 +1723,7 @@ async def bom_exportar(categoria: str = "", item_pai: str = "", item_filho: str 
         category_key=selected_category["key"] if categoria else "",
         parent_query=item_pai,
         component_query=item_filho,
+        include_inactive=excel_bancos.clean_text(mostrar_inativos) == "1",
     )
     return FileResponse(
         output,

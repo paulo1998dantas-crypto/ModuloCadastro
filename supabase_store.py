@@ -614,27 +614,33 @@ def _full_description(row: dict[str, Any]) -> str:
     return clean_text(row.get("descricao_primaria"))
 
 
-def _catalog_data_by_sku(skus: list[Any]) -> dict[str, dict[str, str]]:
+def _catalog_data_by_sku(skus: list[Any]) -> dict[str, dict[str, Any]]:
     codes = list(dict.fromkeys(clean_text(sku) for sku in skus if clean_text(sku)))
     if not codes:
         return {}
     rows = _request_all(
         REGISTRATIONS_TABLE,
         [
-            ("select", "sku,descricao_primaria,unidade"),
+            ("select", "sku,descricao_primaria,unidade,ativo"),
             ("sku", _in_filter(codes)),
             ("order", "sku.asc"),
         ],
         limit=max(len(codes), 1),
     )
-    return {
-        clean_text(row.get("sku")): {
+    catalog_data: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        sku = clean_text(row.get("sku"))
+        if not sku:
+            continue
+        candidate = {
             "descricao_primaria": clean_text(row.get("descricao_primaria")),
             "unidade": normalize_unit(row.get("unidade")),
+            "ativo": row.get("ativo") is not False,
         }
-        for row in rows
-        if clean_text(row.get("sku"))
-    }
+        current = catalog_data.get(sku)
+        if current is None or (candidate["ativo"] and not current.get("ativo", True)):
+            catalog_data[sku] = candidate
+    return catalog_data
 
 
 def _duplicate_exists(
@@ -2410,7 +2416,7 @@ def _in_filter(values: list[Any]) -> str:
 def _enrich_bom(
     header: dict[str, Any],
     components: list[dict[str, Any]],
-    catalog_data: dict[str, dict[str, str]] | None = None,
+    catalog_data: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     catalog_data = catalog_data or {}
     source = clean_text(header.get("source"))
@@ -2446,9 +2452,12 @@ def _enrich_bom(
     parent_sku = clean_text(header.get("parent_sku"))
     parent_catalog = catalog_data.get(_base_parent_sku(parent_sku)) or {}
     parent_description = parent_catalog.get("descricao_primaria") or clean_text(header.get("parent_descricao"))
+    parent_active = parent_catalog.get("ativo") is not False
     return {
         **header,
         "parent_descricao": parent_description,
+        "parent_active": parent_active,
+        "parent_status": "ATIVO" if parent_active else "INATIVO",
         "display_parent_sku": _display_bom_code(parent_sku),
         "needs_review": bool(reason_labels),
         "review_reasons": reason_labels,
@@ -2460,6 +2469,7 @@ def list_boms(
     category_key: str = "",
     parent_query: str = "",
     component_query: str = "",
+    include_inactive: bool = False,
     limit: int = 500,
 ) -> list[dict[str, Any]]:
     bom_ids_filter: list[str] = []
@@ -2510,10 +2520,13 @@ def list_boms(
         for component in component_list:
             description_codes.append(component.get("component_sku"))
     catalog_data = _catalog_data_by_sku(description_codes)
-    return [
+    enriched = [
         _enrich_bom(header, components_by_bom.get(clean_text(header.get("id")), []), catalog_data)
         for header in headers
     ]
+    if not include_inactive:
+        enriched = [bom for bom in enriched if bom.get("parent_active", True)]
+    return enriched
 
 
 def get_bom(bom_id: int | str) -> dict[str, Any]:
@@ -2845,8 +2858,19 @@ def import_bom_directory(directory: str | Path) -> dict[str, Any]:
     return result
 
 
-def export_boms(category_key: str = "", parent_query: str = "", component_query: str = "") -> Path:
-    rows = list_boms(category_key=category_key, parent_query=parent_query, component_query=component_query, limit=5000)
+def export_boms(
+    category_key: str = "",
+    parent_query: str = "",
+    component_query: str = "",
+    include_inactive: bool = False,
+) -> Path:
+    rows = list_boms(
+        category_key=category_key,
+        parent_query=parent_query,
+        component_query=component_query,
+        include_inactive=include_inactive,
+        limit=5000,
+    )
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     output = EXPORT_DIR / f"bom_{stamp}.xlsx"
@@ -2858,6 +2882,7 @@ def export_boms(category_key: str = "", parent_query: str = "", component_query:
         "categoria",
         "item_codigo",
         "item_descricao",
+        "status_item_pai",
         "componente_codigo",
         "descricao",
         "unidade",
@@ -2876,6 +2901,7 @@ def export_boms(category_key: str = "", parent_query: str = "", component_query:
                     bom.get("parent_category_label"),
                     bom.get("display_parent_sku") if "display_parent_sku" in bom else _display_bom_code(bom.get("parent_sku")),
                     bom.get("parent_descricao"),
+                    bom.get("parent_status") or ("ATIVO" if bom.get("parent_active", True) else "INATIVO"),
                     component.get("display_component_sku") if "display_component_sku" in component else _display_bom_code(component.get("component_sku")),
                     component.get("component_descricao"),
                     component.get("unidade"),
@@ -2886,7 +2912,7 @@ def export_boms(category_key: str = "", parent_query: str = "", component_query:
         cell.font = Font(bold=True)
         cell.fill = PatternFill("solid", fgColor="E2E8F0")
         cell.alignment = Alignment(horizontal="center", vertical="center")
-    for column, width in {"A": 24, "B": 16, "C": 54, "D": 20, "E": 72, "F": 12, "G": 14}.items():
+    for column, width in {"A": 24, "B": 16, "C": 54, "D": 18, "E": 20, "F": 72, "G": 12, "H": 14}.items():
         ws.column_dimensions[column].width = width
     for row_cells in ws.iter_rows(min_row=2):
         for cell in row_cells:

@@ -117,7 +117,7 @@
 
         <div class="mt-4 flex flex-wrap gap-2">
             <a href="/bom" class="inline-flex h-10 items-center justify-center border border-slate-300 bg-white px-5 text-sm font-black text-slate-700 hover:bg-slate-50">Voltar para lista</a>
-            <a href="/bom/exportar?item_pai={{ bom.parent_sku }}" class="inline-flex h-10 items-center justify-center border border-emerald-700 bg-emerald-700 px-5 text-sm font-black text-white hover:bg-emerald-600">Exportar esta B.O.M.</a>
+            <a href="/bom/exportar?item_pai={{ bom.parent_sku }}{% if not bom.parent_active %}&mostrar_inativos=1{% endif %}" class="inline-flex h-10 items-center justify-center border border-emerald-700 bg-emerald-700 px-5 text-sm font-black text-white hover:bg-emerald-600">Exportar esta B.O.M.</a>
         </div>
     </main>
 
