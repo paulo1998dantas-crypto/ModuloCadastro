@@ -204,6 +204,14 @@ INTERNAL_TIME_FIELDS = (
     "producao_dias",
     "liberacao_dias",
 )
+ITEM_PARAMETER_EXPORT_FIELDS = (
+    "origem_fabricacao",
+    "unidade_tempo",
+    *EXTERNAL_TIME_FIELDS,
+    *INTERNAL_TIME_FIELDS,
+    "preco_compra",
+    "updated_at",
+)
 
 
 def _nonnegative_decimal(
@@ -262,6 +270,127 @@ def item_parameter_summary() -> dict[str, dict[str, Any]]:
             return {}
         raise
     return {clean_text(row.get("registration_id")): row for row in rows}
+
+
+def item_parameters_for_export() -> dict[str, dict[str, Any]]:
+    """Obtém todos os parâmetros em uma única leitura para a exportação geral."""
+    try:
+        rows = _request_all(
+            ITEM_PARAMETERS_TABLE,
+            [("select", ",".join(("registration_id", "sku", *ITEM_PARAMETER_EXPORT_FIELDS)))],
+            limit=10000,
+        )
+    except SupabaseStoreError as exc:
+        if "cadastro_item_parametros" in str(exc) and (
+            "PGRST205" in str(exc) or "does not exist" in str(exc)
+        ):
+            return {}
+        raise
+    return {clean_text(row.get("registration_id")): row for row in rows}
+
+
+def _decimal_value(value: Any) -> Decimal | None:
+    if value is None or clean_text(value) == "":
+        return None
+    try:
+        parsed = Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return None
+    return parsed if parsed.is_finite() else None
+
+
+def item_average_costs_for_export(skus: list[str], limit_per_sku: int = 10) -> dict[str, dict[str, Any]]:
+    """Calcula a mesma média ponderada do cartão de parâmetros em lote.
+
+    A consulta lê somente recebimentos físicos confirmados. Fazer o cálculo em
+    lote evita uma chamada RPC por SKU na exportação de todas as categorias.
+    """
+    requested_skus = {clean_text(sku).upper() for sku in skus if clean_text(sku)}
+    if not requested_skus:
+        return {}
+
+    receipts = _request_all(
+        "erp_goods_receipts",
+        [("select", "id,data_recebimento,created_at"), ("status", "eq.CONFIRMADO")],
+        limit=100000,
+    )
+    receipt_dates = {
+        clean_text(receipt.get("id")): (
+            clean_text(receipt.get("data_recebimento")),
+            clean_text(receipt.get("created_at")),
+        )
+        for receipt in receipts
+        if clean_text(receipt.get("id"))
+    }
+    if not receipt_dates:
+        return {}
+
+    lines = _request_all(
+        "erp_goods_receipt_lines",
+        [
+            ("select", "id,goods_receipt_id,sku_codigo,valor_unitario_real,quantidade_aprovada"),
+            ("quantidade_aprovada", "gt.0"),
+            ("valor_unitario_real", "gt.0"),
+        ],
+        limit=100000,
+    )
+    grouped: dict[str, list[tuple[str, str, str, Decimal, Decimal]]] = {}
+    for line in lines:
+        sku = clean_text(line.get("sku_codigo")).upper()
+        receipt_id = clean_text(line.get("goods_receipt_id"))
+        if sku not in requested_skus or receipt_id not in receipt_dates:
+            continue
+        price = _decimal_value(line.get("valor_unitario_real"))
+        quantity = _decimal_value(line.get("quantidade_aprovada"))
+        if price is None or quantity is None or price <= 0 or quantity <= 0:
+            continue
+        receipt_date, created_at = receipt_dates[receipt_id]
+        grouped.setdefault(sku, []).append(
+            (receipt_date, created_at, clean_text(line.get("id")), price, quantity)
+        )
+
+    result: dict[str, dict[str, Any]] = {}
+    bounded_limit = max(1, min(int(limit_per_sku), 100))
+    for sku, entries in grouped.items():
+        recent = sorted(entries, key=lambda item: item[:3], reverse=True)[:bounded_limit]
+        total_quantity = sum((item[4] for item in recent), Decimal("0"))
+        if total_quantity <= 0:
+            continue
+        average = (sum((item[3] * item[4] for item in recent), Decimal("0")) / total_quantity).quantize(Decimal("0.0001"))
+        result[sku] = {
+            "preco_medio": float(average),
+            "quantidade_total": float(total_quantity),
+            "entradas_consideradas": len(recent),
+            "ultima_entrada": max(item[0] or item[1] for item in recent),
+        }
+    return result
+
+
+def all_export_technical_fields(rows: list[dict[str, Any]]) -> list[dict[str, str]]:
+    """Retorna uma coluna por chave técnica, incluindo campos de toda categoria."""
+    fields_by_key: dict[str, dict[str, str]] = {}
+    catalog = excel_bancos.load_catalog()
+    for category in catalog.get("categories") or []:
+        category_key = clean_text(category.get("key"))
+        if not category_key or category_key == excel_bancos.LEGACY_CJ_BCO_CATEGORY_KEY:
+            continue
+        for field in excel_bancos.get_banco_fields_for_display(category_key):
+            field_key = clean_text(field.get("key"))
+            if field_key and field_key not in fields_by_key:
+                fields_by_key[field_key] = {
+                    "key": field_key,
+                    "label": clean_text(field.get("label")) or field_key,
+                }
+    # Preserva valores legados que existem nos registros, mesmo se o campo foi
+    # removido posteriormente do catálogo. Assim, a exportação geral não perde
+    # nenhuma informação técnica histórica.
+    for row in rows:
+        values = row.get("field_values") if isinstance(row.get("field_values"), dict) else {}
+        for field_key in values:
+            key = clean_text(field_key)
+            if key and key not in fields_by_key:
+                fields_by_key[key] = {"key": key, "label": key.replace("_", " ").upper()}
+    return sorted(fields_by_key.values(), key=lambda field: excel_bancos.normalize_label(field["label"]))
 
 
 def get_item_average_cost(sku: str, limit: int = 10) -> dict[str, Any]:
@@ -2931,8 +3060,11 @@ def export_registrations(
     missing_unit: bool = False,
     include_inactive: bool = False,
 ) -> Path:
-    all_categories = all_categories_key(category_key)
-    category = {"key": ALL_CATEGORIES_KEY, "label": "Todas as categorias"} if all_categories else _category(category_key)
+    # Na tela, "Todas as categorias" usa __all__. A ausência do parâmetro na
+    # URL também representa a exportação geral, e não a categoria padrão.
+    export_category_key = clean_text(category_key) or ALL_CATEGORIES_KEY
+    all_categories = all_categories_key(export_category_key)
+    category = {"key": ALL_CATEGORIES_KEY, "label": "Todas as categorias"} if all_categories else _category(export_category_key)
     fields = [] if all_categories else excel_bancos.get_banco_fields_for_display(category["key"])
     rows = list_registrations(
         ALL_CATEGORIES_KEY if all_categories else category["key"],
@@ -2942,6 +3074,13 @@ def export_registrations(
         missing_unit=missing_unit,
         include_inactive=include_inactive,
         limit=10000,
+    )
+    technical_fields = all_export_technical_fields(rows) if all_categories else []
+    parameters_by_registration = item_parameters_for_export() if all_categories else {}
+    average_costs_by_sku = (
+        item_average_costs_for_export([clean_text(row.get("sku")) for row in rows])
+        if all_categories
+        else {}
     )
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
@@ -2963,12 +3102,36 @@ def export_registrations(
     ]
     headers.insert(2, "GRUPO")
     if all_categories:
-        headers.append("CAMPOS")
+        headers.insert(7, "B.O.M.")
+        headers.extend(
+            [
+                "FABRICAÇÃO",
+                "UNIDADE DO TEMPO",
+                "FORNECIMENTO (DIAS)",
+                "TRANSPORTE (DIAS)",
+                "RECEBIMENTO (DIAS)",
+                "INSPEÇÃO RECEBIMENTO (DIAS)",
+                "ESTOCAGEM (DIAS)",
+                "EXPEDIÇÃO (DIAS)",
+                "MONTAGEM DO KIT (DIAS)",
+                "SETUP (DIAS)",
+                "PRODUÇÃO (DIAS)",
+                "LIBERAÇÃO (DIAS)",
+                "PREÇO DE COMPRA PARAMETRIZADO",
+                "PREÇO MÉDIO ATUALIZADO (ÚLTIMAS 10 ENTRADAS)",
+                "ENTRADAS CONSIDERADAS NO PREÇO MÉDIO",
+                "ÚLTIMA ENTRADA CONSIDERADA",
+            ]
+        )
+        headers.extend(f"CAMPO TÉCNICO — {field['label']}" for field in technical_fields)
     else:
         headers.extend(excel_bancos.header_for_field(field["label"], field["scope"]) for field in fields)
     ws.append(headers)
     for row in rows:
         values = row.get("field_values") if isinstance(row.get("field_values"), dict) else {}
+        parameter = parameters_by_registration.get(clean_text(row.get("id"))) or {}
+        average = average_costs_by_sku.get(clean_text(row.get("sku")).upper()) or {}
+        bom_value = row.get("possui_bom")
         row_values = [
             row.get("category_label"),
             row.get("sku"),
@@ -2982,7 +3145,30 @@ def export_registrations(
             row.get("caracteres_secundario"),
         ]
         if all_categories:
-            row_values.append(" | ".join(f"{key}: {value}" for key, value in values.items() if clean_text(value)))
+            row_values.insert(7, "SIM" if bom_value is True else "NÃO" if bom_value is False else "NÃO DEFINIDO")
+            row_values.extend(
+                [
+                    parameter.get("origem_fabricacao") or "NÃO PARAMETRIZADO",
+                    parameter.get("unidade_tempo") or "",
+                    parameter.get("fornecimento_dias") or "",
+                    parameter.get("transporte_dias") or "",
+                    parameter.get("recebimento_dias") or "",
+                    parameter.get("inspecao_recebimento_dias") or "",
+                    parameter.get("estocagem_dias") or "",
+                    parameter.get("expedicao_dias") or "",
+                    parameter.get("montagem_kit_dias") or "",
+                    parameter.get("setup_dias") or "",
+                    parameter.get("producao_dias") or "",
+                    parameter.get("liberacao_dias") or "",
+                    parameter.get("preco_compra") if parameter.get("preco_compra") is not None else "",
+                    average.get("preco_medio") if average.get("preco_medio") is not None else "",
+                    average.get("entradas_consideradas") if average.get("entradas_consideradas") is not None else "",
+                    average.get("ultima_entrada") or "",
+                ]
+            )
+            for field in technical_fields:
+                value = values.get(field["key"], "")
+                row_values.append(" | ".join(map(str, value)) if isinstance(value, list) else value)
         else:
             row_values.extend(values.get(field["key"], "") for field in fields)
         ws.append(row_values)
@@ -2992,9 +3178,33 @@ def export_registrations(
         cell.font = Font(bold=True)
         cell.fill = header_fill
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-    widths = {1: 24, 2: 14, 3: 22, 4: 48, 5: 72, 6: 14, 7: 16, 8: 18, 9: 18, 10: 22, 11: 72}
+    widths = {1: 24, 2: 14, 3: 22, 4: 48, 5: 72, 6: 14, 7: 16, 8: 14, 9: 18, 10: 18, 11: 22}
     for index in range(1, len(headers) + 1):
-        ws.column_dimensions[ws.cell(1, index).column_letter].width = widths.get(index, 28)
+        ws.column_dimensions[ws.cell(1, index).column_letter].width = widths.get(index, 28 if all_categories else 28)
+    if all_categories:
+        header_index = {header: index for index, header in enumerate(headers, start=1)}
+        for header in (
+            "PREÇO DE COMPRA PARAMETRIZADO",
+            "PREÇO MÉDIO ATUALIZADO (ÚLTIMAS 10 ENTRADAS)",
+        ):
+            column = header_index[header]
+            for row_index in range(2, ws.max_row + 1):
+                ws.cell(row_index, column).number_format = 'R$ #,##0.0000'
+        for header in (
+            "FORNECIMENTO (DIAS)",
+            "TRANSPORTE (DIAS)",
+            "RECEBIMENTO (DIAS)",
+            "INSPEÇÃO RECEBIMENTO (DIAS)",
+            "ESTOCAGEM (DIAS)",
+            "EXPEDIÇÃO (DIAS)",
+            "MONTAGEM DO KIT (DIAS)",
+            "SETUP (DIAS)",
+            "PRODUÇÃO (DIAS)",
+            "LIBERAÇÃO (DIAS)",
+        ):
+            column = header_index[header]
+            for row_index in range(2, ws.max_row + 1):
+                ws.cell(row_index, column).number_format = '0.000'
     for row_cells in ws.iter_rows(min_row=2):
         for cell in row_cells:
             cell.alignment = Alignment(vertical="top", wrap_text=True)
