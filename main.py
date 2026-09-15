@@ -1626,6 +1626,26 @@ async def cadastro_item_parametros_save(request: Request, registration_id: int):
         )
 
 
+def _new_bom_view_model(parent_sku: str = "", registration: dict | None = None) -> dict:
+    registration = registration or {}
+    sku = excel_bancos.clean_text(registration.get("sku") or parent_sku)
+    description = excel_bancos.clean_text(registration.get("descricao_primaria"))
+    category_key = excel_bancos.clean_text(registration.get("category_key"))
+    category_label = excel_bancos.clean_text(registration.get("category_label"))
+    return {
+        "id": "",
+        "parent_sku": sku,
+        "display_parent_sku": sku,
+        "parent_descricao": description,
+        "parent_category_key": category_key,
+        "parent_category_label": category_label,
+        "parent_active": registration.get("ativo", True),
+        "components": [],
+        "needs_review": False,
+        "review_reasons": [],
+    }
+
+
 @app.get("/bom", response_class=HTMLResponse)
 async def bom_page(
     request: Request,
@@ -1671,6 +1691,91 @@ async def bom_page(
             "active_page": "bom",
         },
     )
+
+
+@app.get("/bom/novo", response_class=HTMLResponse)
+async def bom_novo_page(
+    request: Request,
+    item_pai: str = "",
+    sucesso: str = "",
+    erro: str = "",
+):
+    if not _supabase_mode():
+        return RedirectResponse(url="/cadastro/bancos", status_code=303)
+
+    parent_sku = excel_bancos.clean_text(item_pai)
+    registration = supabase_store.get_registration_by_sku(parent_sku) if parent_sku else None
+    if registration:
+        existing = supabase_store.get_bom_by_parent(parent_sku)
+        existing_id = ((existing or {}).get("header") or {}).get("id")
+        if existing_id:
+            return RedirectResponse(
+                url=f"/bom/{existing_id}?sucesso={quote('Este item já possui uma B.O.M. cadastrada.')}",
+                status_code=303,
+            )
+
+    bom = _new_bom_view_model(parent_sku, registration)
+    if parent_sku and not registration and not erro:
+        erro = "Item pai não encontrado nos cadastros. Informe um SKU já cadastrado."
+    selected_category = excel_bancos.selected_category(
+        excel_bancos.clean_text(bom.get("parent_category_key"))
+    )
+    return templates.TemplateResponse(
+        request=request,
+        name="bom_detalhe.html",
+        context={
+            "request": request,
+            "categories": excel_bancos.list_categories(),
+            "selected_category": selected_category,
+            "bom": bom,
+            "new_bom": True,
+            "workbook_path": _workbook_display_path(),
+            "supabase_mode": True,
+            "sucesso": sucesso,
+            "erro": erro,
+            "active_page": "bom",
+        },
+    )
+
+
+@app.post("/bom/novo")
+async def bom_novo_post(request: Request):
+    if not _supabase_mode():
+        raise HTTPException(status_code=400, detail="Criacao de B.O.M. disponivel apenas no modo Supabase.")
+    form_data = await request.form()
+    parent_sku = excel_bancos.clean_text(form_data.get("parent_sku"))
+    try:
+        if not parent_sku:
+            raise ValueError("Informe o SKU do item pai.")
+        registration = supabase_store.get_registration_by_sku(parent_sku)
+        if not registration:
+            raise ValueError("Item pai não encontrado nos cadastros. Informe um SKU já cadastrado.")
+        existing = supabase_store.get_bom_by_parent(parent_sku)
+        existing_id = ((existing or {}).get("header") or {}).get("id")
+        if existing_id:
+            raise ValueError("Este item já possui uma B.O.M. cadastrada. Abra a B.O.M. existente para editar.")
+
+        components = excel_bancos.parse_component_lines(form_data, allow_incomplete=False)
+        result = supabase_store.save_bom(
+            parent_sku,
+            excel_bancos.clean_text(registration.get("descricao_primaria")),
+            components,
+            category_key=excel_bancos.clean_text(registration.get("category_key")),
+            category_label=excel_bancos.clean_text(registration.get("category_label")),
+            registration_id=registration.get("id"),
+            source="cadastro",
+            allow_incomplete=False,
+        )
+        bom_id = ((result or {}).get("bom") or {}).get("id")
+        if not bom_id:
+            raise ValueError("Não foi possível identificar a B.O.M. criada.")
+        message = f"B.O.M. criada para {parent_sku}: {result['components_count']} componente(s)."
+        return RedirectResponse(url=f"/bom/{bom_id}?sucesso={quote(message)}", status_code=303)
+    except Exception as exc:
+        return RedirectResponse(
+            url=f"/bom/novo?item_pai={quote(parent_sku)}&erro={quote(str(exc))}",
+            status_code=303,
+        )
 
 
 @app.post("/bom/upload")
@@ -1747,6 +1852,7 @@ async def bom_detalhe_page(request: Request, bom_id: int, sucesso: str = "", err
                 "categories": excel_bancos.list_categories(),
                 "selected_category": selected_category,
                 "bom": bom,
+                "new_bom": False,
                 "workbook_path": _workbook_display_path(),
                 "supabase_mode": True,
                 "sucesso": sucesso,

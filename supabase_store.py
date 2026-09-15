@@ -2328,6 +2328,11 @@ def _registration_by_sku(sku: str) -> dict[str, Any] | None:
     return rows[0] if rows else None
 
 
+def get_registration_by_sku(sku: str) -> dict[str, Any] | None:
+    """Return the registered catalog item identified by its SKU."""
+    return _registration_by_sku(clean_text(sku))
+
+
 def _set_catalog_bom_preference(parent_sku: str, possui_bom: bool) -> int:
     """Synchronize the derived B.O.M. marker for every catalog row of a SKU.
 
@@ -2394,6 +2399,11 @@ def _bom_by_parent(parent_sku: str) -> dict[str, Any] | None:
         ],
     ) or []
     return {"header": header, "components": components}
+
+
+def get_bom_by_parent(parent_sku: str) -> dict[str, Any] | None:
+    """Return the B.O.M. currently linked to a parent SKU, if any."""
+    return _bom_by_parent(clean_text(parent_sku))
 
 
 def save_bom(

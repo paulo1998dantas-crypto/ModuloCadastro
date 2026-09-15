@@ -90,6 +90,18 @@
             </div>
         </section>
 
+        <section class="mb-4 border border-blue-200 bg-blue-50 p-3 shadow-sm">
+            <h2 class="mb-1 text-sm font-black uppercase text-blue-900">Criar B.O.M. em item já cadastrado</h2>
+            <p class="mb-3 text-xs font-semibold text-blue-800">Informe um SKU do cadastro e monte a composição diretamente, sem copiar outra B.O.M.</p>
+            <form method="get" action="/bom/novo" class="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                <label class="space-y-1">
+                    <span class="block text-[11px] font-black uppercase text-blue-900">SKU do item pai</span>
+                    <input name="item_pai" class="h-10 w-full border border-blue-300 bg-white px-3 font-mono text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex.: 10200176" required>
+                </label>
+                <button type="submit" class="h-10 border border-blue-700 bg-blue-700 px-5 text-sm font-black text-white hover:bg-blue-600">Montar B.O.M.</button>
+            </form>
+        </section>
+
         <section class="mb-4 border border-slate-300 bg-white p-3 shadow-sm">
             <h2 class="mb-3 text-sm font-black uppercase text-slate-700">Copiar B.O.M. existente</h2>
             <form method="post" action="/bom/copiar" class="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end" onsubmit="return confirm('Copiar esta B.O.M. para o destino? A B.O.M. existente do destino sera substituida.');">

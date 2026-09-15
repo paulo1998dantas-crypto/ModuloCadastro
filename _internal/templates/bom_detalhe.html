@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
-    <title>B.O.M. {{ bom.parent_sku }}</title>
+    <title>{% if new_bom %}Nova B.O.M.{% else %}B.O.M. {{ bom.parent_sku }}{% endif %}</title>
 </head>
 <body class="min-h-screen bg-slate-100 text-slate-900">
     {% include "_portal_back.html" %}
@@ -13,7 +13,7 @@
             <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                     <p class="text-xs font-bold uppercase tracking-wide text-yellow-400">Modulo de Cadastro</p>
-                    <h1 class="text-2xl font-black tracking-tight">B.O.M. {{ bom.display_parent_sku or bom.parent_descricao }}</h1>
+                    <h1 class="text-2xl font-black tracking-tight">{% if new_bom %}Criar nova B.O.M.{% else %}B.O.M. {{ bom.display_parent_sku or bom.parent_descricao }}{% endif %}</h1>
                 </div>
                 <div class="max-w-3xl truncate text-xs text-slate-300">{{ workbook_path }}</div>
             </div>
@@ -36,8 +36,12 @@
         <div class="mb-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-bold text-rose-700">{{ erro }}</div>
         {% endif %}
 
-        <form method="post" action="/bom/{{ bom.id }}" class="space-y-4">
-            {% if bom.needs_review %}
+        <form method="post" action="{% if new_bom %}/bom/novo{% else %}/bom/{{ bom.id }}{% endif %}" class="space-y-4">
+            {% if new_bom %}
+            <section class="border border-blue-200 bg-blue-50 p-4 text-sm font-semibold text-blue-900">
+                Selecione um item pai já cadastrado e inclua os componentes da composição abaixo. A B.O.M. será criada diretamente para esse SKU.
+            </section>
+            {% elif bom.needs_review %}
             <section class="border border-amber-300 bg-amber-50 p-4 text-sm font-bold text-amber-800">
                 Revisar estrutura: {{ bom.review_reasons|join(' · ') }}
             </section>
@@ -62,11 +66,11 @@
                 <div class="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-3 py-3 md:flex-row md:items-center md:justify-between">
                     <div>
                         <h2 class="text-sm font-black uppercase text-slate-700">Componentes</h2>
-                        <p class="text-xs font-semibold text-slate-500">{{ bom.components|length }} linha(s)</p>
+                        <p class="text-xs font-semibold text-slate-500">{% if bom.components %}{{ bom.components|length }}{% else %}1 inicial{% endif %} linha(s)</p>
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <button type="button" id="add-component" class="h-10 border border-slate-800 bg-slate-800 px-4 text-sm font-black text-white hover:bg-slate-700">Adicionar componente</button>
-                        <button type="submit" class="h-10 border border-blue-700 bg-blue-700 px-5 text-sm font-black text-white hover:bg-blue-600">Salvar B.O.M.</button>
+                        <button type="submit" class="h-10 border border-blue-700 bg-blue-700 px-5 text-sm font-black text-white hover:bg-blue-600">{% if new_bom %}Criar B.O.M.{% else %}Salvar B.O.M.{% endif %}</button>
                     </div>
                 </div>
                 <div class="overflow-auto">
@@ -117,7 +121,9 @@
 
         <div class="mt-4 flex flex-wrap gap-2">
             <a href="/bom" class="inline-flex h-10 items-center justify-center border border-slate-300 bg-white px-5 text-sm font-black text-slate-700 hover:bg-slate-50">Voltar para lista</a>
+            {% if not new_bom %}
             <a href="/bom/exportar?item_pai={{ bom.parent_sku }}{% if not bom.parent_active %}&mostrar_inativos=1{% endif %}" class="inline-flex h-10 items-center justify-center border border-emerald-700 bg-emerald-700 px-5 text-sm font-black text-white hover:bg-emerald-600">Exportar esta B.O.M.</a>
+            {% endif %}
         </div>
     </main>
 

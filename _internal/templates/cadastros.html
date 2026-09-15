@@ -154,6 +154,9 @@
                                     </a>
                                     {% if request.state.cadastro_can_write %}
                                     <a href="/cadastros/{{ item.id }}/editar" class="inline-flex border border-blue-700 bg-blue-700 px-2 py-1 text-[11px] font-black uppercase text-white hover:bg-blue-600">Editar</a>
+                                    <a href="/bom/novo?item_pai={{ item.sku }}" class="inline-flex border border-indigo-700 bg-indigo-700 px-2 py-1 text-[11px] font-black uppercase text-white hover:bg-indigo-600">
+                                        {% if item.possui_bom is sameas true %}Abrir B.O.M.{% else %}Criar B.O.M.{% endif %}
+                                    </a>
                                     {% endif %}
                                     {% if can_delete_records %}
                                     <form method="post" action="/cadastros/{{ item.id }}/excluir" onsubmit="return confirm('Excluir definitivamente o cadastro {{ item.sku }}? A exclusao so sera permitida se nao houver saldo, B.O.M., pedidos, recebimentos ou historico operacional.');">
