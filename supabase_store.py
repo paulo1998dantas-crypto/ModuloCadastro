@@ -9,7 +9,7 @@ import urllib.request
 import uuid
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +28,7 @@ BOM_HEADERS_TABLE = "cadastro_bom_cabecalhos"
 BOM_COMPONENTS_TABLE = "cadastro_bom_componentes"
 LAYOUTS_TABLE = "layout_arquivos"
 ITEM_PARAMETERS_TABLE = "cadastro_item_parametros"
+AUDIT_TABLE = "cadastro_auditoria"
 DOCUMENTOS_TABLE = "suprimentos_documentos"
 LAYOUTS_BUCKET = "os-layouts"
 EXPORT_DIR = Path(tempfile.gettempdir()) / "modulo-cadastro-exports"
@@ -38,6 +39,20 @@ UNIT_OPTIONS = ["pc", "un", "cj", "ch", "br", "m", "mm"]
 SKU_MIGRATION_FORM_KEY = "_sku_migration"
 PREVIOUS_SKU_FORM_KEY = "_sku_anterior"
 CANONICAL_SKU_GROUPS = {"10", "20", "30"}
+AUDIT_ACTION_LABELS = {
+    "criacao": "Criação de cadastro",
+    "alteracao": "Alteração de cadastro",
+    "inativacao": "Inativação de cadastro",
+    "reativacao": "Reativação de cadastro",
+    "migracao_sku": "Migração de SKU",
+    "exclusao": "Exclusão de cadastro",
+    "bom_criacao": "Criação de B.O.M.",
+    "bom_alteracao": "Alteração de B.O.M.",
+    "bom_exclusao": "Exclusão de B.O.M.",
+    "parametro_criacao": "Criação de parâmetros",
+    "parametro_alteracao": "Alteração de parâmetros",
+    "parametro_exclusao": "Exclusão de parâmetros",
+}
 
 
 class SupabaseStoreError(RuntimeError):
@@ -118,6 +133,7 @@ def status() -> dict[str, Any]:
             BOM_COMPONENTS_TABLE,
             LAYOUTS_TABLE,
             ITEM_PARAMETERS_TABLE,
+            AUDIT_TABLE,
         ],
     }
 
@@ -188,6 +204,82 @@ def _request(
         raise SupabaseStoreError(f"Erro Supabase {exc.code}: {body}") from exc
     except urllib.error.URLError as exc:
         raise SupabaseStoreError(f"Não foi possível conectar ao Supabase: {exc}") from exc
+
+
+def _audit_json(value: Any) -> Any:
+    """Return a JSON-safe copy for immutable audit snapshots."""
+    try:
+        return json.loads(json.dumps(value, ensure_ascii=False, default=str))
+    except (TypeError, ValueError):
+        return clean_text(value)
+
+
+def _audit_snapshot(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    return _audit_json(value)
+
+
+def _audit_diff(before: dict[str, Any], after: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    changes: dict[str, dict[str, Any]] = {}
+    for key in sorted(set(before) | set(after)):
+        old_value = before.get(key)
+        new_value = after.get(key)
+        if old_value != new_value:
+            changes[key] = {"antes": _audit_json(old_value), "depois": _audit_json(new_value)}
+    return changes
+
+
+def _record_audit_event(
+    action: str,
+    *,
+    actor: str = "",
+    registration_id: int | str | None = None,
+    sku: str = "",
+    previous_sku: str = "",
+    category_key: str = "",
+    category_label: str = "",
+    summary: str = "",
+    before: dict[str, Any] | None = None,
+    after: dict[str, Any] | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    """Persist one immutable, human-readable catalog audit event."""
+    before_snapshot = _audit_snapshot(before or {})
+    after_snapshot = _audit_snapshot(after or {})
+    details: dict[str, Any] = {
+        "antes": before_snapshot or None,
+        "depois": after_snapshot or None,
+        "alteracoes": _audit_diff(before_snapshot, after_snapshot),
+    }
+    if metadata:
+        details["contexto"] = _audit_json(metadata)
+    payload = {
+        "registration_id": int(registration_id) if registration_id not in (None, "") else None,
+        "sku": clean_text(sku),
+        "previous_sku": clean_text(previous_sku),
+        "category_key": clean_text(category_key),
+        "category_label": clean_text(category_label),
+        "action": clean_text(action).lower() or "alteracao",
+        "actor": clean_text(actor) or "sistema",
+        "summary": clean_text(summary),
+        "details": details,
+    }
+    _request("POST", AUDIT_TABLE, payload=payload, prefer="return=minimal")
+
+
+def _audit_date_value(value: str, *, end: bool = False) -> str:
+    text = clean_text(value)
+    if not text:
+        return ""
+    try:
+        parsed = datetime.strptime(text, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return ""
+    if end:
+        parsed = parsed.replace(hour=0, minute=0, second=0, microsecond=0)
+        parsed = parsed + timedelta(days=1)
+    return parsed.isoformat().replace("+00:00", "Z")
 
 
 EXTERNAL_TIME_FIELDS = (
@@ -474,13 +566,18 @@ def _reassign_item_parameter(
     old_registration_id: int | str,
     new_registration_id: int | str,
     new_sku: str,
+    actor: str = "",
 ) -> bool:
     try:
         rows = _request(
             "PATCH",
             ITEM_PARAMETERS_TABLE,
             [("registration_id", f"eq.{clean_text(old_registration_id)}")],
-            payload={"registration_id": int(new_registration_id), "sku": clean_text(new_sku)},
+            payload={
+                "registration_id": int(new_registration_id),
+                "sku": clean_text(new_sku),
+                **({"updated_by": clean_text(actor)} if clean_text(actor) else {}),
+            },
             prefer="return=representation",
         ) or []
     except SupabaseStoreError as exc:
@@ -927,7 +1024,7 @@ def _registration_payload(
     return payload, descriptions, possui_bom
 
 
-def save_registration(form_data: Any) -> dict[str, Any]:
+def save_registration(form_data: Any, actor: str = "") -> dict[str, Any]:
     category_key = clean_text(form_data.get("categoria"))
     category = _category(category_key)
     fields = excel_bancos.get_banco_fields(category["key"])
@@ -948,6 +1045,17 @@ def save_registration(form_data: Any) -> dict[str, Any]:
     ativo = bool(payload.get("ativo"))
     rows = _request("POST", REGISTRATIONS_TABLE, payload=payload, prefer="return=representation")
     row = rows[0] if rows else payload
+    if clean_text(actor):
+        _record_audit_event(
+            "criacao",
+            actor=actor,
+            registration_id=row.get("id"),
+            sku=row.get("sku") or sku,
+            category_key=category["key"],
+            category_label=category["label"],
+            summary=f"Cadastro criado para o SKU {row.get('sku') or sku}.",
+            after=row,
+        )
     return {
         "id": row.get("id"),
         "row": row.get("id") or "-",
@@ -1820,7 +1928,7 @@ def delete_draft(draft_id: str) -> dict[str, Any]:
     return existing
 
 
-def delete_registration(registration_id: int | str) -> dict[str, Any]:
+def delete_registration(registration_id: int | str, actor: str = "") -> dict[str, Any]:
     """Request an atomic, integrity-checked catalog deletion from PostgreSQL.
 
     The RPC intentionally returns blockers instead of attempting to remove
@@ -1842,6 +1950,17 @@ def delete_registration(registration_id: int | str) -> dict[str, Any]:
         result = result[0] if result else {}
     if not isinstance(result, dict):
         raise SupabaseStoreError("Resposta invalida ao excluir cadastro.")
+    if result.get("deleted") and clean_text(actor):
+        _record_audit_event(
+            "exclusao",
+            actor=actor,
+            registration_id=normalized_id,
+            sku=result.get("sku"),
+            category_key=result.get("category_key"),
+            category_label=result.get("category_label"),
+            summary=f"Cadastro {result.get('sku') or normalized_id} excluído definitivamente.",
+            before=result,
+        )
     return result
 
 
@@ -1855,6 +1974,104 @@ def _safe_filter_value(value: str, field_key: str = "") -> str:
             sanitized = sanitized[1:-1].strip()
         sanitized = re.sub(r"\s*[,;]\s*", ",", sanitized)
     return sanitized
+
+
+def list_audit_events(
+    sku: str = "",
+    action: str = "",
+    actor: str = "",
+    date_from: str = "",
+    date_to: str = "",
+    limit: int = 1000,
+) -> list[dict[str, Any]]:
+    """Return one chronological audit feed for catalog, B.O.M. and parameters."""
+    requested_action = clean_text(action).lower()
+    parameter_actions = {
+        "parametro_criacao": "INSERT",
+        "parametro_alteracao": "UPDATE",
+        "parametro_exclusao": "DELETE",
+    }
+    rows: list[dict[str, Any]] = []
+    safe_sku = _safe_filter_value(sku)
+    safe_actor = _safe_filter_value(actor)
+    start_value = _audit_date_value(date_from)
+    end_value = _audit_date_value(date_to, end=True)
+
+    if requested_action not in parameter_actions:
+        params: list[tuple[str, str]] = [
+            (
+                "select",
+                "id,registration_id,sku,previous_sku,category_key,category_label,action,actor,summary,details,created_at",
+            ),
+            ("order", "created_at.desc,id.desc"),
+        ]
+        if requested_action:
+            params.append(("action", f"eq.{requested_action}"))
+        if safe_actor:
+            params.append(("actor", f"ilike.*{safe_actor}*"))
+        if start_value:
+            params.append(("created_at", f"gte.{start_value}"))
+        if end_value:
+            params.append(("created_at", f"lt.{end_value}"))
+        rows.extend(_request_all(AUDIT_TABLE, params, limit=max(1, min(int(limit) * 2, 5000))))
+
+    if not requested_action or requested_action in parameter_actions:
+        parameter_params: list[tuple[str, str]] = [
+            (
+                "select",
+                "id,registration_id,sku,action,actor,before_data,after_data,changed_at",
+            ),
+            ("order", "changed_at.desc,id.desc"),
+        ]
+        if requested_action in parameter_actions:
+            parameter_params.append(("action", f"eq.{parameter_actions[requested_action]}"))
+        if safe_actor:
+            parameter_params.append(("actor", f"ilike.*{safe_actor}*"))
+        if start_value:
+            parameter_params.append(("changed_at", f"gte.{start_value}"))
+        if end_value:
+            parameter_params.append(("changed_at", f"lt.{end_value}"))
+        parameter_rows = _request_all(
+            "cadastro_item_parametros_historico",
+            parameter_params,
+            limit=max(1, min(int(limit) * 2, 5000)),
+        )
+        parameter_action_labels = {
+            "INSERT": "parametro_criacao",
+            "UPDATE": "parametro_alteracao",
+            "DELETE": "parametro_exclusao",
+        }
+        for parameter_row in parameter_rows:
+            parameter_action = clean_text(parameter_row.get("action")).upper()
+            rows.append(
+                {
+                    "id": f"parametro-{parameter_row.get('id')}",
+                    "registration_id": parameter_row.get("registration_id"),
+                    "sku": clean_text(parameter_row.get("sku")),
+                    "previous_sku": "",
+                    "category_key": "",
+                    "category_label": "",
+                    "action": parameter_action_labels.get(parameter_action, "parametro_alteracao"),
+                    "actor": clean_text(parameter_row.get("actor")) or "sistema",
+                    "summary": f"Parâmetros de lead time e custo: {parameter_action.lower()}.",
+                    "details": {
+                        "antes": parameter_row.get("before_data"),
+                        "depois": parameter_row.get("after_data"),
+                    },
+                    "created_at": parameter_row.get("changed_at"),
+                }
+            )
+
+    if safe_sku:
+        normalized_sku = safe_sku.casefold()
+        rows = [
+            row
+            for row in rows
+            if normalized_sku in clean_text(row.get("sku")).casefold()
+            or normalized_sku in clean_text(row.get("previous_sku")).casefold()
+        ]
+    rows.sort(key=lambda row: (clean_text(row.get("created_at")), clean_text(row.get("id"))), reverse=True)
+    return rows[: max(1, min(int(limit), 5000))]
 
 
 def all_categories_key(value: str) -> bool:
@@ -2243,7 +2460,7 @@ def _restore_bom_references(snapshots: dict[str, Any]) -> None:
         )
 
 
-def update_registration(registration_id: int | str, form_data: Any) -> dict[str, Any]:
+def update_registration(registration_id: int | str, form_data: Any, actor: str = "") -> dict[str, Any]:
     current = get_registration(registration_id)
     if not current:
         raise SupabaseStoreError("Cadastro não encontrado.")
@@ -2288,8 +2505,33 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
         # The B.O.M. indicator is derived from persisted B.O.M. headers, not
         # from an edit-screen choice. This prevents a normal catalog edit from
         # changing a valid item's marker back to an inconsistent value.
-        _set_catalog_bom_preference(new_sku, bool(_bom_header_by_parent(new_sku)))
-        return rows[0] if rows else {**current, **payload}
+        updated_record = rows[0] if rows else {**current, **payload}
+        _set_catalog_bom_preference(
+            new_sku,
+            bool(_bom_header_by_parent(new_sku)),
+            actor=actor,
+        )
+        if clean_text(actor):
+            was_active = bool(current.get("ativo", True))
+            is_active = bool(updated_record.get("ativo", True))
+            if was_active and not is_active:
+                action = "inativacao"
+            elif not was_active and is_active:
+                action = "reativacao"
+            else:
+                action = "alteracao"
+            _record_audit_event(
+                action,
+                actor=actor,
+                registration_id=updated_record.get("id") or registration_id,
+                sku=updated_record.get("sku") or new_sku,
+                category_key=updated_record.get("category_key") or target_category["key"],
+                category_label=updated_record.get("category_label") or target_category["label"],
+                summary=f"Cadastro {action} para o SKU {updated_record.get('sku') or new_sku}.",
+                before=current,
+                after=updated_record,
+            )
+        return updated_record
 
     if clean_text(form_data.get("confirmar_migracao")) != "1":
         raise SupabaseStoreError(
@@ -2355,6 +2597,7 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
             registration_id,
             new_record["id"],
             new_sku,
+            actor=actor,
         )
     except Exception as exc:
         rollback_errors = []
@@ -2392,8 +2635,38 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
             ) from exc
         raise
 
-    _set_catalog_bom_preference(old_sku, bool(_bom_header_by_parent(old_sku)))
-    _set_catalog_bom_preference(new_sku, bool(_bom_header_by_parent(new_sku)))
+    _set_catalog_bom_preference(old_sku, bool(_bom_header_by_parent(old_sku)), actor=actor)
+    _set_catalog_bom_preference(new_sku, bool(_bom_header_by_parent(new_sku)), actor=actor)
+    if clean_text(actor):
+        _record_audit_event(
+            "inativacao",
+            actor=actor,
+            registration_id=registration_id,
+            sku=old_sku,
+            category_key=current.get("category_key") or target_category["key"],
+            category_label=current.get("category_label") or target_category["label"],
+            summary=f"SKU anterior {old_sku} inativado pela migração.",
+            before=current,
+            after=old_rows[0] if old_rows else {**current, "ativo": False, "form_values": old_form_values},
+            metadata={"replacement_sku": new_sku},
+        )
+        _record_audit_event(
+            "migracao_sku",
+            actor=actor,
+            registration_id=new_record.get("id"),
+            sku=new_sku,
+            previous_sku=old_sku,
+            category_key=new_record.get("category_key") or target_category["key"],
+            category_label=new_record.get("category_label") or target_category["label"],
+            summary=f"SKU {old_sku} substituído por {new_sku}.",
+            before=current,
+            after=new_record,
+            metadata={
+                "bom_references_replaced": replace_bom_references,
+                "bom_headers_updated": migrated["bom_headers"],
+                "bom_components_updated": migrated["bom_components"],
+            },
+        )
     return {
         **new_record,
         "migrated": True,
@@ -2449,7 +2722,7 @@ def get_registration_by_sku(sku: str) -> dict[str, Any] | None:
     return _registration_by_sku(clean_text(sku))
 
 
-def _set_catalog_bom_preference(parent_sku: str, possui_bom: bool) -> int:
+def _set_catalog_bom_preference(parent_sku: str, possui_bom: bool, actor: str = "") -> int:
     """Synchronize the derived B.O.M. marker for every catalog row of a SKU.
 
     ``possui_bom`` is not a manual business choice: it mirrors whether the SKU
@@ -2483,6 +2756,17 @@ def _set_catalog_bom_preference(parent_sku: str, possui_bom: bool) -> int:
             payload={"form_values": payload},
             prefer="return=minimal",
         )
+        if clean_text(actor):
+            _record_audit_event(
+                "alteracao",
+                actor=actor,
+                registration_id=row.get("id"),
+                sku=sku,
+                summary=f"Indicador de B.O.M. sincronizado para {'sim' if possui_bom else 'não'}.",
+                before={"form_values": form_values},
+                after={"form_values": payload},
+                metadata={"origem": "sincronizacao_bom"},
+            )
         updated += 1
     return updated
 
@@ -2532,6 +2816,7 @@ def save_bom(
     source: str = "cadastro",
     allow_incomplete: bool = False,
     review_reasons: list[str] | None = None,
+    actor: str = "",
 ) -> dict[str, Any]:
     parent_sku = clean_text(parent_sku)
     if not parent_sku and not allow_incomplete:
@@ -2612,11 +2897,25 @@ def save_bom(
     if not component_payloads:
         raise SupabaseStoreError("Informe pelo menos um componente valido para a B.O.M.")
     _request("POST", BOM_COMPONENTS_TABLE, payload=component_payloads, prefer="return=minimal")
-    _set_catalog_bom_preference(parent_sku, True)
+    _set_catalog_bom_preference(parent_sku, True, actor=actor)
+    if clean_text(actor):
+        action = "bom_alteracao" if existing else "bom_criacao"
+        _record_audit_event(
+            action,
+            actor=actor,
+            registration_id=registration_id,
+            sku=parent_sku,
+            category_key=category_key,
+            category_label=category_label,
+            summary=f"B.O.M. {'atualizada' if existing else 'criada'} para {parent_sku}.",
+            before={"header": existing} if existing else None,
+            after={"header": header, "componentes": component_payloads},
+            metadata={"source": source_value},
+        )
     return {"bom": header, "components_count": len(component_payloads)}
 
 
-def copy_bom(source_parent_sku: str, target_parent_sku: str) -> dict[str, Any]:
+def copy_bom(source_parent_sku: str, target_parent_sku: str, actor: str = "") -> dict[str, Any]:
     source_parent_sku = clean_text(source_parent_sku)
     target_parent_sku = clean_text(target_parent_sku)
     if not source_parent_sku:
@@ -2654,6 +2953,7 @@ def copy_bom(source_parent_sku: str, target_parent_sku: str) -> dict[str, Any]:
         registration_id=target_registration.get("id"),
         source=f"copia:{source_parent_sku}",
         allow_incomplete=True,
+        actor=actor,
     )
     return {
         "source_parent_sku": source_parent_sku,
@@ -2810,6 +3110,7 @@ def update_bom(
     parent_description: str,
     components: list[dict[str, Any]],
     parent_sku: str = "",
+    actor: str = "",
 ) -> dict[str, Any]:
     current = get_bom(bom_id)
     current_parent_sku = clean_text(current.get("parent_sku"))
@@ -2911,16 +3212,30 @@ def update_bom(
     if not component_payloads:
         raise SupabaseStoreError("Informe pelo menos um componente valido para a B.O.M.")
     _request("POST", BOM_COMPONENTS_TABLE, payload=component_payloads, prefer="return=minimal")
-    _set_catalog_bom_preference(effective_parent_sku, True)
+    _set_catalog_bom_preference(effective_parent_sku, True, actor=actor)
     if current_parent_sku != effective_parent_sku:
         _set_catalog_bom_preference(
             current_parent_sku,
             bool(_bom_header_by_parent(current_parent_sku)),
+            actor=actor,
         )
-    return {**header, "components": component_payloads}
+    updated_bom = {**header, "components": component_payloads}
+    if clean_text(actor):
+        _record_audit_event(
+            "bom_alteracao",
+            actor=actor,
+            registration_id=registration_id,
+            sku=effective_parent_sku,
+            category_key=category_key,
+            category_label=category_label,
+            summary=f"B.O.M. atualizada para {effective_parent_sku}.",
+            before=current,
+            after=updated_bom,
+        )
+    return updated_bom
 
 
-def delete_bom(bom_id: int | str) -> dict[str, Any]:
+def delete_bom(bom_id: int | str, actor: str = "") -> dict[str, Any]:
     bom_id = clean_text(bom_id)
     rows = _request("GET", BOM_HEADERS_TABLE, [("select", "*"), ("id", f"eq.{bom_id}"), ("limit", "1")]) or []
     if not rows:
@@ -2931,7 +3246,19 @@ def delete_bom(bom_id: int | str) -> dict[str, Any]:
     _set_catalog_bom_preference(
         parent_sku,
         bool(_bom_header_by_parent(parent_sku)),
+        actor=actor,
     )
+    if clean_text(actor):
+        _record_audit_event(
+            "bom_exclusao",
+            actor=actor,
+            registration_id=rows[0].get("registration_id"),
+            sku=parent_sku,
+            category_key=rows[0].get("parent_category_key"),
+            category_label=rows[0].get("parent_category_label"),
+            summary=f"B.O.M. de {parent_sku} excluída.",
+            before=rows[0],
+        )
     return rows[0]
 
 
@@ -3046,7 +3373,7 @@ def template_bom_xlsx() -> bytes:
     )
 
 
-def import_bom_workbook(content: bytes, filename: str = "") -> dict[str, Any]:
+def import_bom_workbook(content: bytes, filename: str = "", actor: str = "") -> dict[str, Any]:
     imported = 0
     parents = _parse_bom_workbook(content, filename)
     for parent_sku, data in parents.items():
@@ -3058,6 +3385,7 @@ def import_bom_workbook(content: bytes, filename: str = "") -> dict[str, Any]:
             source=f"import:{filename or 'xlsx'}",
             allow_incomplete=bool(reasons),
             review_reasons=reasons,
+            actor=actor,
         )
         imported += 1
     return {
@@ -3067,7 +3395,7 @@ def import_bom_workbook(content: bytes, filename: str = "") -> dict[str, Any]:
     }
 
 
-def import_bom_directory(directory: str | Path) -> dict[str, Any]:
+def import_bom_directory(directory: str | Path, actor: str = "") -> dict[str, Any]:
     root = Path(directory)
     if not root.exists():
         raise SupabaseStoreError(f"Diretorio de B.O.M. nao encontrado: {root}")
@@ -3105,6 +3433,7 @@ def import_bom_directory(directory: str | Path) -> dict[str, Any]:
             source=f"import:{entry['file']}",
             allow_incomplete=bool(reasons),
             review_reasons=reasons,
+            actor=actor,
         )
         result["parents"] += 1
         result["components"] += len(data["components"])

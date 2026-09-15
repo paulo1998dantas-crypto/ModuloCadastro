@@ -19,6 +19,7 @@
             </div>
             <nav class="flex flex-wrap gap-2">
                 <a href="/cadastros?categoria={{ selected_category.key }}" class="rounded-lg px-4 py-2 text-sm font-bold bg-white text-slate-950">Cadastros</a>
+                <a href="/cadastros/auditoria" class="rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-amber-400">Rastreabilidade</a>
                 {% if request.state.cadastro_can_write %}
                 <a href="/cadastro/bancos?categoria={{ nav_category_key }}" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Cadastrar</a>
                 {% endif %}
@@ -152,6 +153,7 @@
                                     <a href="/cadastros/{{ item.id }}/parametros" class="inline-flex border px-2 py-1 text-[11px] font-black uppercase {% if item.item_parameter %}border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-600{% else %}border-amber-500 bg-amber-50 text-amber-800 hover:bg-amber-100{% endif %}">
                                         Parâmetros
                                     </a>
+                                    <a href="/cadastros/auditoria?sku={{ item.sku | urlencode }}" class="inline-flex border border-amber-600 bg-amber-100 px-2 py-1 text-[11px] font-black uppercase text-amber-900 hover:bg-amber-200">Histórico</a>
                                     {% if request.state.cadastro_can_write %}
                                     <a href="/cadastros/{{ item.id }}/editar" class="inline-flex border border-blue-700 bg-blue-700 px-2 py-1 text-[11px] font-black uppercase text-white hover:bg-blue-600">Editar</a>
                                     <a href="/bom/novo?item_pai={{ item.sku }}" class="inline-flex border border-indigo-700 bg-indigo-700 px-2 py-1 text-[11px] font-black uppercase text-white hover:bg-indigo-600">

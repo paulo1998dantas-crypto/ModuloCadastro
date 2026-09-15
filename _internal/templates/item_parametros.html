@@ -16,7 +16,10 @@
                     <h1 class="text-2xl font-black">Lead time e custo do item</h1>
                     <p class="mt-1 text-sm text-slate-300">Parâmetro padrão para planejamento e MRP. Não movimenta estoque.</p>
                 </div>
-                <a href="/cadastros?categoria={{ record.category_key }}" class="rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-black hover:bg-slate-700">Voltar aos cadastros</a>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/cadastros/auditoria?sku={{ record.sku | urlencode }}" class="rounded-lg border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-black text-slate-950 hover:bg-amber-400">Histórico</a>
+                    <a href="/cadastros?categoria={{ record.category_key }}" class="rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-black hover:bg-slate-700">Voltar aos cadastros</a>
+                </div>
             </div>
         </div>
     </header>

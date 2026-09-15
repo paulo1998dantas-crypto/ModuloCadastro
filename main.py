@@ -482,6 +482,19 @@ def _read_session(request: Request) -> str:
     return str(_read_session_payload(request).get("u") or "")
 
 
+def _audit_actor(request: Request) -> str:
+    """Identify the signed-in operator for catalog audit events."""
+    access = getattr(getattr(request, "state", None), "erp_access", None)
+    if isinstance(access, dict):
+        username = excel_bancos.clean_text(access.get("username"))
+        if username:
+            return username
+    try:
+        return _read_session(request) or "sistema:cadastro"
+    except AttributeError:
+        return "sistema:cadastro"
+
+
 def _safe_next_path(value: str, default: str = "/cadastro/bancos") -> str:
     candidate = str(value or "").strip()
     parsed = urllib.parse.urlsplit(candidate)
@@ -1279,7 +1292,7 @@ async def cadastro_bancos_post(request: Request):
             raise ValueError("O item foi definido com B.O.M. Inclua pelo menos um componente.")
 
         if _supabase_mode():
-            result = supabase_store.save_registration(form_data)
+            result = supabase_store.save_registration(form_data, actor=_audit_actor(request))
             if draft_id:
                 try:
                     supabase_store.delete_draft(draft_id)
@@ -1295,6 +1308,7 @@ async def cadastro_bancos_post(request: Request):
                     category_label=result.get("category") or "",
                     registration_id=result.get("id"),
                     source="cadastro",
+                    actor=_audit_actor(request),
                 )
                 message = f"Cadastro e B.O.M. salvos no Supabase. SKU: {result.get('sku') or '-'}."
             else:
@@ -1441,6 +1455,53 @@ def _require_bridge_token(authorization: str = "") -> None:
         raise HTTPException(status_code=410, detail="Ponte local desativada no modo Supabase.")
     if not bridge_store.verify_token(authorization):
         raise HTTPException(status_code=401, detail="Token da ponte inválido ou ausente.")
+
+
+@app.get("/cadastros/auditoria", response_class=HTMLResponse)
+async def cadastros_auditoria_page(
+    request: Request,
+    sku: str = "",
+    acao: str = "",
+    usuario: str = "",
+    data_inicio: str = "",
+    data_fim: str = "",
+    sucesso: str = "",
+    erro: str = "",
+):
+    if not _supabase_mode():
+        return RedirectResponse(url="/cadastros", status_code=303)
+    events: list[dict] = []
+    load_error = erro
+    try:
+        events = supabase_store.list_audit_events(
+            sku=sku,
+            action=acao,
+            actor=usuario,
+            date_from=data_inicio,
+            date_to=data_fim,
+            limit=2000,
+        )
+    except Exception as exc:
+        load_error = str(exc)
+    return templates.TemplateResponse(
+        request=request,
+        name="cadastro_auditoria.html",
+        context={
+            "request": request,
+            "events": events,
+            "audit_actions": supabase_store.AUDIT_ACTION_LABELS,
+            "sku": sku,
+            "acao": acao,
+            "usuario": usuario,
+            "data_inicio": data_inicio,
+            "data_fim": data_fim,
+            "workbook_path": _workbook_display_path(),
+            "supabase_mode": True,
+            "sucesso": sucesso,
+            "erro": load_error,
+            "active_page": "auditoria",
+        },
+    )
 
 
 @app.get("/cadastros", response_class=HTMLResponse)
@@ -1610,7 +1671,7 @@ async def cadastro_item_parametros_save(request: Request, registration_id: int):
         supabase_store.save_item_parameter(
             record,
             dict(form_data),
-            _read_session(request) or "sistema:cadastro",
+            _audit_actor(request),
         )
         return RedirectResponse(
             url=(
@@ -1765,6 +1826,7 @@ async def bom_novo_post(request: Request):
             registration_id=registration.get("id"),
             source="cadastro",
             allow_incomplete=False,
+            actor=_audit_actor(request),
         )
         bom_id = ((result or {}).get("bom") or {}).get("id")
         if not bom_id:
@@ -1779,12 +1841,16 @@ async def bom_novo_post(request: Request):
 
 
 @app.post("/bom/upload")
-async def bom_upload(arquivo_bom: UploadFile = File(...)):
+async def bom_upload(request: Request, arquivo_bom: UploadFile = File(...)):
     if not _supabase_mode():
         raise HTTPException(status_code=400, detail="Upload de B.O.M. disponivel apenas no modo Supabase.")
     try:
         content = await arquivo_bom.read()
-        result = supabase_store.import_bom_workbook(content, arquivo_bom.filename or "")
+        result = supabase_store.import_bom_workbook(
+            content,
+            arquivo_bom.filename or "",
+            actor=_audit_actor(request),
+        )
         message = f"B.O.M. importada: {result['parents']} item(ns) pai, {result['components']} componente(s), {result.get('review_parents', 0)} para revisao."
         return RedirectResponse(url=f"/bom?sucesso={quote(message)}", status_code=303)
     except Exception as exc:
@@ -1798,13 +1864,18 @@ async def bom_template():
 
 @app.post("/bom/copiar")
 async def bom_copiar(
+    request: Request,
     source_parent_sku: str = Form(...),
     target_parent_sku: str = Form(...),
 ):
     if not _supabase_mode():
         raise HTTPException(status_code=400, detail="Copia de B.O.M. disponivel apenas no modo Supabase.")
     try:
-        result = supabase_store.copy_bom(source_parent_sku, target_parent_sku)
+        result = supabase_store.copy_bom(
+            source_parent_sku,
+            target_parent_sku,
+            actor=_audit_actor(request),
+        )
         message = (
             f"B.O.M. copiada de {result['source_parent_sku']} para {result['target_parent_sku']}: "
             f"{result['components_count']} componente(s)."
@@ -1874,6 +1945,7 @@ async def bom_detalhe_post(request: Request, bom_id: int):
             excel_bancos.clean_text(form_data.get("parent_descricao")),
             components,
             parent_sku=excel_bancos.clean_text(form_data.get("parent_sku")),
+            actor=_audit_actor(request),
         )
         message = f"B.O.M. atualizada: {result.get('parent_sku') or bom_id}."
         return RedirectResponse(url=f"/bom/{bom_id}?sucesso={quote(message)}", status_code=303)
@@ -1882,11 +1954,11 @@ async def bom_detalhe_post(request: Request, bom_id: int):
 
 
 @app.post("/bom/{bom_id}/excluir")
-async def bom_excluir(bom_id: int):
+async def bom_excluir(request: Request, bom_id: int):
     if not _supabase_mode():
         return RedirectResponse(url="/cadastro/bancos", status_code=303)
     try:
-        result = supabase_store.delete_bom(bom_id)
+        result = supabase_store.delete_bom(bom_id, actor=_audit_actor(request))
         message = f"B.O.M. excluida: {result.get('parent_sku') or bom_id}."
         return RedirectResponse(url=f"/bom?sucesso={quote(message)}", status_code=303)
     except Exception as exc:
@@ -1938,7 +2010,11 @@ async def cadastro_editar_page(
 async def cadastro_editar_post(request: Request, registration_id: int):
     form_data = await request.form()
     try:
-        result = supabase_store.update_registration(registration_id, form_data)
+        result = supabase_store.update_registration(
+            registration_id,
+            form_data,
+            actor=_audit_actor(request),
+        )
         if result.get("migrated"):
             if result.get("bom_references_replaced"):
                 bom_message = (
@@ -1981,7 +2057,10 @@ async def cadastro_excluir(request: Request, registration_id: int, categoria: st
             status_code=303,
         )
     try:
-        result = supabase_store.delete_registration(registration_id)
+        result = supabase_store.delete_registration(
+            registration_id,
+            actor=_audit_actor(request),
+        )
         if result.get("deleted"):
             message = f"Cadastro {result.get('sku') or registration_id} excluido definitivamente."
             return RedirectResponse(url=f"{base_url}&sucesso={quote(message)}", status_code=303)
