@@ -2330,6 +2330,43 @@ def editable_registration(registration_id: int | str, target_category_key: str =
     }
 
 
+def copy_registration_for_new(registration_id: int | str) -> dict[str, Any]:
+    """Prepare an existing registration to be used as a new cadastro base.
+
+    The returned groups are form values only; the original SKU is never sent
+    to the create flow. When the source has a B.O.M., its components are also
+    loaded so the new cadastro can be saved as a complete mirror.
+    """
+    editable = editable_registration(registration_id)
+    source = editable["record"]
+    groups = {key: list(values) for key, values in editable["groups"].items()}
+    bom = get_bom_by_parent(clean_text(source.get("sku")))
+    components = list((bom or {}).get("components") or [])
+
+    groups["unidade"] = [normalize_unit(source.get("unidade")) or "pc"]
+    groups[excel_bancos.BOM_FORM_KEY] = ["1" if components else "0"]
+    if components:
+        groups.update(
+            {
+                "component_codigo": [clean_text(component.get("component_sku")) for component in components],
+                "component_descricao": [clean_text(component.get("component_descricao")) for component in components],
+                "component_unidade": [normalize_unit(component.get("unidade")) or "pc" for component in components],
+                "component_search": [
+                    f"{clean_text(component.get('component_sku'))} - {clean_text(component.get('component_descricao'))}".strip(" -")
+                    for component in components
+                ],
+                "component_quantidade": [str(component.get("quantidade") or 1) for component in components],
+            }
+        )
+
+    return {
+        **editable,
+        "groups": groups,
+        "bom": bom,
+        "components_count": len(components),
+    }
+
+
 def _registration_structure_changed(
     current: dict[str, Any],
     target_category: dict[str, Any],
@@ -2699,6 +2736,30 @@ def search_products(query: str, limit: int = 25) -> list[dict[str, str]]:
             "descricao": clean_text(row.get("descricao_primaria")),
             "categoria": clean_text(row.get("category_label")),
             "unidade": clean_text(row.get("unidade")) or "pc",
+        }
+        for row in rows
+    ]
+
+
+def search_registration_bases(query: str, category_key: str = "", limit: int = 25) -> list[dict[str, Any]]:
+    """Search active registrations that can be selected as a new-cadastro base."""
+    term = clean_text(query)
+    if len(term) < 1:
+        return []
+    rows = list_registrations(
+        category_key=clean_text(category_key) or ALL_CATEGORIES_KEY,
+        query=term,
+        include_inactive=False,
+        limit=max(1, min(limit, 100)),
+    )
+    return [
+        {
+            "id": row.get("id"),
+            "sku": clean_text(row.get("sku")),
+            "descricao": clean_text(row.get("descricao_primaria")),
+            "categoria": clean_text(row.get("category_label")),
+            "category_key": clean_text(row.get("category_key")),
+            "unidade": normalize_unit(row.get("unidade")) or "pc",
         }
         for row in rows
     ]

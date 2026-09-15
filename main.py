@@ -695,6 +695,8 @@ def _render_cadastro_page(
     erro: str = "",
     form_data=None,
     draft_id: str = "",
+    copy_source: dict | None = None,
+    initial_groups: dict[str, list[str]] | None = None,
 ):
     active_draft = None
     online_mode = bridge_store.save_via_bridge()
@@ -749,6 +751,8 @@ def _render_cadastro_page(
             "sucesso": sucesso,
             "erro": erro,
             "form_data": normalized_form,
+            "copy_source": copy_source,
+            "initial_groups": initial_groups or {},
             "drafts": (
                 supabase_store.list_drafts()
                 if supabase_mode
@@ -1274,8 +1278,27 @@ async def cadastro_bancos_page(
     sucesso: str = "",
     erro: str = "",
     draft_id: str = "",
+    copiar_de: str = "",
 ):
-    return _render_cadastro_page(request, categoria=categoria, sucesso=sucesso, erro=erro, draft_id=draft_id)
+    copy_source = None
+    initial_groups = None
+    if copiar_de and not draft_id and _supabase_mode():
+        try:
+            copied = supabase_store.copy_registration_for_new(copiar_de)
+            categoria = copied["category"]["key"]
+            copy_source = copied["record"]
+            initial_groups = copied["groups"]
+        except Exception as exc:
+            erro = str(exc)
+    return _render_cadastro_page(
+        request,
+        categoria=categoria,
+        sucesso=sucesso,
+        erro=erro,
+        draft_id=draft_id,
+        copy_source=copy_source,
+        initial_groups=initial_groups,
+    )
 
 
 @app.post("/cadastro/bancos", response_class=HTMLResponse)
@@ -1423,6 +1446,19 @@ async def api_produtos(q: str = ""):
     if bridge_store.save_via_bridge():
         return {"items": _search_bridge_products(q)}
     return {"items": excel_bancos.search_products(q)}
+
+
+@app.get("/api/cadastro-bases")
+async def api_cadastro_bases(q: str = "", categoria: str = "", limit: int = 25):
+    if not _supabase_mode():
+        return {"items": []}
+    return {
+        "items": supabase_store.search_registration_bases(
+            q,
+            category_key=categoria,
+            limit=max(1, min(limit, 100)),
+        )
+    }
 
 
 def _search_bridge_products(query: str, limit: int = 25):
