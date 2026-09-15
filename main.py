@@ -495,6 +495,22 @@ def _audit_actor(request: Request) -> str:
         return "sistema:cadastro"
 
 
+def _audit_actor_user_id(request: Request) -> int | None:
+    """Return the shared-login user id when the request has one."""
+    access = getattr(getattr(request, "state", None), "erp_access", None)
+    candidate = access.get("user_id") if isinstance(access, dict) else None
+    if candidate in (None, ""):
+        try:
+            candidate = _read_session_payload(request).get("uid")
+        except AttributeError:
+            candidate = None
+    try:
+        value = int(candidate or 0)
+    except (TypeError, ValueError):
+        return None
+    return value if value > 0 else None
+
+
 def _safe_next_path(value: str, default: str = "/cadastro/bancos") -> str:
     candidate = str(value or "").strip()
     parsed = urllib.parse.urlsplit(candidate)
@@ -1315,7 +1331,11 @@ async def cadastro_bancos_post(request: Request):
             raise ValueError("O item foi definido com B.O.M. Inclua pelo menos um componente.")
 
         if _supabase_mode():
-            result = supabase_store.save_registration(form_data, actor=_audit_actor(request))
+            result = supabase_store.save_registration(
+                form_data,
+                actor=_audit_actor(request),
+                actor_user_id=_audit_actor_user_id(request),
+            )
             if draft_id:
                 try:
                     supabase_store.delete_draft(draft_id)
@@ -1508,6 +1528,7 @@ async def cadastros_auditoria_page(
         return RedirectResponse(url="/cadastros", status_code=303)
     events: list[dict] = []
     load_error = erro
+    audit_users: list[str] = []
     try:
         events = supabase_store.list_audit_events(
             sku=sku,
@@ -1519,6 +1540,10 @@ async def cadastros_auditoria_page(
         )
     except Exception as exc:
         load_error = str(exc)
+    try:
+        audit_users = supabase_store.list_audit_users()
+    except Exception:
+        audit_users = []
     return templates.TemplateResponse(
         request=request,
         name="cadastro_auditoria.html",
@@ -1526,6 +1551,7 @@ async def cadastros_auditoria_page(
             "request": request,
             "events": events,
             "audit_actions": supabase_store.AUDIT_ACTION_LABELS,
+            "audit_users": audit_users,
             "sku": sku,
             "acao": acao,
             "usuario": usuario,

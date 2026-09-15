@@ -54,8 +54,13 @@
                     </select>
                 </label>
                 <label class="space-y-1">
-                    <span class="block text-[11px] font-black uppercase text-slate-500">Usuário</span>
-                    <input name="usuario" value="{{ usuario }}" class="h-10 w-full border border-slate-300 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-amber-500" placeholder="Quem realizou">
+                    <span class="block text-[11px] font-black uppercase text-slate-500">Usuário criador / autor</span>
+                    <input name="usuario" list="audit-users" value="{{ usuario }}" class="h-10 w-full border border-slate-300 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-amber-500" placeholder="Quem criou ou realizou">
+                    <datalist id="audit-users">
+                        {% for audit_user in audit_users or [] %}
+                        <option value="{{ audit_user }}"></option>
+                        {% endfor %}
+                    </datalist>
                 </label>
                 <label class="space-y-1">
                     <span class="block text-[11px] font-black uppercase text-slate-500">De</span>
@@ -75,6 +80,7 @@
                 <div>
                     <h2 class="text-sm font-black uppercase text-slate-700">Eventos registrados</h2>
                     <p class="text-xs font-semibold text-slate-500">{{ events|length }} evento(s) encontrado(s). Os detalhes mostram os valores antes e depois.</p>
+                    <p class="mt-1 text-[11px] font-semibold text-amber-700">Nos cadastros anteriores à ativação da autoria, o usuário real não estava armazenado; esses eventos aparecem como “Não identificado (legado)”.</p>
                 </div>
                 <span class="text-[11px] font-black uppercase text-slate-500">Mais recentes primeiro</span>
             </div>
@@ -94,9 +100,10 @@
                     <tbody class="divide-y divide-slate-200">
                         {% for event in events %}
                         {% set changes = event.details.get('alteracoes', {}) if event.details else {} %}
+                        {% set actor_label = 'Não identificado (legado)' if event.action == 'criacao' and event.actor == 'migracao' else event.actor %}
                         <tr class="odd:bg-white even:bg-slate-50 hover:bg-amber-50">
                             <td class="whitespace-nowrap border border-slate-200 px-2 py-2 font-mono" data-audit-time="{{ event.created_at or '' }}">{{ event.created_at or '-' }}</td>
-                            <td class="whitespace-nowrap border border-slate-200 px-2 py-2 font-bold">{{ event.actor or '-' }}</td>
+                            <td class="whitespace-nowrap border border-slate-200 px-2 py-2 font-bold">{{ actor_label or '-' }}</td>
                             <td class="whitespace-nowrap border border-slate-200 px-2 py-2 font-black">{{ audit_actions.get(event.action, event.action) }}</td>
                             <td class="whitespace-nowrap border border-slate-200 px-2 py-2 font-mono font-bold">{{ event.sku or '-' }}</td>
                             <td class="whitespace-nowrap border border-slate-200 px-2 py-2 font-mono">{{ event.previous_sku or '-' }}</td>

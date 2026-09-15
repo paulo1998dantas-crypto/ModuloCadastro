@@ -46,6 +46,8 @@ class CadastroAuditoriaTests(unittest.TestCase):
         def request_all(table, params, limit=10000):
             if table == supabase_store.AUDIT_TABLE:
                 return catalog_events
+            if table == supabase_store.REGISTRATIONS_TABLE:
+                return []
             self.assertEqual(table, "cadastro_item_parametros_historico")
             return parameter_events
 
@@ -76,6 +78,68 @@ class CadastroAuditoriaTests(unittest.TestCase):
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["action"], "migracao_sku")
+
+    def test_new_registration_persists_creator_and_user_id(self):
+        payload = {
+            "category_key": "cat_22_pecas_bco",
+            "category_label": "22 - PECAS BCO",
+            "sku": "30220080",
+            "descricao_primaria": "ITEM NOVO",
+            "descricao_secundaria": "",
+            "sufixo": "",
+            "unidade": "pc",
+            "field_values": {},
+        }
+        with (
+            patch.object(supabase_store, "_category", return_value={"key": "cat_22_pecas_bco", "label": "22 - PECAS BCO"}),
+            patch.object(supabase_store.excel_bancos, "get_banco_fields", return_value=[]),
+            patch.object(supabase_store, "_next_sku", return_value="30220080"),
+            patch.object(
+                supabase_store,
+                "_registration_payload",
+                return_value=(payload, {"primaria": "ITEM NOVO", "secundaria": ""}, False),
+            ),
+            patch.object(supabase_store, "_find_duplicate_registration", return_value=None),
+            patch.object(supabase_store, "_request", return_value=[{"id": 88, **payload}]) as request,
+            patch.object(supabase_store, "_record_audit_event") as audit,
+        ):
+            result = supabase_store.save_registration(
+                {"categoria": "cat_22_pecas_bco"},
+                actor="PAULO",
+                actor_user_id=9,
+            )
+
+        saved_payload = request.call_args.kwargs["payload"]
+        self.assertEqual(saved_payload["created_by"], "PAULO")
+        self.assertEqual(saved_payload["created_by_user_id"], 9)
+        self.assertEqual(result["created_by"], "PAULO")
+        audit.assert_called_once()
+        self.assertEqual(audit.call_args.kwargs["actor_user_id"], 9)
+
+    def test_audit_user_filter_also_matches_registration_creator(self):
+        event = {
+            "id": 12,
+            "registration_id": 81,
+            "sku": "30220074",
+            "action": "criacao",
+            "actor": "migracao",
+            "summary": "Cadastro criado.",
+            "details": {},
+            "created_at": "2026-09-15T12:00:00+00:00",
+        }
+
+        def request_all(table, params, limit=10000):
+            if table == supabase_store.REGISTRATIONS_TABLE:
+                return [{"id": 81}]
+            if table == supabase_store.AUDIT_TABLE:
+                return [event]
+            return []
+
+        with patch.object(supabase_store, "_request_all", side_effect=request_all):
+            result = supabase_store.list_audit_events(actor="PAULO")
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["registration_id"], 81)
 
 
 if __name__ == "__main__":

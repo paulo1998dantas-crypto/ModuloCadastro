@@ -234,6 +234,7 @@ def _record_audit_event(
     action: str,
     *,
     actor: str = "",
+    actor_user_id: int | str | None = None,
     registration_id: int | str | None = None,
     sku: str = "",
     previous_sku: str = "",
@@ -256,6 +257,7 @@ def _record_audit_event(
         details["contexto"] = _audit_json(metadata)
     payload = {
         "registration_id": int(registration_id) if registration_id not in (None, "") else None,
+        "actor_user_id": _optional_positive_int(actor_user_id),
         "sku": clean_text(sku),
         "previous_sku": clean_text(previous_sku),
         "category_key": clean_text(category_key),
@@ -800,6 +802,14 @@ def _base_parent_sku(parent_sku: str) -> str:
     return text
 
 
+def _optional_positive_int(value: Any) -> int | None:
+    try:
+        parsed = int(value or 0)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
 def _source_with_review(source: str, reasons: list[str]) -> str:
     base = clean_text(source) or "cadastro"
     cleaned = list(dict.fromkeys(clean_text(reason) for reason in reasons if clean_text(reason)))
@@ -1024,7 +1034,11 @@ def _registration_payload(
     return payload, descriptions, possui_bom
 
 
-def save_registration(form_data: Any, actor: str = "") -> dict[str, Any]:
+def save_registration(
+    form_data: Any,
+    actor: str = "",
+    actor_user_id: int | str | None = None,
+) -> dict[str, Any]:
     category_key = clean_text(form_data.get("categoria"))
     category = _category(category_key)
     fields = excel_bancos.get_banco_fields(category["key"])
@@ -1041,6 +1055,10 @@ def save_registration(form_data: Any, actor: str = "") -> dict[str, Any]:
     )
     if duplicate:
         raise _duplicate_registration_error(duplicate)
+    creation_actor = clean_text(actor) or "sistema:cadastro"
+    creation_actor_user_id = _optional_positive_int(actor_user_id)
+    payload["created_by"] = creation_actor
+    payload["created_by_user_id"] = creation_actor_user_id
     unidade = clean_text(payload.get("unidade"))
     ativo = bool(payload.get("ativo"))
     rows = _request("POST", REGISTRATIONS_TABLE, payload=payload, prefer="return=representation")
@@ -1048,7 +1066,8 @@ def save_registration(form_data: Any, actor: str = "") -> dict[str, Any]:
     if clean_text(actor):
         _record_audit_event(
             "criacao",
-            actor=actor,
+            actor=creation_actor,
+            actor_user_id=creation_actor_user_id,
             registration_id=row.get("id"),
             sku=row.get("sku") or sku,
             category_key=category["key"],
@@ -1067,6 +1086,8 @@ def save_registration(form_data: Any, actor: str = "") -> dict[str, Any]:
         "unidade": unidade,
         "ativo": ativo,
         "possui_bom": possui_bom,
+        "created_by": creation_actor,
+        "created_by_user_id": creation_actor_user_id,
         "sku": sku,
         "path": display_target(),
     }
@@ -1976,6 +1997,24 @@ def _safe_filter_value(value: str, field_key: str = "") -> str:
     return sanitized
 
 
+def _registration_ids_for_creator(actor: str) -> set[str]:
+    """Find registrations created by an operator for audit filtering."""
+    safe_actor = _safe_filter_value(actor)
+    if not safe_actor:
+        return set()
+    try:
+        rows = _request_all(
+            REGISTRATIONS_TABLE,
+            [("select", "id"), ("created_by", f"ilike.*{safe_actor}*")],
+            limit=10000,
+        )
+    except SupabaseStoreError as exc:
+        if _is_missing_column_error(exc, "created_by"):
+            return set()
+        raise
+    return {clean_text(row.get("id")) for row in rows if clean_text(row.get("id"))}
+
+
 def list_audit_events(
     sku: str = "",
     action: str = "",
@@ -1994,6 +2033,7 @@ def list_audit_events(
     rows: list[dict[str, Any]] = []
     safe_sku = _safe_filter_value(sku)
     safe_actor = _safe_filter_value(actor)
+    creator_registration_ids = _registration_ids_for_creator(safe_actor) if safe_actor else set()
     start_value = _audit_date_value(date_from)
     end_value = _audit_date_value(date_to, end=True)
 
@@ -2001,13 +2041,13 @@ def list_audit_events(
         params: list[tuple[str, str]] = [
             (
                 "select",
-                "id,registration_id,sku,previous_sku,category_key,category_label,action,actor,summary,details,created_at",
+                "id,registration_id,sku,previous_sku,category_key,category_label,action,actor,actor_user_id,summary,details,created_at",
             ),
             ("order", "created_at.desc,id.desc"),
         ]
         if requested_action:
             params.append(("action", f"eq.{requested_action}"))
-        if safe_actor:
+        if safe_actor and not creator_registration_ids:
             params.append(("actor", f"ilike.*{safe_actor}*"))
         if start_value:
             params.append(("created_at", f"gte.{start_value}"))
@@ -2025,7 +2065,7 @@ def list_audit_events(
         ]
         if requested_action in parameter_actions:
             parameter_params.append(("action", f"eq.{parameter_actions[requested_action]}"))
-        if safe_actor:
+        if safe_actor and not creator_registration_ids:
             parameter_params.append(("actor", f"ilike.*{safe_actor}*"))
         if start_value:
             parameter_params.append(("changed_at", f"gte.{start_value}"))
@@ -2053,6 +2093,7 @@ def list_audit_events(
                     "category_label": "",
                     "action": parameter_action_labels.get(parameter_action, "parametro_alteracao"),
                     "actor": clean_text(parameter_row.get("actor")) or "sistema",
+                    "actor_user_id": parameter_row.get("actor_user_id"),
                     "summary": f"Parâmetros de lead time e custo: {parameter_action.lower()}.",
                     "details": {
                         "antes": parameter_row.get("before_data"),
@@ -2061,6 +2102,15 @@ def list_audit_events(
                     "created_at": parameter_row.get("changed_at"),
                 }
             )
+
+    if safe_actor and creator_registration_ids:
+        normalized_actor = safe_actor.casefold()
+        rows = [
+            row
+            for row in rows
+            if normalized_actor in clean_text(row.get("actor")).casefold()
+            or clean_text(row.get("registration_id")) in creator_registration_ids
+        ]
 
     if safe_sku:
         normalized_sku = safe_sku.casefold()
@@ -2072,6 +2122,19 @@ def list_audit_events(
         ]
     rows.sort(key=lambda row: (clean_text(row.get("created_at")), clean_text(row.get("id"))), reverse=True)
     return rows[: max(1, min(int(limit), 5000))]
+
+
+def list_audit_users() -> list[str]:
+    """Return active shared-login usernames for the audit filter."""
+    try:
+        rows = _request(
+            "GET",
+            "users",
+            [("select", "username"), ("active", "is.true"), ("order", "username.asc"), ("limit", "500")],
+        ) or []
+    except SupabaseStoreError:
+        return []
+    return sorted({clean_text(row.get("username")) for row in rows if clean_text(row.get("username"))}, key=str.casefold)
 
 
 def all_categories_key(value: str) -> bool:
@@ -2518,6 +2581,9 @@ def update_registration(registration_id: int | str, form_data: Any, actor: str =
     structure_changed = _registration_structure_changed(current, target_category, fields, form_data)
     new_sku = _next_sku(target_category, fields, form_data) if structure_changed else old_sku
     payload, descriptions, _ = _registration_payload(target_category, fields, form_data, new_sku, False)
+    if structure_changed:
+        payload["created_by"] = clean_text(current.get("created_by")) or clean_text(actor) or "sistema:cadastro"
+        payload["created_by_user_id"] = current.get("created_by_user_id")
     duplicate = _find_duplicate_registration(
         target_category["key"],
         payload.get("descricao_primaria"),
