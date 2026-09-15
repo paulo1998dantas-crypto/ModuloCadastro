@@ -84,6 +84,24 @@ class RegistrationCopyTests(unittest.TestCase):
             initial_groups={"grupo_codigo": ["10"]},
         )
 
+    def test_copy_api_returns_form_groups_without_saving_registration(self):
+        copied = {
+            **self.editable,
+            "groups": {"grupo_codigo": ["10"], "descricao": ["ESPELHO"]},
+            "components_count": 2,
+        }
+        with patch.object(main, "_supabase_mode", return_value=True), patch.object(
+            main.supabase_store, "copy_registration_for_new", return_value=copied
+        ) as copy_registration:
+            result = __import__("asyncio").run(main.api_cadastro_base("42"))
+
+        copy_registration.assert_called_once_with("42")
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["copy"]["id"], 42)
+        self.assertEqual(result["copy"]["sku"], "10200176")
+        self.assertEqual(result["copy"]["groups"]["descricao"], ["ESPELHO"])
+        self.assertEqual(result["copy"]["components_count"], 2)
+
     def test_search_registration_bases_returns_only_form_selection_data(self):
         with patch.object(
             supabase_store,

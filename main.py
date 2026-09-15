@@ -1481,6 +1481,29 @@ async def api_cadastro_bases(q: str = "", categoria: str = "", limit: int = 25):
     }
 
 
+@app.get("/api/cadastro-bases/{registration_id}")
+async def api_cadastro_base(registration_id: str):
+    if not _supabase_mode():
+        raise HTTPException(status_code=410, detail="Cópia de cadastro disponível apenas no modo Supabase.")
+    try:
+        copied = supabase_store.copy_registration_for_new(registration_id)
+    except supabase_store.SupabaseStoreError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    source = copied["record"]
+    return {
+        "ok": True,
+        "copy": {
+            "id": source.get("id"),
+            "sku": supabase_store.clean_text(source.get("sku")),
+            "descricao": supabase_store.clean_text(source.get("descricao_primaria")),
+            "categoria": supabase_store.clean_text(source.get("category_label")),
+            "category_key": supabase_store.clean_text(source.get("category_key")),
+            "groups": copied.get("groups") or {},
+            "components_count": copied.get("components_count") or 0,
+        },
+    }
+
+
 def _search_bridge_products(query: str, limit: int = 25):
     term = excel_bancos.clean_text(query)
     if len(term) < 1:

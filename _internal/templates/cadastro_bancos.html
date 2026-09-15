@@ -866,6 +866,102 @@
             }
         };
 
+        const groupValues = (values) => {
+            if (Array.isArray(values)) {
+                return values.filter((value) => value !== null && value !== undefined).map((value) => String(value));
+            }
+            if (values === null || values === undefined) {
+                return [];
+            }
+            return [String(values)];
+        };
+
+        const ensureSelectOption = (select, value) => {
+            if (!select || !value || Array.from(select.options).some((option) => option.value === value)) {
+                return;
+            }
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = `${value} (valor do espelho)`;
+            select.appendChild(option);
+        };
+
+        const clearFormForCopy = () => {
+            const formElement = document.querySelector("form[action='/cadastro/bancos']");
+            if (!formElement) {
+                return;
+            }
+            Array.from(formElement.querySelectorAll("input, select, textarea")).forEach((control) => {
+                if (!control.name || control.name === "categoria" || control.name === "draft_id") {
+                    return;
+                }
+                if (control.tagName === "SELECT") {
+                    if (control.multiple) {
+                        Array.from(control.options).forEach((option) => {
+                            option.selected = false;
+                        });
+                    } else {
+                        control.value = "";
+                    }
+                } else if (control.type === "checkbox" || control.type === "radio") {
+                    control.checked = false;
+                } else {
+                    control.value = "";
+                }
+            });
+            if (componentRows) {
+                const rows = Array.from(componentRows.querySelectorAll("[data-component-row]"));
+                rows.slice(1).forEach((row) => row.remove());
+                if (rows[0]) {
+                    clearComponentRow(rows[0]);
+                }
+            }
+        };
+
+        const restoreGroups = (groups, { replace = false } = {}) => {
+            if (!groups || typeof groups !== "object") {
+                return;
+            }
+            const formElement = document.querySelector("form[action='/cadastro/bancos']");
+            if (!formElement) {
+                return;
+            }
+            if (replace) {
+                clearFormForCopy();
+            }
+            isRestoringDraft = true;
+            restoreComponentRowsForDraft(groups);
+            const counters = {};
+            Array.from(formElement.querySelectorAll("input, select, textarea")).forEach((control) => {
+                if (!control.name || control.name === "categoria" || control.name === "draft_id") {
+                    return;
+                }
+                const values = groupValues(groups[control.name]);
+                if (!values.length) {
+                    return;
+                }
+                if (control.tagName === "SELECT" && control.multiple) {
+                    values.forEach((value) => ensureSelectOption(control, value));
+                    Array.from(control.options).forEach((option) => {
+                        option.selected = values.includes(option.value);
+                    });
+                    return;
+                }
+                if (control.type === "checkbox" || control.type === "radio") {
+                    control.checked = values.includes(control.value);
+                    return;
+                }
+                const index = counters[control.name] || 0;
+                const value = values[index] || "";
+                if (control.tagName === "SELECT") {
+                    ensureSelectOption(control, value);
+                }
+                control.value = value;
+                counters[control.name] = index + 1;
+            });
+            isRestoringDraft = false;
+        };
+
         const restoreDraft = () => {
             const hasServerDraft = serverDraftGroups && Object.keys(serverDraftGroups).length;
             const hasInitialGroups = serverInitialGroups && Object.keys(serverInitialGroups).length;
@@ -889,33 +985,7 @@
             if (!draft || !draft.groups) {
                 return;
             }
-            isRestoringDraft = true;
-            restoreComponentRowsForDraft(draft.groups);
-            const formElement = document.querySelector("form[action='/cadastro/bancos']");
-            const counters = {};
-            Array.from(formElement.querySelectorAll("input, select, textarea")).forEach((control) => {
-                if (!control.name || control.name === "categoria") {
-                    return;
-                }
-                const values = draft.groups[control.name];
-                if (!values) {
-                    return;
-                }
-                if (control.tagName === "SELECT" && control.multiple) {
-                    Array.from(control.options).forEach((option) => {
-                        option.selected = values.includes(option.value);
-                    });
-                    return;
-                }
-                if (control.type === "checkbox" || control.type === "radio") {
-                    control.checked = values.includes(control.value);
-                    return;
-                }
-                const index = counters[control.name] || 0;
-                control.value = values[index] || "";
-                counters[control.name] = index + 1;
-            });
-            isRestoringDraft = false;
+            restoreGroups(draft.groups);
         };
 
         const showReturnToLastDraft = () => {
@@ -1253,19 +1323,68 @@
             copyBaseResults.classList.add("hidden");
         };
 
-        const chooseCopyBase = (item) => {
+        const copySkuFromQuery = (value) => String(value || "").trim().split(/\s+-\s+/, 1)[0].trim().toUpperCase();
+        let copyBaseLoading = false;
+
+        const loadCopyBase = async (item) => {
+            if (!item || !item.id || copyBaseLoading) {
+                return false;
+            }
             selectedCopyBase = item;
+            copyBaseLoading = true;
+            if (copyBaseLoad) {
+                copyBaseLoad.disabled = true;
+                copyBaseLoad.textContent = "Carregando...";
+            }
+            if (copyBaseSelection) {
+                copyBaseSelection.textContent = `Carregando espelho de ${item.sku || "-"}...`;
+                copyBaseSelection.classList.remove("hidden");
+            }
+            closeCopyBaseResults();
+            try {
+                const response = await fetch(`/api/cadastro-bases/${encodeURIComponent(item.id)}`);
+                const payload = await response.json();
+                if (!response.ok || !payload.ok || !payload.copy) {
+                    throw new Error(payload.detail || payload.error || "Não foi possível carregar o cadastro-base.");
+                }
+                const copy = payload.copy;
+                restoreGroups(copy.groups || {}, { replace: true });
+                updateConditionalFields();
+                scheduleDraftSave();
+                selectedCopyBase = copy;
+                if (copyBaseSearch) {
+                    copyBaseSearch.value = `${copy.sku || ""} - ${copy.descricao || ""}`.trim();
+                }
+                if (copyBaseSelection) {
+                    const bomMessage = copy.components_count
+                        ? ` B.O.M. com ${copy.components_count} componente(s) também carregada.`
+                        : "";
+                    copyBaseSelection.textContent = `Espelho carregado de ${copy.sku || "-"} — ${copy.descricao || "-"}.${bomMessage} Revise os campos antes de salvar.`;
+                    copyBaseSelection.classList.remove("hidden");
+                }
+                return true;
+            } catch (error) {
+                if (copyBaseSelection) {
+                    copyBaseSelection.textContent = error.message || "Não foi possível carregar o cadastro-base.";
+                    copyBaseSelection.classList.remove("hidden");
+                }
+                if (copyBaseLoad) {
+                    copyBaseLoad.disabled = false;
+                }
+                return false;
+            } finally {
+                copyBaseLoading = false;
+                if (copyBaseLoad) {
+                    copyBaseLoad.textContent = "Carregar espelho";
+                }
+            }
+        };
+
+        const chooseCopyBase = (item) => {
             if (copyBaseSearch) {
                 copyBaseSearch.value = `${item.sku || ""} - ${item.descricao || ""}`.trim();
             }
-            if (copyBaseSelection) {
-                copyBaseSelection.textContent = `Base selecionada: ${item.sku || "-"} — ${item.descricao || "-"}. Clique em “Carregar espelho” para preencher o cadastro.`;
-                copyBaseSelection.classList.remove("hidden");
-            }
-            if (copyBaseLoad) {
-                copyBaseLoad.disabled = !item.id;
-            }
-            closeCopyBaseResults();
+            loadCopyBase(item);
         };
 
         const renderCopyBaseResults = (items) => {
@@ -1321,24 +1440,52 @@
                     try {
                         const response = await fetch(`/api/cadastro-bases?q=${encodeURIComponent(query)}&categoria=${encodeURIComponent(currentCategoryKey)}`);
                         const payload = await response.json();
-                        renderCopyBaseResults(payload.items || []);
+                        const items = payload.items || [];
+                        const exact = items.find((item) => copySkuFromQuery(query) === copySkuFromQuery(item.sku));
+                        if (exact) {
+                            await loadCopyBase(exact);
+                            return;
+                        }
+                        renderCopyBaseResults(items);
                     } catch (error) {
                         renderCopyBaseResults([]);
                     }
                 }, 180);
             });
+
+            copyBaseSearch.addEventListener("keydown", async (event) => {
+                if (event.key !== "Enter") {
+                    return;
+                }
+                event.preventDefault();
+                const query = copyBaseSearch.value.trim();
+                if (query.length < 1 || copyBaseLoading) {
+                    return;
+                }
+                try {
+                    const response = await fetch(`/api/cadastro-bases?q=${encodeURIComponent(query)}&categoria=${encodeURIComponent(currentCategoryKey)}`);
+                    const payload = await response.json();
+                    const items = payload.items || [];
+                    const exact = items.find((item) => copySkuFromQuery(query) === copySkuFromQuery(item.sku));
+                    if (exact) {
+                        await loadCopyBase(exact);
+                    } else if (items.length === 1) {
+                        await loadCopyBase(items[0]);
+                    } else {
+                        renderCopyBaseResults(items);
+                    }
+                } catch (error) {
+                    renderCopyBaseResults([]);
+                }
+            });
         }
 
         if (copyBaseLoad) {
-            copyBaseLoad.addEventListener("click", () => {
+            copyBaseLoad.addEventListener("click", async () => {
                 if (!selectedCopyBase || !selectedCopyBase.id) {
                     return;
                 }
-                const params = new URLSearchParams({
-                    categoria: currentCategoryKey,
-                    copiar_de: String(selectedCopyBase.id),
-                });
-                window.location = `/cadastro/bancos?${params.toString()}`;
+                await loadCopyBase(selectedCopyBase);
             });
         }
 
