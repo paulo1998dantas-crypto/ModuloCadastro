@@ -3171,6 +3171,23 @@ def _submitted_values(fields: list[dict[str, Any]], data: Any) -> dict[str, str]
     return {field["key"]: " | ".join(_serialize_field_values(field, data)) for field in fields}
 
 
+def _duplicate_field_identity(values: dict[str, Any]) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """Build a stable identity for catalog selections during duplicate checks."""
+    identity: list[tuple[str, tuple[str, ...]]] = []
+    for key, raw_value in (values or {}).items():
+        raw_values = raw_value if isinstance(raw_value, list) else clean_text(raw_value).split(" | ")
+        normalized_values = []
+        for value in raw_values:
+            label = option_label(value)
+            normalized = normalize_option_label(label)
+            if normalized in {"", "NA", "N A", "ND", "N D"}:
+                continue
+            normalized_values.append(normalized)
+        if normalized_values:
+            identity.append((clean_text(key), tuple(sorted(dict.fromkeys(normalized_values)))))
+    return tuple(sorted(identity))
+
+
 def _field_values_by_key(fields: list[dict[str, Any]], data: Any) -> dict[str, list[str]]:
     return {field["key"]: _serialize_field_values(field, data) for field in fields}
 
@@ -3588,12 +3605,13 @@ def _find_duplicate_registration(
     submitted = _submitted_values(fields, data)
     if not _has_any_value(submitted):
         raise ValueError("Selecione pelo menos uma opÃ§Ã£o antes de salvar o cadastro.")
+    submitted_identity = _duplicate_field_identity(submitted)
 
     for row in range(FIRST_DATA_ROW, ws.max_row + 1):
         existing = _row_values(ws, field_columns, row)
         if not _has_any_value(existing):
             continue
-        if existing == submitted:
+        if submitted_identity and _duplicate_field_identity(existing) == submitted_identity:
             return row
     return None
 
@@ -3610,14 +3628,13 @@ def _find_duplicate_registration_by_description(
     if not _has_any_value(submitted):
         raise ValueError("Selecione pelo menos uma opÃƒÂ§ÃƒÂ£o antes de salvar o cadastro.")
 
-    primary_column, secondary_column, suffix_column = description_columns
-    if not (primary_column and secondary_column and suffix_column):
+    primary_column, secondary_column, _suffix_column = description_columns
+    if not (primary_column and secondary_column):
         return _find_duplicate_registration(ws, fields, field_columns, data)
 
     descriptions = build_descriptions(fields, data, category_key_value)
     submitted_primary = normalize_label(descriptions.get("primaria"))
     submitted_secondary = normalize_label(descriptions.get("secundaria"))
-    submitted_suffix = clean_text(descriptions.get("sufixo"))
 
     for row in range(FIRST_DATA_ROW, ws.max_row + 1):
         existing = _row_values(ws, field_columns, row)
@@ -3625,11 +3642,9 @@ def _find_duplicate_registration_by_description(
             continue
         existing_primary = normalize_label(ws.cell(row, primary_column).value)
         existing_secondary = normalize_label(ws.cell(row, secondary_column).value)
-        existing_suffix = clean_text(ws.cell(row, suffix_column).value)
         if (
             existing_primary == submitted_primary
             and existing_secondary == submitted_secondary
-            and existing_suffix == submitted_suffix
         ):
             return row
     return _find_duplicate_registration(ws, fields, field_columns, data)
@@ -3894,6 +3909,19 @@ def save_banco_registration(form_data: Any) -> dict[str, str]:
         # Column identity always follows the field's structural/original scope.
         # Conditional scope changes affect only descriptions for this record.
         field_columns = _resolve_field_column_map(ws, fields, create_missing=True)
+        descriptions = build_descriptions(fields, form_data, category["key"])
+        duplicate_row = _find_duplicate_registration_by_description(
+            ws,
+            fields,
+            field_columns,
+            form_data,
+            (primary_column, secondary_column, suffix_column),
+            category["key"],
+        )
+        if duplicate_row:
+            raise ValueError(
+                f"Cadastro duplicado: a mesma composição já está cadastrada na linha {duplicate_row}."
+            )
         backup_path = _backup_workbook(workbook, "cadastro")
         row = _next_available_row(ws)
         if row > FIRST_DATA_ROW:
@@ -3901,7 +3929,6 @@ def save_banco_registration(form_data: Any) -> dict[str, str]:
             _copy_row_formulas(ws, row - 1, row)
         _expand_table_to_row(ws, row)
 
-        descriptions = build_descriptions(fields, form_data, category["key"])
         sku_column = _resolve_header_column(ws, "SKU", create_missing=True)
         sku_value = _next_sequential_sku(ws, sku_column, raw_category, fields, form_data)
         if sku_column:

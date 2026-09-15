@@ -772,19 +772,105 @@ def _catalog_data_by_sku(skus: list[Any]) -> dict[str, dict[str, Any]]:
     return catalog_data
 
 
+def _registration_description_identity(
+    primaria: Any,
+    secundaria: Any,
+    unidade: Any = "",
+) -> tuple[str, str, str]:
+    """Normalize the product identity shown in the registration screen.
+
+    ``sufixo`` is intentionally not part of this identity: it can be produced
+    by technical serialization (for example, ``N/A`` versus blank) without
+    changing the product description presented to the user.
+    """
+    return (
+        excel_bancos.normalize_option_label(primaria),
+        excel_bancos.normalize_option_label(secundaria),
+        normalize_unit(unidade),
+    )
+
+
+def _find_duplicate_registration(
+    category_key: str,
+    primaria: str,
+    secundaria: str,
+    sufixo: str = "",
+    unidade: str = "",
+    exclude_id: int | str | None = None,
+    field_values: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """Find an existing registration with the same displayed identity.
+
+    The generated SKU is intentionally different for every new registration,
+    so checking the SKU alone does not prevent the same product from being
+    registered twice. The comparison is scoped to the category and ignores
+    formatting differences while preserving the content of parenthesized
+    options.
+    """
+    del sufixo
+    identity = _registration_description_identity(primaria, secundaria, unidade)
+    field_identity = excel_bancos._duplicate_field_identity(field_values or {})
+    if not any(identity) and not field_identity:
+        return None
+    rows = _request_all(
+        REGISTRATIONS_TABLE,
+        [
+            ("select", "id,sku,descricao_primaria,descricao_secundaria,sufixo,unidade,field_values,form_values"),
+            ("category_key", f"eq.{clean_text(category_key)}"),
+        ],
+        limit=10000,
+    )
+    excluded = clean_text(exclude_id)
+    for row in rows:
+        if excluded and clean_text(row.get("id")) == excluded:
+            continue
+        candidate_field_identity = excel_bancos._duplicate_field_identity(
+            row.get("field_values") if isinstance(row.get("field_values"), dict) else row.get("form_values") or {}
+        )
+        if field_identity and candidate_field_identity:
+            if (
+                candidate_field_identity == field_identity
+                and normalize_unit(row.get("unidade")) == normalize_unit(unidade)
+            ):
+                return row
+            continue
+        candidate_identity = _registration_description_identity(
+            row.get("descricao_primaria"),
+            row.get("descricao_secundaria"),
+            row.get("unidade"),
+        )
+        if candidate_identity == identity:
+            return row
+    return None
+
+
 def _duplicate_exists(
     category_key: str,
     primaria: str,
     secundaria: str,
     exclude_id: int | str | None = None,
+    *,
+    sufixo: str = "",
+    unidade: str = "",
+    field_values: dict[str, Any] | None = None,
 ) -> bool:
-    """Compatibility hook for older callers.
+    """Compatibility hook for callers that only need a boolean result."""
+    return _find_duplicate_registration(
+        category_key,
+        primaria,
+        secundaria,
+        sufixo=sufixo,
+        unidade=unidade,
+        field_values=field_values,
+        exclude_id=exclude_id,
+    ) is not None
 
-    Descriptions are business labels, not identifiers. Multiple SKUs may
-    intentionally share them, therefore the uniqueness boundary is the SKU.
-    """
-    del category_key, primaria, secundaria, exclude_id
-    return False
+
+def _duplicate_registration_error(row: dict[str, Any]) -> SupabaseStoreError:
+    sku = clean_text(row.get("sku")) or "já existente"
+    return SupabaseStoreError(
+        f"Cadastro duplicado: a mesma composição já está cadastrada no SKU {sku}."
+    )
 
 
 def _registration_payload(
@@ -840,6 +926,16 @@ def save_registration(form_data: Any) -> dict[str, Any]:
     fields = excel_bancos.get_banco_fields(category["key"])
     sku = _next_sku(category, fields, form_data)
     payload, descriptions, possui_bom = _registration_payload(category, fields, form_data, sku, True)
+    duplicate = _find_duplicate_registration(
+        category["key"],
+        payload.get("descricao_primaria"),
+        payload.get("descricao_secundaria"),
+        sufixo=payload.get("sufixo"),
+        unidade=payload.get("unidade"),
+        field_values=payload.get("field_values"),
+    )
+    if duplicate:
+        raise _duplicate_registration_error(duplicate)
     unidade = clean_text(payload.get("unidade"))
     ativo = bool(payload.get("ativo"))
     rows = _request("POST", REGISTRATIONS_TABLE, payload=payload, prefer="return=representation")
@@ -2160,6 +2256,17 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
     structure_changed = _registration_structure_changed(current, target_category, fields, form_data)
     new_sku = _next_sku(target_category, fields, form_data) if structure_changed else old_sku
     payload, descriptions, _ = _registration_payload(target_category, fields, form_data, new_sku, False)
+    duplicate = _find_duplicate_registration(
+        target_category["key"],
+        payload.get("descricao_primaria"),
+        payload.get("descricao_secundaria"),
+        sufixo=payload.get("sufixo"),
+        unidade=payload.get("unidade"),
+        field_values=payload.get("field_values"),
+        exclude_id=registration_id,
+    )
+    if duplicate:
+        raise _duplicate_registration_error(duplicate)
 
     if not structure_changed:
         rows = _request(
