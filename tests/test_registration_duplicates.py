@@ -148,6 +148,40 @@ class RegistrationDuplicateTests(unittest.TestCase):
 
         request.assert_not_called()
 
+    def test_inactivation_is_allowed_when_another_active_duplicate_exists(self):
+        current = {**self.existing, "ativo": True, "form_values": {}}
+        payload = {
+            **self.existing,
+            "ativo": False,
+            "category_key": "cat_22_pecas_bco",
+            "field_values": {},
+            "form_values": {},
+        }
+        updated = {**current, **payload}
+        with (
+            patch.object(supabase_store, "get_registration", return_value=current),
+            patch.object(supabase_store, "_category", return_value={"key": "cat_22_pecas_bco", "label": "22 - PECAS BCO"}),
+            patch.object(excel_bancos, "get_banco_fields", return_value=[]),
+            patch.object(supabase_store, "_registration_structure_changed", return_value=False),
+            patch.object(
+                supabase_store,
+                "_registration_payload",
+                return_value=(payload, {"primaria": payload["descricao_primaria"], "secundaria": payload["descricao_secundaria"]}, False),
+            ),
+            patch.object(supabase_store, "_find_duplicate_registration") as find_duplicate,
+            patch.object(supabase_store, "_request", return_value=[updated]),
+            patch.object(supabase_store, "_set_catalog_bom_preference"),
+            patch.object(supabase_store, "_record_audit_event"),
+        ):
+            result = supabase_store.update_registration(
+                2571,
+                {"categoria": "cat_22_pecas_bco", excel_bancos.PN_GROUP_FORM_KEY: "10"},
+                actor="PAULO",
+            )
+
+        find_duplicate.assert_not_called()
+        self.assertFalse(result["ativo"])
+
 
 if __name__ == "__main__":
     unittest.main()

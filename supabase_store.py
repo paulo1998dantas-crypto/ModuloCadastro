@@ -2584,16 +2584,21 @@ def update_registration(registration_id: int | str, form_data: Any, actor: str =
     if structure_changed:
         payload["created_by"] = clean_text(current.get("created_by")) or clean_text(actor) or "sistema:cadastro"
         payload["created_by_user_id"] = current.get("created_by_user_id")
-    duplicate = _find_duplicate_registration(
-        target_category["key"],
-        payload.get("descricao_primaria"),
-        payload.get("descricao_secundaria"),
-        sufixo=payload.get("sufixo"),
-        unidade=payload.get("unidade"),
-        field_values=payload.get("field_values"),
-        include_inactive=bool(payload.get("ativo")) and not bool(current.get("ativo", True)),
-        exclude_id=registration_id,
-    )
+    # Inativar o registro resolve o conflito de catálogo; a duplicidade só
+    # deve bloquear operações que deixariam o item ativo ou criariam outro.
+    is_inactivation = bool(current.get("ativo", True)) and not bool(payload.get("ativo"))
+    duplicate = None
+    if not is_inactivation:
+        duplicate = _find_duplicate_registration(
+            target_category["key"],
+            payload.get("descricao_primaria"),
+            payload.get("descricao_secundaria"),
+            sufixo=payload.get("sufixo"),
+            unidade=payload.get("unidade"),
+            field_values=payload.get("field_values"),
+            include_inactive=bool(payload.get("ativo")) and not bool(current.get("ativo", True)),
+            exclude_id=registration_id,
+        )
     if duplicate:
         raise _duplicate_registration_error(duplicate)
 
