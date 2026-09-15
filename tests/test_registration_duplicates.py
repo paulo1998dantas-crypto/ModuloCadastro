@@ -46,6 +46,41 @@ class RegistrationDuplicateTests(unittest.TestCase):
 
         self.assertIsNone(result)
 
+    def test_inactive_duplicate_does_not_block_new_registration(self):
+        inactive = {**self.existing, "ativo": False}
+
+        def request_all(_table, query, limit=10000):
+            del limit
+            return [inactive] if ("ativo", "is.true") not in query else []
+
+        with patch.object(supabase_store, "_request_all", side_effect=request_all):
+            result = supabase_store._find_duplicate_registration(
+                "cat_22_pecas_bco",
+                self.existing["descricao_primaria"],
+                self.existing["descricao_secundaria"],
+                unidade="cj",
+            )
+
+        self.assertIsNone(result)
+
+    def test_reactivation_checks_inactive_duplicates_too(self):
+        inactive = {**self.existing, "ativo": False}
+
+        def request_all(_table, query, limit=10000):
+            del limit
+            return [inactive] if ("ativo", "is.true") not in query else []
+
+        with patch.object(supabase_store, "_request_all", side_effect=request_all):
+            result = supabase_store._find_duplicate_registration(
+                "cat_22_pecas_bco",
+                self.existing["descricao_primaria"],
+                self.existing["descricao_secundaria"],
+                unidade="cj",
+                include_inactive=True,
+            )
+
+        self.assertEqual(result["sku"], "30220074")
+
     def test_technical_suffix_difference_does_not_bypass_duplicate_check(self):
         existing = {**self.existing, "sufixo": ""}
         with patch.object(supabase_store, "_request_all", return_value=[existing]):

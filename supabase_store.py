@@ -798,6 +798,7 @@ def _find_duplicate_registration(
     unidade: str = "",
     exclude_id: int | str | None = None,
     field_values: dict[str, Any] | None = None,
+    include_inactive: bool = False,
 ) -> dict[str, Any] | None:
     """Find an existing registration with the same displayed identity.
 
@@ -812,14 +813,18 @@ def _find_duplicate_registration(
     field_identity = excel_bancos._duplicate_field_identity(field_values or {})
     if not any(identity) and not field_identity:
         return None
-    rows = _request_all(
-        REGISTRATIONS_TABLE,
-        [
-            ("select", "id,sku,descricao_primaria,descricao_secundaria,sufixo,unidade,field_values,form_values"),
-            ("category_key", f"eq.{clean_text(category_key)}"),
-        ],
-        limit=10000,
-    )
+    query = [
+        ("select", "id,sku,descricao_primaria,descricao_secundaria,sufixo,unidade,field_values,form_values"),
+        ("category_key", f"eq.{clean_text(category_key)}"),
+    ]
+    if not include_inactive:
+        query.append(("ativo", "is.true"))
+    try:
+        rows = _request_all(REGISTRATIONS_TABLE, query, limit=10000)
+    except SupabaseStoreError as exc:
+        if include_inactive or not _is_missing_column_error(exc, "ativo"):
+            raise
+        rows = _request_all(REGISTRATIONS_TABLE, [param for param in query if param[0] != "ativo"], limit=10000)
     excluded = clean_text(exclude_id)
     for row in rows:
         if excluded and clean_text(row.get("id")) == excluded:
@@ -853,6 +858,7 @@ def _duplicate_exists(
     sufixo: str = "",
     unidade: str = "",
     field_values: dict[str, Any] | None = None,
+    include_inactive: bool = False,
 ) -> bool:
     """Compatibility hook for callers that only need a boolean result."""
     return _find_duplicate_registration(
@@ -863,6 +869,7 @@ def _duplicate_exists(
         unidade=unidade,
         field_values=field_values,
         exclude_id=exclude_id,
+        include_inactive=include_inactive,
     ) is not None
 
 
@@ -933,6 +940,7 @@ def save_registration(form_data: Any) -> dict[str, Any]:
         sufixo=payload.get("sufixo"),
         unidade=payload.get("unidade"),
         field_values=payload.get("field_values"),
+        include_inactive=False,
     )
     if duplicate:
         raise _duplicate_registration_error(duplicate)
@@ -2263,6 +2271,7 @@ def update_registration(registration_id: int | str, form_data: Any) -> dict[str,
         sufixo=payload.get("sufixo"),
         unidade=payload.get("unidade"),
         field_values=payload.get("field_values"),
+        include_inactive=bool(payload.get("ativo")) and not bool(current.get("ativo", True)),
         exclude_id=registration_id,
     )
     if duplicate:
