@@ -830,6 +830,7 @@ def _review_reason_label(reason: str) -> str:
     labels = {
         "parent_code": "Item pai sem codigo",
         "component_code": "Item filho sem codigo",
+        "component_inactive": "Item filho inativo no cadastro",
         "quantity_default": "Quantidade ajustada para 1",
         "empty_component": "Linha de componente incompleta",
         "duplicate_parent": "Item pai duplicado no diretorio",
@@ -3117,6 +3118,13 @@ def _enrich_bom(
         if float(component.get("quantidade") or 0) == 1 and "quantity_default" in reasons:
             component_reasons.append("quantity_default")
         component_catalog = catalog_data.get(component_sku) or {}
+        component_active = None
+        component_status = "NAO ENCONTRADO"
+        if component_catalog:
+            component_active = component_catalog.get("ativo") is not False
+            component_status = "ATIVO" if component_active else "INATIVO"
+            if not component_active:
+                component_reasons.append("component_inactive")
         component_description = component_catalog.get("descricao_primaria") or clean_text(component.get("component_descricao"))
         component_unit = component_catalog.get("unidade") or normalize_unit(component.get("unidade"))
         enriched_components.append(
@@ -3125,7 +3133,10 @@ def _enrich_bom(
                 "component_descricao": component_description,
                 "unidade": component_unit,
                 "display_component_sku": _display_bom_code(component_sku),
+                "component_active": component_active,
+                "component_status": component_status,
                 "needs_review": bool(component_reasons),
+                "review_reason_codes": component_reasons,
                 "review_reasons": [_review_reason_label(reason) for reason in component_reasons],
             }
         )
@@ -3133,8 +3144,8 @@ def _enrich_bom(
         reasons.append("parent_code")
     if DUPLICATE_PARENT_SEPARATOR in clean_text(header.get("parent_sku")):
         reasons.append("duplicate_parent")
-    if any(component.get("needs_review") for component in enriched_components):
-        reasons.append("component_code")
+    for component in enriched_components:
+        reasons.extend(component.get("review_reason_codes") or [])
     reason_labels = [_review_reason_label(reason) for reason in dict.fromkeys(reasons)]
     parent_sku = clean_text(header.get("parent_sku"))
     parent_catalog = catalog_data.get(_base_parent_sku(parent_sku)) or {}

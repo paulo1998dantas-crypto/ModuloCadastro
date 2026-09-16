@@ -163,7 +163,14 @@
                                     {% endif %}
                                 </td>
                                 {% endif %}
-                                <td class="whitespace-nowrap border border-slate-200 px-2 py-1 font-mono font-bold">{{ component.display_component_sku }}</td>
+                                <td class="whitespace-nowrap border border-slate-200 px-2 py-1 align-top font-mono font-bold">
+                                    {{ component.display_component_sku }}
+                                    {% if component.component_status == 'INATIVO' %}
+                                    <span class="mt-1 block w-fit border border-rose-400 bg-rose-100 px-1.5 py-0.5 font-sans text-[10px] font-black uppercase text-rose-800">Inativo</span>
+                                    {% elif component.component_status == 'NAO ENCONTRADO' %}
+                                    <span class="mt-1 block w-fit border border-amber-400 bg-amber-100 px-1.5 py-0.5 font-sans text-[10px] font-black uppercase text-amber-800">Não encontrado</span>
+                                    {% endif %}
+                                </td>
                                 <td class="border border-slate-200 px-2 py-1">
                                     {{ component.component_descricao }}
                                     {% if component.needs_review %}

@@ -53,6 +53,27 @@ class BomInactiveFilterTests(unittest.TestCase):
         self.assertFalse(inactive["parent_active"])
         self.assertEqual(inactive["parent_status"], "INATIVO")
 
+    def test_inactive_component_marks_bom_for_review(self):
+        self.components = [
+            {"id": 11, "bom_id": 1, "component_sku": "10180002", "quantidade": 1, "ordem": 1},
+        ]
+        self.catalog["10180002"] = {
+            "descricao_primaria": "COMPONENTE INATIVO",
+            "unidade": "pc",
+            "ativo": False,
+        }
+        with (
+            patch.object(supabase_store, "_request_all", side_effect=self._request_all),
+            patch.object(supabase_store, "_catalog_data_by_sku", return_value=self.catalog),
+        ):
+            rows = supabase_store.list_boms()
+
+        self.assertEqual(len(rows), 1)
+        self.assertTrue(rows[0]["needs_review"])
+        self.assertIn("Item filho inativo no cadastro", rows[0]["review_reasons"])
+        self.assertEqual(rows[0]["components"][0]["component_status"], "INATIVO")
+        self.assertIn("Item filho inativo no cadastro", rows[0]["components"][0]["review_reasons"])
+
     def test_export_includes_parent_status_and_respects_flag(self):
         rows = [
             {

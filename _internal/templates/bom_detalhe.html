@@ -96,6 +96,11 @@
                                 </td>
                                 <td class="border border-slate-200 px-2 py-2 align-top">
                                     <input name="component_codigo" data-component-code value="{{ component.display_component_sku or '' }}" class="h-9 w-full border border-slate-300 bg-white px-2 font-mono text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                                    {% if component.component_status == 'INATIVO' %}
+                                    <div class="mt-1 border border-rose-400 bg-rose-100 px-1.5 py-0.5 text-[10px] font-black uppercase text-rose-800">Item inativo</div>
+                                    {% elif component.component_status == 'NAO ENCONTRADO' %}
+                                    <div class="mt-1 border border-amber-400 bg-amber-100 px-1.5 py-0.5 text-[10px] font-black uppercase text-amber-800">Item não encontrado</div>
+                                    {% endif %}
                                 </td>
                                 <td class="border border-slate-200 px-2 py-2 align-top">
                                     <input name="component_descricao" data-component-description value="{{ component.component_descricao or '' }}" class="h-9 w-full border border-slate-300 bg-white px-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
