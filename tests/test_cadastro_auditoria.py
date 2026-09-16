@@ -1,10 +1,34 @@
 import unittest
 from unittest.mock import patch
 
+import main
 import supabase_store
 
 
 class CadastroAuditoriaTests(unittest.TestCase):
+    def test_audit_change_rows_are_recursive_and_ignore_technical_metadata(self):
+        event = {
+            "details": {
+                "antes": {
+                    "sku": "30220074",
+                    "updated_at": "2026-09-15T10:00:00+00:00",
+                    "form_values": {"cor": "1- PRETO", "costura": "2- RETA"},
+                },
+                "depois": {
+                    "sku": "30220074",
+                    "updated_at": "2026-09-15T10:01:00+00:00",
+                    "form_values": {"cor": "2- CINZA", "costura": "2- RETA"},
+                },
+            }
+        }
+
+        rows = main._audit_change_rows(event)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["label"], "Campos do formulário › Cor")
+        self.assertEqual(rows[0]["before"], "1- PRETO")
+        self.assertEqual(rows[0]["after"], "2- CINZA")
+
     def test_audit_diff_keeps_only_changed_fields(self):
         before = {"sku": "30220074", "ativo": True, "form_values": {"cor": "PRETO"}}
         after = {"sku": "30220074", "ativo": False, "form_values": {"cor": "CINZA"}}

@@ -1529,6 +1529,127 @@ def _search_bridge_products(query: str, limit: int = 25):
     return [product for _, product in matches[:limit]]
 
 
+_AUDIT_MISSING = object()
+_AUDIT_FIELD_LABELS = {
+    "ativo": "Status do cadastro",
+    "category_key": "Categoria",
+    "category_label": "Categoria",
+    "descricao_primaria": "Descrição primária",
+    "descricao_secundaria": "Descrição secundária",
+    "sufixo": "Sufixo técnico",
+    "unidade": "Unidade",
+    "sku": "SKU",
+    "previous_sku": "SKU anterior",
+    "created_by": "Usuário criador",
+    "created_by_user_id": "ID do usuário criador",
+    "form_values": "Campos do formulário",
+    "field_values": "Valores dos campos",
+    "field_codes": "Códigos dos campos",
+    "possui_bom": "Estrutura B.O.M.",
+    "component_sku": "Componente",
+    "component_descricao": "Descrição do componente",
+    "quantidade": "Quantidade",
+    "ordem": "Ordem",
+}
+_AUDIT_IGNORED_FIELDS = {
+    "id",
+    "created_at",
+    "updated_at",
+    "search_text",
+    "caracteres_primario",
+    "caracteres_secundario",
+    "field_codes",
+}
+
+
+def _audit_field_label(key: str) -> str:
+    text = str(key or "").strip()
+    if text in _AUDIT_FIELD_LABELS:
+        return _AUDIT_FIELD_LABELS[text]
+    return text.replace("_", " ").strip().capitalize() or "Campo"
+
+
+def _audit_value_display(value) -> str:
+    if value is _AUDIT_MISSING or value is None or value == "":
+        return "Não informado"
+    if isinstance(value, bool):
+        return "Sim" if value else "Não"
+    if isinstance(value, list):
+        if not value:
+            return "Nenhum"
+        return "\n".join(f"• {_audit_value_display(item)}" for item in value)
+    if isinstance(value, dict):
+        if not value:
+            return "Nenhum"
+        return "\n".join(
+            f"{_audit_field_label(key)}: {_audit_value_display(item)}"
+            for key, item in value.items()
+        )
+    return str(value)
+
+
+def _audit_change_rows(event: dict) -> list[dict[str, str]]:
+    """Build a human-friendly, recursive before/after diff for one event."""
+    details = event.get("details") if isinstance(event, dict) else {}
+    if not isinstance(details, dict):
+        return []
+    before = details.get("antes")
+    after = details.get("depois")
+    if not isinstance(before, dict):
+        before = {}
+    if not isinstance(after, dict):
+        after = {}
+    rows: list[dict[str, str]] = []
+
+    def walk(before_value, after_value, path: list[str]):
+        if before_value is not _AUDIT_MISSING and after_value is not _AUDIT_MISSING and before_value == after_value:
+            return
+        if path and path[-1] in _AUDIT_IGNORED_FIELDS:
+            return
+        if isinstance(before_value, dict) and (isinstance(after_value, dict) or after_value is None or after_value is _AUDIT_MISSING):
+            before_map = before_value
+            after_map = after_value if isinstance(after_value, dict) else {}
+            for key in sorted(set(before_map) | set(after_map)):
+                walk(before_map.get(key, _AUDIT_MISSING), after_map.get(key, _AUDIT_MISSING), [*path, str(key)])
+            return
+        if isinstance(after_value, dict) and (before_value is None or before_value is _AUDIT_MISSING):
+            for key in sorted(after_value):
+                walk(_AUDIT_MISSING, after_value[key], [*path, str(key)])
+            return
+        if not path:
+            return
+        rows.append(
+            {
+                "label": " › ".join(_audit_field_label(key) for key in path),
+                "before": _audit_value_display(before_value),
+                "after": _audit_value_display(after_value),
+            }
+        )
+
+    walk(before, after, [])
+    if rows:
+        return rows
+
+    # Older parameter events may only expose the shallow comparison map.
+    changes = details.get("alteracoes")
+    if isinstance(changes, dict):
+        for key, change in changes.items():
+            if key in _AUDIT_IGNORED_FIELDS or not isinstance(change, dict):
+                continue
+            rows.append(
+                {
+                    "label": _audit_field_label(key),
+                    "before": _audit_value_display(change.get("antes", _AUDIT_MISSING)),
+                    "after": _audit_value_display(change.get("depois", _AUDIT_MISSING)),
+                }
+            )
+    return rows
+
+
+def _audit_events_for_view(events: list[dict]) -> list[dict]:
+    return [{**event, "change_rows": _audit_change_rows(event)} for event in events]
+
+
 def _require_bridge_token(authorization: str = "") -> None:
     if _supabase_mode():
         raise HTTPException(status_code=410, detail="Ponte local desativada no modo Supabase.")
@@ -1561,6 +1682,7 @@ async def cadastros_auditoria_page(
             date_to=data_fim,
             limit=2000,
         )
+        events = _audit_events_for_view(events)
     except Exception as exc:
         load_error = str(exc)
     try:
