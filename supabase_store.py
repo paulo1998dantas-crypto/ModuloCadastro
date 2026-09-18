@@ -29,6 +29,8 @@ BOM_COMPONENTS_TABLE = "cadastro_bom_componentes"
 LAYOUTS_TABLE = "layout_arquivos"
 ITEM_PARAMETERS_TABLE = "cadastro_item_parametros"
 AUDIT_TABLE = "cadastro_auditoria"
+EQUIVALENCE_GROUPS_TABLE = "cadastro_grupos_equivalencia"
+EQUIVALENCE_MEMBERS_TABLE = "cadastro_equivalencia_membros"
 DOCUMENTOS_TABLE = "suprimentos_documentos"
 LAYOUTS_BUCKET = "os-layouts"
 EXPORT_DIR = Path(tempfile.gettempdir()) / "modulo-cadastro-exports"
@@ -52,6 +54,10 @@ AUDIT_ACTION_LABELS = {
     "parametro_criacao": "Criação de parâmetros",
     "parametro_alteracao": "Alteração de parâmetros",
     "parametro_exclusao": "Exclusão de parâmetros",
+    "equivalencia_grupo_criacao": "Criação de grupo de equivalência",
+    "equivalencia_grupo_alteracao": "Alteração de grupo de equivalência",
+    "equivalencia_membro_criacao": "Inclusão de código equivalente",
+    "equivalencia_membro_alteracao": "Alteração de código equivalente",
 }
 
 
@@ -134,6 +140,8 @@ def status() -> dict[str, Any]:
             LAYOUTS_TABLE,
             ITEM_PARAMETERS_TABLE,
             AUDIT_TABLE,
+            EQUIVALENCE_GROUPS_TABLE,
+            EQUIVALENCE_MEMBERS_TABLE,
         ],
     }
 
@@ -3403,6 +3411,251 @@ def delete_bom(bom_id: int | str, actor: str = "") -> dict[str, Any]:
             before=rows[0],
         )
     return rows[0]
+
+
+def _equivalence_factor(value: Any, default: float = 1.0) -> float:
+    try:
+        factor = float(str(value or default).replace(",", "."))
+    except (TypeError, ValueError):
+        factor = default
+    if factor <= 0:
+        raise SupabaseStoreError("O fator por unidade funcional deve ser maior que zero.")
+    return factor
+
+
+def _equivalence_priority(value: Any, default: int = 100) -> int:
+    try:
+        return max(1, int(value if value not in (None, "") else default))
+    except (TypeError, ValueError) as exc:
+        raise SupabaseStoreError("A prioridade do código equivalente deve ser numérica.") from exc
+
+
+def _equivalence_group_view(
+    group: dict[str, Any],
+    members: list[dict[str, Any]],
+    catalog: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    enriched_members = []
+    for member in sorted(members, key=lambda item: (int(item.get("prioridade") or 100), clean_text(item.get("sku")))):
+        sku = clean_text(member.get("sku"))
+        item = catalog.get(sku) or {}
+        enriched_members.append(
+            {
+                **member,
+                "sku": sku,
+                "descricao": item.get("descricao_primaria") or "",
+                "unidade": item.get("unidade") or "",
+                "registration_active": item.get("ativo") is not False if item else False,
+                "fator_unidade_funcional": _equivalence_factor(member.get("fator_unidade_funcional")),
+                "prioridade": int(member.get("prioridade") or 100),
+            }
+        )
+    return {**group, "members": enriched_members, "members_count": len(enriched_members)}
+
+
+def list_equivalence_groups(
+    query: str = "",
+    include_inactive: bool = False,
+    limit: int = 500,
+) -> list[dict[str, Any]]:
+    params = [("select", "*"), ("order", "codigo.asc")]
+    if not include_inactive:
+        params.append(("ativo", "is.true"))
+    term = _search_text(query)
+    if term:
+        params.append(("or", f"(codigo.ilike.*{term}*,nome.ilike.*{term}*,aplicacao.ilike.*{term}*)"))
+    groups = _request_all(EQUIVALENCE_GROUPS_TABLE, params, limit=max(1, min(limit, 5000)))
+    group_ids = [clean_text(group.get("id")) for group in groups if clean_text(group.get("id"))]
+    members_by_group: dict[str, list[dict[str, Any]]] = {group_id: [] for group_id in group_ids}
+    if group_ids:
+        member_params = [
+            ("select", "*"),
+            ("grupo_id", _in_filter(group_ids)),
+            ("order", "prioridade.asc,sku.asc"),
+        ]
+        if not include_inactive:
+            member_params.append(("ativo", "is.true"))
+        for member in _request_all(EQUIVALENCE_MEMBERS_TABLE, member_params, limit=10000):
+            members_by_group.setdefault(clean_text(member.get("grupo_id")), []).append(member)
+    codes = [member.get("sku") for members in members_by_group.values() for member in members]
+    catalog = _catalog_data_by_sku(codes)
+    return [
+        _equivalence_group_view(group, members_by_group.get(clean_text(group.get("id")), []), catalog)
+        for group in groups
+    ]
+
+
+def get_equivalence_group(group_id: str, include_inactive: bool = True) -> dict[str, Any]:
+    group_id = clean_text(group_id)
+    rows = _request(
+        "GET",
+        EQUIVALENCE_GROUPS_TABLE,
+        [("select", "*"), ("id", f"eq.{group_id}"), ("limit", "1")],
+    ) or []
+    if not rows:
+        raise SupabaseStoreError("Grupo de equivalência não encontrado.")
+    group = rows[0]
+    member_params = [
+        ("select", "*"),
+        ("grupo_id", f"eq.{group_id}"),
+        ("order", "prioridade.asc,sku.asc"),
+    ]
+    if not include_inactive:
+        member_params.append(("ativo", "is.true"))
+    members = _request("GET", EQUIVALENCE_MEMBERS_TABLE, member_params) or []
+    catalog = _catalog_data_by_sku([member.get("sku") for member in members])
+    return _equivalence_group_view(group, members, catalog)
+
+
+def save_equivalence_group(
+    values: dict[str, Any],
+    *,
+    actor: str = "",
+    actor_user_id: int | str | None = None,
+) -> dict[str, Any]:
+    group_id = clean_text(values.get("id"))
+    code = clean_text(values.get("codigo")).upper() or f"EQ-{uuid.uuid4().hex[:8].upper()}"
+    name = clean_text(values.get("nome"))
+    if not name:
+        raise SupabaseStoreError("Informe o nome do grupo de equivalência.")
+    payload = {
+        "codigo": code,
+        "nome": name,
+        "aplicacao": clean_text(values.get("aplicacao")),
+        "unidade_funcional": normalize_unit(values.get("unidade_funcional")) or "pc",
+        "observacoes": clean_text(values.get("observacoes")),
+        "ativo": status_to_active(values.get("ativo"), default=True),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    before: dict[str, Any] = {}
+    if group_id:
+        before = get_equivalence_group(group_id, include_inactive=True)
+        rows = _request(
+            "PATCH",
+            EQUIVALENCE_GROUPS_TABLE,
+            [("id", f"eq.{group_id}")],
+            payload=payload,
+            prefer="return=representation",
+        ) or []
+        if not rows:
+            raise SupabaseStoreError("Grupo de equivalência não encontrado para alteração.")
+        action = "equivalencia_grupo_alteracao"
+    else:
+        payload.update(
+            {
+                "id": str(uuid.uuid4()),
+                "created_by": clean_text(actor) or "sistema:cadastro",
+                "created_by_user_id": _optional_positive_int(actor_user_id),
+            }
+        )
+        rows = _request(
+            "POST", EQUIVALENCE_GROUPS_TABLE, payload=payload, prefer="return=representation"
+        ) or []
+        action = "equivalencia_grupo_criacao"
+    group = rows[0] if rows else payload
+    if clean_text(actor):
+        _record_audit_event(
+            action,
+            actor=actor,
+            actor_user_id=actor_user_id,
+            summary=f"Grupo de equivalência {code} {'alterado' if group_id else 'criado'}.",
+            before=before,
+            after=group,
+            metadata={"grupo_equivalencia_id": group.get("id"), "grupo_equivalencia_codigo": code},
+        )
+    return get_equivalence_group(clean_text(group.get("id")), include_inactive=True)
+
+
+def save_equivalence_member(
+    group_id: str,
+    values: dict[str, Any],
+    *,
+    actor: str = "",
+    actor_user_id: int | str | None = None,
+) -> dict[str, Any]:
+    group = get_equivalence_group(group_id, include_inactive=True)
+    member_id = clean_text(values.get("id"))
+    sku = clean_text(values.get("sku")).upper()
+    if not sku:
+        raise SupabaseStoreError("Informe o SKU equivalente.")
+    registration = _registration_by_sku(sku)
+    if not registration:
+        raise SupabaseStoreError(f"SKU {sku} não encontrado no Cadastro.")
+    payload = {
+        "grupo_id": clean_text(group.get("id")),
+        "registration_id": registration.get("id"),
+        "sku": sku,
+        "fator_unidade_funcional": _equivalence_factor(values.get("fator_unidade_funcional")),
+        "prioridade": _equivalence_priority(values.get("prioridade")),
+        "ativo": status_to_active(values.get("ativo"), default=True),
+        "observacoes": clean_text(values.get("observacoes")),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    before: dict[str, Any] = {}
+    if member_id:
+        existing = _request(
+            "GET", EQUIVALENCE_MEMBERS_TABLE,
+            [("select", "*"), ("id", f"eq.{member_id}"), ("limit", "1")],
+        ) or []
+        if not existing or clean_text(existing[0].get("grupo_id")) != clean_text(group.get("id")):
+            raise SupabaseStoreError("Código equivalente não encontrado neste grupo.")
+        before = existing[0]
+        rows = _request(
+            "PATCH", EQUIVALENCE_MEMBERS_TABLE, [("id", f"eq.{member_id}")],
+            payload=payload, prefer="return=representation",
+        ) or []
+        action = "equivalencia_membro_alteracao"
+    else:
+        duplicate = _request(
+            "GET", EQUIVALENCE_MEMBERS_TABLE,
+            [("select", "id"), ("grupo_id", f"eq.{group.get('id')}"), ("sku", f"eq.{sku}"), ("limit", "1")],
+        ) or []
+        if duplicate:
+            raise SupabaseStoreError(f"O SKU {sku} já pertence a este grupo de equivalência.")
+        payload.update(
+            {
+                "id": str(uuid.uuid4()),
+                "created_by": clean_text(actor) or "sistema:cadastro",
+                "created_by_user_id": _optional_positive_int(actor_user_id),
+            }
+        )
+        rows = _request(
+            "POST", EQUIVALENCE_MEMBERS_TABLE, payload=payload, prefer="return=representation"
+        ) or []
+        action = "equivalencia_membro_criacao"
+    member = rows[0] if rows else payload
+    if clean_text(actor):
+        _record_audit_event(
+            action,
+            actor=actor,
+            actor_user_id=actor_user_id,
+            registration_id=registration.get("id"),
+            sku=sku,
+            category_key=clean_text(registration.get("category_key")),
+            category_label=clean_text(registration.get("category_label")),
+            summary=f"SKU {sku} {'alterado' if member_id else 'incluído'} no grupo {group.get('codigo')}.",
+            before=before,
+            after=member,
+            metadata={"grupo_equivalencia_id": group.get("id"), "grupo_equivalencia_codigo": group.get("codigo")},
+        )
+    return get_equivalence_group(clean_text(group.get("id")), include_inactive=True)
+
+
+def equivalence_options_for_sku(sku: str) -> list[dict[str, Any]]:
+    code = clean_text(sku).upper()
+    if not code:
+        return []
+    memberships = _request(
+        "GET", EQUIVALENCE_MEMBERS_TABLE,
+        [("select", "grupo_id"), ("sku", f"eq.{code}"), ("ativo", "is.true")],
+    ) or []
+    group_ids = list(dict.fromkeys(clean_text(row.get("grupo_id")) for row in memberships if clean_text(row.get("grupo_id"))))
+    result = []
+    for group_id in group_ids:
+        group = get_equivalence_group(group_id, include_inactive=False)
+        if group.get("ativo"):
+            result.append(group)
+    return result
 
 
 def _normalize_header(value: Any) -> str:

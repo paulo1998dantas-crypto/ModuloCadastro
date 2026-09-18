@@ -1657,6 +1657,106 @@ def _require_bridge_token(authorization: str = "") -> None:
         raise HTTPException(status_code=401, detail="Token da ponte inválido ou ausente.")
 
 
+@app.get("/cadastros/equivalencias", response_class=HTMLResponse)
+async def cadastro_equivalencias_page(
+    request: Request,
+    q: str = "",
+    mostrar_inativos: str = "",
+    sucesso: str = "",
+    erro: str = "",
+):
+    if not _supabase_mode():
+        return RedirectResponse(url="/cadastros", status_code=303)
+    include_inactive = excel_bancos.clean_text(mostrar_inativos) == "1"
+    groups: list[dict] = []
+    load_error = erro
+    try:
+        groups = supabase_store.list_equivalence_groups(
+            query=q,
+            include_inactive=include_inactive,
+            limit=1000,
+        )
+    except Exception as exc:
+        load_error = str(exc)
+    return templates.TemplateResponse(
+        request=request,
+        name="cadastro_equivalencias.html",
+        context={
+            "request": request,
+            "groups": groups,
+            "q": q,
+            "mostrar_inativos": "1" if include_inactive else "",
+            "can_write": _cadastro_write_allowed(request),
+            "workbook_path": _workbook_display_path(),
+            "sucesso": sucesso,
+            "erro": load_error,
+            "active_page": "equivalencias",
+        },
+    )
+
+
+@app.post("/cadastros/equivalencias/grupos")
+async def cadastro_equivalencias_save_group(request: Request):
+    if not _supabase_mode():
+        return RedirectResponse(url="/cadastros", status_code=303)
+    if not _cadastro_write_allowed(request):
+        return HTMLResponse("Somente ADMIN e ENGENHARIA podem manter equivalências.", status_code=403)
+    form_data = await request.form()
+    group_id = excel_bancos.clean_text(form_data.get("id"))
+    try:
+        group = supabase_store.save_equivalence_group(
+            dict(form_data),
+            actor=_audit_actor(request),
+            actor_user_id=_audit_actor_user_id(request),
+        )
+        message = f"Grupo {group.get('codigo')} salvo."
+        return RedirectResponse(
+            url=f"/cadastros/equivalencias?sucesso={quote(message)}#{group.get('id')}",
+            status_code=303,
+        )
+    except Exception as exc:
+        target = f"#{group_id}" if group_id else ""
+        return RedirectResponse(
+            url=f"/cadastros/equivalencias?erro={quote(str(exc))}{target}",
+            status_code=303,
+        )
+
+
+@app.post("/cadastros/equivalencias/grupos/{group_id}/membros")
+async def cadastro_equivalencias_save_member(request: Request, group_id: str):
+    if not _supabase_mode():
+        return RedirectResponse(url="/cadastros", status_code=303)
+    if not _cadastro_write_allowed(request):
+        return HTMLResponse("Somente ADMIN e ENGENHARIA podem manter equivalências.", status_code=403)
+    form_data = await request.form()
+    try:
+        group = supabase_store.save_equivalence_member(
+            group_id,
+            dict(form_data),
+            actor=_audit_actor(request),
+            actor_user_id=_audit_actor_user_id(request),
+        )
+        return RedirectResponse(
+            url=f"/cadastros/equivalencias?sucesso={quote(f'Código equivalente salvo em {group.get("codigo")}.')}#{group_id}",
+            status_code=303,
+        )
+    except Exception as exc:
+        return RedirectResponse(
+            url=f"/cadastros/equivalencias?erro={quote(str(exc))}#{group_id}",
+            status_code=303,
+        )
+
+
+@app.get("/api/equivalencias/{sku}")
+async def cadastro_equivalencias_for_sku(sku: str):
+    if not _supabase_mode():
+        return {"groups": []}
+    try:
+        return {"groups": supabase_store.equivalence_options_for_sku(sku)}
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 @app.get("/cadastros/auditoria", response_class=HTMLResponse)
 async def cadastros_auditoria_page(
     request: Request,
