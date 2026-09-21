@@ -54,10 +54,10 @@ AUDIT_ACTION_LABELS = {
     "parametro_criacao": "Criação de parâmetros",
     "parametro_alteracao": "Alteração de parâmetros",
     "parametro_exclusao": "Exclusão de parâmetros",
-    "equivalencia_grupo_criacao": "Criação de grupo de equivalência",
-    "equivalencia_grupo_alteracao": "Alteração de grupo de equivalência",
-    "equivalencia_membro_criacao": "Inclusão de código equivalente",
-    "equivalencia_membro_alteracao": "Alteração de código equivalente",
+    "equivalencia_grupo_criacao": "Criação de grupo de alternativos",
+    "equivalencia_grupo_alteracao": "Alteração de grupo de alternativos",
+    "equivalencia_membro_criacao": "Inclusão de código alternativo",
+    "equivalencia_membro_alteracao": "Alteração de código alternativo",
 }
 
 
@@ -3427,7 +3427,7 @@ def _equivalence_priority(value: Any, default: int = 100) -> int:
     try:
         return max(1, int(value if value not in (None, "") else default))
     except (TypeError, ValueError) as exc:
-        raise SupabaseStoreError("A prioridade do código equivalente deve ser numérica.") from exc
+        raise SupabaseStoreError("A prioridade do código alternativo deve ser numérica.") from exc
 
 
 def _equivalence_group_view(
@@ -3493,7 +3493,7 @@ def get_equivalence_group(group_id: str, include_inactive: bool = True) -> dict[
         [("select", "*"), ("id", f"eq.{group_id}"), ("limit", "1")],
     ) or []
     if not rows:
-        raise SupabaseStoreError("Grupo de equivalência não encontrado.")
+        raise SupabaseStoreError("Grupo de alternativos não encontrado.")
     group = rows[0]
     member_params = [
         ("select", "*"),
@@ -3517,7 +3517,7 @@ def save_equivalence_group(
     code = clean_text(values.get("codigo")).upper() or f"EQ-{uuid.uuid4().hex[:8].upper()}"
     name = clean_text(values.get("nome"))
     if not name:
-        raise SupabaseStoreError("Informe o nome do grupo de equivalência.")
+        raise SupabaseStoreError("Informe o nome do grupo de alternativos.")
     payload = {
         "codigo": code,
         "nome": name,
@@ -3538,7 +3538,7 @@ def save_equivalence_group(
             prefer="return=representation",
         ) or []
         if not rows:
-            raise SupabaseStoreError("Grupo de equivalência não encontrado para alteração.")
+            raise SupabaseStoreError("Grupo de alternativos não encontrado para alteração.")
         action = "equivalencia_grupo_alteracao"
     else:
         payload.update(
@@ -3558,7 +3558,7 @@ def save_equivalence_group(
             action,
             actor=actor,
             actor_user_id=actor_user_id,
-            summary=f"Grupo de equivalência {code} {'alterado' if group_id else 'criado'}.",
+            summary=f"Grupo de alternativos {code} {'alterado' if group_id else 'criado'}.",
             before=before,
             after=group,
             metadata={"grupo_equivalencia_id": group.get("id"), "grupo_equivalencia_codigo": code},
@@ -3577,7 +3577,7 @@ def save_equivalence_member(
     member_id = clean_text(values.get("id"))
     sku = clean_text(values.get("sku")).upper()
     if not sku:
-        raise SupabaseStoreError("Informe o SKU equivalente.")
+        raise SupabaseStoreError("Informe o SKU alternativo.")
     registration = _registration_by_sku(sku)
     if not registration:
         raise SupabaseStoreError(f"SKU {sku} não encontrado no Cadastro.")
@@ -3598,7 +3598,7 @@ def save_equivalence_member(
             [("select", "*"), ("id", f"eq.{member_id}"), ("limit", "1")],
         ) or []
         if not existing or clean_text(existing[0].get("grupo_id")) != clean_text(group.get("id")):
-            raise SupabaseStoreError("Código equivalente não encontrado neste grupo.")
+            raise SupabaseStoreError("Código alternativo não encontrado neste grupo.")
         before = existing[0]
         rows = _request(
             "PATCH", EQUIVALENCE_MEMBERS_TABLE, [("id", f"eq.{member_id}")],
@@ -3611,7 +3611,7 @@ def save_equivalence_member(
             [("select", "id"), ("grupo_id", f"eq.{group.get('id')}"), ("sku", f"eq.{sku}"), ("limit", "1")],
         ) or []
         if duplicate:
-            raise SupabaseStoreError(f"O SKU {sku} já pertence a este grupo de equivalência.")
+            raise SupabaseStoreError(f"O SKU {sku} já pertence a este grupo de alternativos.")
         payload.update(
             {
                 "id": str(uuid.uuid4()),

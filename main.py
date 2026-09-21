@@ -1700,7 +1700,7 @@ async def cadastro_equivalencias_save_group(request: Request):
     if not _supabase_mode():
         return RedirectResponse(url="/cadastros", status_code=303)
     if not _cadastro_write_allowed(request):
-        return HTMLResponse("Somente ADMIN e ENGENHARIA podem manter equivalências.", status_code=403)
+        return HTMLResponse("Somente ADMIN e ENGENHARIA podem manter itens alternativos.", status_code=403)
     form_data = await request.form()
     group_id = excel_bancos.clean_text(form_data.get("id"))
     try:
@@ -1727,7 +1727,7 @@ async def cadastro_equivalencias_save_member(request: Request, group_id: str):
     if not _supabase_mode():
         return RedirectResponse(url="/cadastros", status_code=303)
     if not _cadastro_write_allowed(request):
-        return HTMLResponse("Somente ADMIN e ENGENHARIA podem manter equivalências.", status_code=403)
+        return HTMLResponse("Somente ADMIN e ENGENHARIA podem manter itens alternativos.", status_code=403)
     form_data = await request.form()
     try:
         group = supabase_store.save_equivalence_member(
@@ -1737,7 +1737,7 @@ async def cadastro_equivalencias_save_member(request: Request, group_id: str):
             actor_user_id=_audit_actor_user_id(request),
         )
         return RedirectResponse(
-            url=f"/cadastros/equivalencias?sucesso={quote(f'Código equivalente salvo em {group.get("codigo")}.')}#{group_id}",
+            url=f"/cadastros/equivalencias?sucesso={quote(f'Código alternativo salvo em {group.get("codigo")}.')}#{group_id}",
             status_code=303,
         )
     except Exception as exc:
