@@ -169,7 +169,11 @@
             const raw = element.dataset.auditTime;
             const parsed = raw ? new Date(raw) : null;
             if (parsed && !Number.isNaN(parsed.getTime())) {
-                element.textContent = parsed.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "medium" });
+                element.textContent = parsed.toLocaleString("pt-BR", {
+                    dateStyle: "short",
+                    timeStyle: "medium",
+                    timeZone: "America/Sao_Paulo",
+                });
             }
         });
     </script>
