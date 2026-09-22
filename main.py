@@ -1647,7 +1647,39 @@ def _audit_change_rows(event: dict) -> list[dict[str, str]]:
 
 
 def _audit_events_for_view(events: list[dict]) -> list[dict]:
-    return [{**event, "change_rows": _audit_change_rows(event)} for event in events]
+    if not events:
+        return []
+    try:
+        reversed_event_ids = supabase_store.list_reversed_audit_event_ids()
+        reversal_state_available = True
+    except Exception:
+        reversed_event_ids = set()
+        reversal_state_available = False
+    result = []
+    for event in events:
+        event_id = excel_bancos.clean_text(event.get("id"))
+        block_reason = supabase_store.audit_event_rollback_block_reason(event)
+        already_reversed = event_id in reversed_event_ids
+        is_rollback_event = excel_bancos.clean_text(event.get("action")).lower() == "estorno"
+        if not block_reason and not reversal_state_available:
+            block_reason = "Não foi possível confirmar se esta ocorrência já foi estornada."
+        result.append(
+            {
+                **event,
+                "change_rows": _audit_change_rows(event),
+                "can_rollback": bool(
+                    not block_reason and not already_reversed and reversal_state_available
+                ),
+                "already_reversed": already_reversed,
+                "is_rollback_event": is_rollback_event,
+                "rollback_block_reason": (
+                    "Esta ocorrência já foi estornada."
+                    if already_reversed
+                    else block_reason
+                ),
+            }
+        )
+    return result
 
 
 def _catalog_category_snapshot(category_key: str) -> dict:
@@ -1925,7 +1957,41 @@ async def cadastros_auditoria_page(
             "sucesso": sucesso,
             "erro": load_error,
             "active_page": "auditoria",
+            "can_write": bool(getattr(request.state, "cadastro_can_write", False)),
         },
+    )
+
+
+@app.post("/cadastros/auditoria/{event_id}/estornar")
+async def cadastros_auditoria_estornar(request: Request, event_id: int):
+    if not _supabase_mode():
+        return RedirectResponse(url="/cadastros", status_code=303)
+    if not _cadastro_write_allowed(request):
+        return HTMLResponse(
+            "Somente ADMIN e ENGENHARIA podem estornar alterações do cadastro.",
+            status_code=403,
+        )
+    filters = {
+        key: excel_bancos.clean_text(request.query_params.get(key))
+        for key in ("sku", "acao", "usuario", "data_inicio", "data_fim")
+    }
+    try:
+        result = supabase_store.rollback_registration_audit_event(
+            event_id,
+            actor=_audit_actor(request),
+            actor_user_id=_audit_actor_user_id(request),
+        )
+        message = (
+            f"Estorno concluído para {result['sku']}. "
+            "Os valores anteriores foram restaurados e o estorno foi registrado na rastreabilidade."
+        )
+        filters["sucesso"] = message
+    except Exception as exc:
+        filters["erro"] = str(exc)
+    query = urllib.parse.urlencode({key: value for key, value in filters.items() if value})
+    return RedirectResponse(
+        url=f"/cadastros/auditoria?{query}" if query else "/cadastros/auditoria",
+        status_code=303,
     )
 
 

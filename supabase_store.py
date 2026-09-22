@@ -48,6 +48,7 @@ AUDIT_ACTION_LABELS = {
     "reativacao": "Reativação de cadastro",
     "migracao_sku": "Migração de SKU",
     "exclusao": "Exclusão de cadastro",
+    "estorno": "Estorno de alteração",
     "bom_criacao": "Criação de B.O.M.",
     "bom_alteracao": "Alteração de B.O.M.",
     "bom_exclusao": "Exclusão de B.O.M.",
@@ -256,6 +257,68 @@ def _audit_diff(before: dict[str, Any], after: dict[str, Any]) -> dict[str, dict
         if old_value != new_value:
             changes[key] = {"antes": _audit_json(old_value), "depois": _audit_json(new_value)}
     return changes
+
+
+_AUDIT_ROLLBACK_ACTIONS = {"alteracao", "inativacao", "reativacao"}
+_AUDIT_ROLLBACK_IGNORED_FIELDS = {
+    "id",
+    "created_at",
+    "updated_at",
+    "created_by",
+    "created_by_user_id",
+}
+_AUDIT_ROLLBACK_REGISTRATION_FIELDS = {
+    "category_label",
+    "sheet",
+    "descricao_primaria",
+    "descricao_secundaria",
+    "sufixo",
+    "unidade",
+    "ativo",
+    "caracteres_primario",
+    "caracteres_secundario",
+    "form_values",
+    "field_values",
+    "field_codes",
+    "search_text",
+}
+
+
+def audit_event_rollback_block_reason(event: dict[str, Any]) -> str:
+    """Explain why an audit event cannot safely restore a catalog registration."""
+    action = clean_text(event.get("action")).lower()
+    if action not in _AUDIT_ROLLBACK_ACTIONS:
+        return "Este tipo de evento não pode ser estornado por esta ação."
+    if not clean_text(event.get("registration_id")):
+        return "O evento não está vinculado a um cadastro específico."
+
+    details = event.get("details") if isinstance(event.get("details"), dict) else {}
+    before = details.get("antes")
+    after = details.get("depois")
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        return "O evento não possui os estados completos de antes e depois."
+
+    context = details.get("contexto") if isinstance(details.get("contexto"), dict) else {}
+    if context.get("origem") == "sincronizacao_bom":
+        return "Este evento sincroniza o indicador derivado da B.O.M.; reverta a própria B.O.M."
+    if context.get("replacement_sku"):
+        return "Este evento faz parte de uma migração de SKU, que exige reversão conjunta."
+    if before.get("sku") != after.get("sku") or before.get("category_key") != after.get("category_key"):
+        return "O evento altera SKU ou categoria e exige reversão conjunta da migração."
+    for snapshot in (before, after):
+        form_values = snapshot.get("form_values")
+        if isinstance(form_values, dict) and form_values.get(SKU_MIGRATION_FORM_KEY):
+            return "O cadastro está vinculado a uma migração de SKU."
+
+    changed_fields = set(_audit_diff(before, after)) - _AUDIT_ROLLBACK_IGNORED_FIELDS
+    if not changed_fields:
+        return "O evento não contém campos do cadastro que possam ser restaurados."
+    unsupported_fields = changed_fields - _AUDIT_ROLLBACK_REGISTRATION_FIELDS
+    if unsupported_fields:
+        return "O evento contém campos que não podem ser restaurados com segurança."
+    if any(field not in before or field not in after for field in changed_fields):
+        return "O evento não contém snapshots completos dos campos alterados."
+    return ""
 
 
 def _record_audit_event(
@@ -2171,6 +2234,27 @@ def list_audit_users() -> list[str]:
     return sorted({clean_text(row.get("username")) for row in rows if clean_text(row.get("username"))}, key=str.casefold)
 
 
+def list_reversed_audit_event_ids(limit: int = 5000) -> set[str]:
+    """Return source event IDs already compensated by an immutable estorno event."""
+    rows = _request_all(
+        AUDIT_TABLE,
+        [
+            ("select", "details"),
+            ("action", "eq.estorno"),
+            ("order", "created_at.desc"),
+        ],
+        limit=max(1, min(int(limit), 10000)),
+    )
+    result: set[str] = set()
+    for row in rows:
+        details = row.get("details") if isinstance(row.get("details"), dict) else {}
+        context = details.get("contexto") if isinstance(details.get("contexto"), dict) else {}
+        source_event_id = clean_text(context.get("evento_origem"))
+        if source_event_id:
+            result.add(source_event_id)
+    return result
+
+
 def all_categories_key(value: str) -> bool:
     return clean_text(value).lower() in {ALL_CATEGORIES_KEY, "all", "todas", "todos", "*"}
 
@@ -2363,6 +2447,164 @@ def get_registration(registration_id: int | str) -> dict[str, Any] | None:
         ],
     )
     return rows[0] if rows else None
+
+
+def rollback_registration_audit_event(
+    audit_event_id: int | str,
+    actor: str = "",
+    actor_user_id: int | str | None = None,
+) -> dict[str, Any]:
+    """Restore fields changed by one catalog event and record the reversal.
+
+    The immutable source event is never deleted. Only simple registration
+    edits and activation changes are eligible; SKU migrations, B.O.M. syncs,
+    and events with incomplete snapshots are deliberately blocked.
+    """
+    try:
+        normalized_event_id = int(audit_event_id)
+    except (TypeError, ValueError) as exc:
+        raise SupabaseStoreError("Identificador do evento inválido.") from exc
+    if normalized_event_id <= 0:
+        raise SupabaseStoreError("Identificador do evento inválido.")
+
+    event_rows = _request(
+        "GET",
+        AUDIT_TABLE,
+        [
+            ("select", "*"),
+            ("id", f"eq.{normalized_event_id}"),
+            ("limit", "1"),
+        ],
+    ) or []
+    if not event_rows:
+        raise SupabaseStoreError("Evento de rastreabilidade não encontrado.")
+    event = event_rows[0]
+    block_reason = audit_event_rollback_block_reason(event)
+    if block_reason:
+        raise SupabaseStoreError(block_reason)
+
+    registration_id = clean_text(event.get("registration_id"))
+    before = event["details"]["antes"]
+    after = event["details"]["depois"]
+    current = get_registration(registration_id)
+    if not current:
+        raise SupabaseStoreError("O cadastro vinculado ao evento não existe mais.")
+    if clean_text(current.get("sku")) != clean_text(after.get("sku")):
+        raise SupabaseStoreError(
+            "O SKU atual diverge do evento. Reversão bloqueada para proteger alterações posteriores."
+        )
+
+    changed_fields = sorted(
+        set(_audit_diff(before, after)) - _AUDIT_ROLLBACK_IGNORED_FIELDS
+    )
+    for field in changed_fields:
+        if current.get(field) != after.get(field):
+            raise SupabaseStoreError(
+                "Este cadastro recebeu outra alteração depois desta ocorrência. "
+                "Estorne primeiro as alterações posteriores para evitar sobrescrever dados."
+            )
+
+    rollback_payload = {field: before[field] for field in changed_fields}
+    restored_view = {**current, **rollback_payload}
+    identity_fields = {
+        "descricao_primaria",
+        "descricao_secundaria",
+        "unidade",
+        "form_values",
+        "field_values",
+    }
+    if restored_view.get("ativo", True) and (
+        identity_fields.intersection(changed_fields) or "ativo" in changed_fields
+    ):
+        duplicate = _find_duplicate_registration(
+            clean_text(restored_view.get("category_key")),
+            clean_text(restored_view.get("descricao_primaria")),
+            clean_text(restored_view.get("descricao_secundaria")),
+            sufixo=clean_text(restored_view.get("sufixo")),
+            unidade=clean_text(restored_view.get("unidade")),
+            field_values=(
+                restored_view.get("field_values")
+                if isinstance(restored_view.get("field_values"), dict)
+                else restored_view.get("form_values") or {}
+            ),
+            include_inactive=False,
+            exclude_id=registration_id,
+        )
+        if duplicate:
+            raise SupabaseStoreError(
+                "Estorno bloqueado: restaurar os valores anteriores criaria duplicidade "
+                f"com o SKU {clean_text(duplicate.get('sku')) or 'já cadastrado'}."
+            )
+
+    filters = [("id", f"eq.{registration_id}")]
+    if clean_text(current.get("updated_at")):
+        filters.append(("updated_at", f"eq.{current['updated_at']}"))
+    restored_rows = _request(
+        "PATCH",
+        REGISTRATIONS_TABLE,
+        filters,
+        payload=rollback_payload,
+        prefer="return=representation",
+    ) or []
+    if not restored_rows:
+        raise SupabaseStoreError(
+            "O cadastro mudou durante o estorno. Atualize a rastreabilidade e tente novamente."
+        )
+    restored = restored_rows[0]
+
+    try:
+        _record_audit_event(
+            "estorno",
+            actor=clean_text(actor) or "sistema:estorno",
+            actor_user_id=actor_user_id,
+            registration_id=registration_id,
+            sku=clean_text(restored.get("sku") or current.get("sku")),
+            category_key=clean_text(restored.get("category_key") or current.get("category_key")),
+            category_label=clean_text(restored.get("category_label") or current.get("category_label")),
+            summary=(
+                f"Estorno da ocorrência #{normalized_event_id}: valores anteriores restaurados "
+                f"para o SKU {clean_text(restored.get('sku') or current.get('sku'))}."
+            ),
+            before=current,
+            after=restored,
+            metadata={
+                "evento_origem": str(normalized_event_id),
+                "acao_origem": clean_text(event.get("action")),
+                "campos_restaurados": changed_fields,
+            },
+        )
+    except Exception as audit_error:
+        compensation_filters = [("id", f"eq.{registration_id}")]
+        if clean_text(restored.get("updated_at")):
+            compensation_filters.append(("updated_at", f"eq.{restored['updated_at']}"))
+        try:
+            compensated_rows = _request(
+                "PATCH",
+                REGISTRATIONS_TABLE,
+                compensation_filters,
+                payload={field: current.get(field) for field in changed_fields},
+                prefer="return=representation",
+            ) or []
+            if not compensated_rows:
+                raise SupabaseStoreError("A atualização compensatória não encontrou o cadastro esperado.")
+        except Exception as compensation_error:
+            raise SupabaseStoreError(
+                "A atualização do estorno foi aplicada, mas falhou o registro na auditoria "
+                "e a reversão automática da tentativa não foi confirmada. Verifique o SKU "
+                f"{clean_text(current.get('sku'))}: "
+                f"{compensation_error}"
+            ) from audit_error
+        raise SupabaseStoreError(
+            "O estorno foi cancelado porque não foi possível registrar a nova ocorrência "
+            "na rastreabilidade. O cadastro permaneceu como estava antes da tentativa."
+        ) from audit_error
+
+    return {
+        "event_id": normalized_event_id,
+        "registration_id": registration_id,
+        "sku": clean_text(restored.get("sku") or current.get("sku")),
+        "restored_fields": changed_fields,
+    }
 
 
 def _groups_from_record(fields: list[dict[str, Any]], record: dict[str, Any]) -> dict[str, list[str]]:

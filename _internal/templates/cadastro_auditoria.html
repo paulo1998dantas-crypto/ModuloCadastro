@@ -97,6 +97,7 @@
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">SKU anterior</th>
                             <th class="min-w-[420px] border border-slate-300 px-2 py-2">Resumo / campos alterados</th>
                             <th class="border border-slate-300 px-2 py-2">Detalhes</th>
+                            <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Ação</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200">
@@ -152,11 +153,33 @@
                                     </div>
                                 </details>
                             </td>
+                            <td class="min-w-[150px] border border-slate-200 px-2 py-2 align-top">
+                                {% if can_write and event.can_rollback %}
+                                <form
+                                    method="post"
+                                    action="/cadastros/auditoria/{{ event.id }}/estornar?sku={{ sku|urlencode }}&acao={{ acao|urlencode }}&usuario={{ usuario|urlencode }}&data_inicio={{ data_inicio|urlencode }}&data_fim={{ data_fim|urlencode }}"
+                                    onsubmit="return confirm('Confirma estornar esta alteração? O cadastro voltará aos valores anteriores desta ocorrência. O evento original será mantido e o estorno será registrado no histórico.');"
+                                >
+                                    <button type="submit" class="whitespace-nowrap border border-rose-700 bg-rose-700 px-3 py-2 text-[11px] font-black uppercase text-white hover:bg-rose-800">
+                                        Estornar alteração
+                                    </button>
+                                    <p class="mt-1 max-w-[170px] text-[10px] font-semibold leading-4 text-slate-500">Restaura o estado anterior e mantém a trilha original.</p>
+                                </form>
+                                {% elif event.is_rollback_event %}
+                                <span class="inline-flex whitespace-nowrap border border-emerald-700 bg-emerald-50 px-2 py-1 text-[10px] font-black uppercase text-emerald-800">Estorno registrado</span>
+                                {% elif event.already_reversed %}
+                                <span class="inline-flex whitespace-nowrap border border-emerald-700 bg-emerald-50 px-2 py-1 text-[10px] font-black uppercase text-emerald-800">Já estornado</span>
+                                {% elif can_write and event.rollback_block_reason %}
+                                <span class="inline-flex border border-slate-300 bg-slate-100 px-2 py-1 text-[10px] font-black uppercase text-slate-500" title="{{ event.rollback_block_reason }}">Não disponível</span>
+                                {% else %}
+                                <span class="text-[10px] font-semibold text-slate-400">Somente ADMIN/ENGENHARIA</span>
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                         {% if events|length == 0 %}
                         <tr>
-                            <td colspan="8" class="border border-slate-200 p-10 text-center text-sm font-bold text-slate-500">Nenhum evento encontrado para os filtros informados.</td>
+                            <td colspan="9" class="border border-slate-200 p-10 text-center text-sm font-bold text-slate-500">Nenhum evento encontrado para os filtros informados.</td>
                         </tr>
                         {% endif %}
                     </tbody>
