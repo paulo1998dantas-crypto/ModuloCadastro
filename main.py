@@ -1650,6 +1650,124 @@ def _audit_events_for_view(events: list[dict]) -> list[dict]:
     return [{**event, "change_rows": _audit_change_rows(event)} for event in events]
 
 
+def _catalog_category_snapshot(category_key: str) -> dict:
+    """Return a compact, immutable-friendly snapshot of one catalog category."""
+    catalog = excel_bancos.load_catalog()
+    category = next(
+        (
+            item
+            for item in catalog.get("categories") or []
+            if excel_bancos.clean_text(item.get("key")) == excel_bancos.clean_text(category_key)
+        ),
+        None,
+    )
+    if not isinstance(category, dict):
+        return {
+            "categoria": {
+                "chave": excel_bancos.clean_text(category_key),
+                "nome": "",
+            },
+            "campos": [],
+            "regras": [],
+        }
+    return {
+        "categoria": {
+            "chave": excel_bancos.clean_text(category.get("key")),
+            "nome": excel_bancos.clean_text(category.get("label")),
+        },
+        "campos": category.get("fields") or [],
+        "regras": category.get("conditional_rules") or [],
+    }
+
+
+def _catalog_field_snapshot(category_key: str, field_key: str) -> dict:
+    snapshot = _catalog_category_snapshot(category_key)
+    field = next(
+        (
+            item
+            for item in snapshot.get("campos") or []
+            if excel_bancos.clean_text(item.get("key")) == excel_bancos.clean_text(field_key)
+        ),
+        None,
+    )
+    return {
+        "categoria": snapshot.get("categoria") or {},
+        "campo": field or {"key": excel_bancos.clean_text(field_key)},
+        "opcoes": list((field or {}).get("options") or []),
+    }
+
+
+def _catalog_rule_snapshot(category_key: str, rule_keys: list[str] | None = None) -> dict:
+    snapshot = _catalog_category_snapshot(category_key)
+    rules = list(snapshot.get("regras") or [])
+    normalized_keys = {
+        excel_bancos.clean_text(value)
+        for value in (rule_keys or [])
+        if excel_bancos.clean_text(value)
+    }
+    if rule_keys is not None:
+        rules = [
+            rule
+            for rule in rules
+            if excel_bancos.clean_text(rule.get("key")) in normalized_keys
+        ]
+    return {
+        "categoria": snapshot.get("categoria") or {},
+        "regras": rules,
+    }
+
+
+def _catalog_group_snapshot(group_code: str = "") -> dict:
+    catalog = excel_bancos.load_catalog()
+    normalized_code = excel_bancos._pn_group_code(group_code)
+    groups = list(catalog.get("pn_groups") or [])
+    if normalized_code:
+        groups = [
+            group
+            for group in groups
+            if excel_bancos._pn_group_code(group.get("code")) == normalized_code
+        ]
+    return {"grupos": groups}
+
+
+def _record_catalog_audit(
+    request: Request,
+    action: str,
+    *,
+    category_key: str = "",
+    category_label: str = "",
+    summary: str = "",
+    before: dict | None = None,
+    after: dict | None = None,
+    metadata: dict | None = None,
+) -> None:
+    """Append configuration changes to the same immutable catalog timeline."""
+    if not _supabase_mode():
+        return
+    before = before or {}
+    after = after or {}
+    category = (after.get("categoria") or before.get("categoria") or {}) if isinstance(after, dict) else {}
+    resolved_key = excel_bancos.clean_text(category_key) or excel_bancos.clean_text(category.get("chave"))
+    resolved_label = excel_bancos.clean_text(category_label) or excel_bancos.clean_text(category.get("nome"))
+    try:
+        supabase_store._record_audit_event(
+            action,
+            actor=_audit_actor(request),
+            actor_user_id=_audit_actor_user_id(request),
+            category_key=resolved_key,
+            category_label=resolved_label,
+            summary=summary,
+            before=before,
+            after=after,
+            metadata=metadata,
+        )
+    except Exception as exc:
+        # The catalog write has already completed. Do not make the operator
+        # repeat a potentially destructive action when the audit endpoint is
+        # temporarily unavailable; leave a server-side diagnostic instead.
+        print(f"Falha ao registrar auditoria do catálogo ({action}): {exc}")
+
+
 def _require_bridge_token(authorization: str = "") -> None:
     if _supabase_mode():
         raise HTTPException(status_code=410, detail="Ponte local desativada no modo Supabase.")
@@ -2321,6 +2439,7 @@ async def cadastro_editar_post(request: Request, registration_id: int):
             registration_id,
             form_data,
             actor=_audit_actor(request),
+            actor_user_id=_audit_actor_user_id(request),
         )
         if result.get("migrated"):
             if result.get("bom_references_replaced"):
@@ -2367,6 +2486,7 @@ async def cadastro_excluir(request: Request, registration_id: int, categoria: st
         result = supabase_store.delete_registration(
             registration_id,
             actor=_audit_actor(request),
+            actor_user_id=_audit_actor_user_id(request),
         )
         if result.get("deleted"):
             message = f"Cadastro {result.get('sku') or registration_id} excluido definitivamente."
@@ -2491,6 +2611,7 @@ async def opcoes_catalogo_regras_exportar():
 
 @app.post("/opcoes/catalogo-regras/importar")
 async def opcoes_catalogo_regras_importar(
+    request: Request,
     category_key: str = Form(""),
     arquivo_catalogo: UploadFile = File(...),
 ):
@@ -2503,7 +2624,21 @@ async def opcoes_catalogo_regras_importar(
             raise ValueError("O arquivo enviado está vazio.")
         if len(content) > 8 * 1024 * 1024:
             raise ValueError("O catálogo excede o limite de 8 MB.")
+        before = _catalog_category_snapshot(category_key) if excel_bancos.clean_text(category_key) else {}
         result = catalogo_regras_xlsx.import_catalog_workbook(content)
+        after = _catalog_category_snapshot(category_key) if excel_bancos.clean_text(category_key) else {}
+        _record_catalog_audit(
+            request,
+            "catalogo_importacao",
+            category_key=category_key,
+            summary=(
+                "Catálogo de campos, opções e regras importado por arquivo XLSX. "
+                f"{result['fields_inserted']} campo(s), {result['rules_inserted']} regra(s) incluído(s)."
+            ),
+            before=before,
+            after=after,
+            metadata={"entidade": "catalogo", "arquivo": filename, "resultado": result},
+        )
         message = (
             "Catálogo atualizado: "
             f"{result['fields_inserted']} campo(s) incluído(s), "
@@ -2640,7 +2775,26 @@ async def opcoes_post(
 ):
     try:
         option_values = [value for value in option_value.splitlines() if excel_bancos.clean_text(value)]
+        before = _catalog_field_snapshot(category_key, field_key)
         result = excel_bancos.add_field_options(category_key, field_key, option_values)
+        after = _catalog_field_snapshot(category_key, field_key)
+        _record_catalog_audit(
+            request,
+            "opcao_criacao",
+            category_key=category_key,
+            summary=f"{result['count']} opção(ões) criada(s) no campo {result['field']}.",
+            before={
+                "categoria": before.get("categoria"),
+                "campo": before.get("campo"),
+                "opcoes_criadas": [],
+            },
+            after={
+                "categoria": after.get("categoria"),
+                "campo": after.get("campo"),
+                "opcoes_criadas": result.get("options") or [],
+            },
+            metadata={"entidade": "opcao", "field_key": field_key},
+        )
         message = f"{result['count']} opção(ões) adicionada(s) em {result['field']}."
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
             return JSONResponse({"ok": True, "message": message, "result": result})
@@ -2659,13 +2813,40 @@ async def opcoes_post(
 
 @app.post("/opcoes/editar")
 async def opcoes_editar_post(
+    request: Request,
     category_key: str = Form(...),
     field_key: str = Form(...),
     option_row: int = Form(...),
     option_value: str = Form(...),
 ):
     try:
+        before = _catalog_field_snapshot(category_key, field_key)
         result = excel_bancos.update_field_option(category_key, field_key, option_row, option_value)
+        after = _catalog_field_snapshot(category_key, field_key)
+        before_option = (
+            (before.get("opcoes") or [])[option_row - 1]
+            if 0 < option_row <= len(before.get("opcoes") or [])
+            else ""
+        )
+        _record_catalog_audit(
+            request,
+            "opcao_alteracao",
+            category_key=category_key,
+            summary=f"Opção do campo {result['field']} alterada.",
+            before={
+                "categoria": before.get("categoria"),
+                "campo": before.get("campo"),
+                "opcao": before_option,
+                "linha": option_row,
+            },
+            after={
+                "categoria": after.get("categoria"),
+                "campo": after.get("campo"),
+                "opcao": result.get("option"),
+                "linha": option_row,
+            },
+            metadata={"entidade": "opcao", "field_key": field_key, "option_row": option_row},
+        )
         message = f"Opção atualizada: {result['option']}."
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote(message)}",
@@ -2688,6 +2869,7 @@ async def opcoes_salvar_lote_post(
     delete_option_row: list[int] | None = Form(None),
 ):
     try:
+        before = _catalog_field_snapshot(category_key, field_key)
         result = excel_bancos.update_field_options(
             category_key,
             field_key,
@@ -2695,6 +2877,29 @@ async def opcoes_salvar_lote_post(
             option_value,
             delete_row_values=delete_option_row or [],
         )
+        after = _catalog_field_snapshot(category_key, field_key)
+        if result.get("updated") or result.get("deleted"):
+            _record_catalog_audit(
+                request,
+                "opcao_exclusao" if result.get("deleted") and not result.get("updated") else "opcao_alteracao",
+                category_key=category_key,
+                summary=(
+                    f"Opções revisadas no campo {result['field']}: "
+                    f"{result['count']} alteração(ões) e {result['deleted_count']} exclusão(ões)."
+                ),
+                before={
+                    "categoria": before.get("categoria"),
+                    "campo": before.get("campo"),
+                    "opcoes": before.get("opcoes") or [],
+                },
+                after={
+                    "categoria": after.get("categoria"),
+                    "campo": after.get("campo"),
+                    "opcoes": after.get("opcoes") or [],
+                    "opcoes_excluidas": result.get("deleted") or [],
+                },
+                metadata={"entidade": "opcao", "field_key": field_key},
+            )
         deferred_deletion = None
         if result.get("deleted") and _supabase_mode():
             deferred_deletion = supabase_store.audit_catalog_option_deletion_pending_refresh(
@@ -2726,12 +2931,34 @@ async def opcoes_salvar_lote_post(
 
 @app.post("/opcoes/excluir")
 async def opcoes_excluir_post(
+    request: Request,
     category_key: str = Form(...),
     field_key: str = Form(...),
     option_row: int = Form(...),
 ):
     try:
+        before = _catalog_field_snapshot(category_key, field_key)
         result = excel_bancos.delete_field_option(category_key, field_key, option_row)
+        after = _catalog_field_snapshot(category_key, field_key)
+        _record_catalog_audit(
+            request,
+            "opcao_exclusao",
+            category_key=category_key,
+            summary=f"Opção excluída do campo {result['field']}.",
+            before={
+                "categoria": before.get("categoria"),
+                "campo": before.get("campo"),
+                "opcao": result.get("option"),
+                "linha": option_row,
+            },
+            after={
+                "categoria": after.get("categoria"),
+                "campo": after.get("campo"),
+                "opcao": None,
+                "linha": option_row,
+            },
+            metadata={"entidade": "opcao", "field_key": field_key, "option_row": option_row},
+        )
         deferred_deletion = None
         if _supabase_mode():
             deferred_deletion = supabase_store.audit_catalog_option_deletion_pending_refresh(
@@ -2755,12 +2982,24 @@ async def opcoes_excluir_post(
 
 @app.post("/campos/reordenar")
 async def campos_reordenar_post(
+    request: Request,
     category_key: str = Form(...),
     scope: str = Form(...),
     ordered_field_keys: list[str] = Form(...),
 ):
     try:
+        before = _catalog_category_snapshot(category_key)
         result = excel_bancos.reorder_fields_by_description(category_key, scope, ordered_field_keys)
+        after = _catalog_category_snapshot(category_key)
+        _record_catalog_audit(
+            request,
+            "campo_reordenacao",
+            category_key=category_key,
+            summary=f"Ordem dos campos {result['scope']} atualizada em {result['category']}.",
+            before={"categoria": before.get("categoria"), "campos": before.get("campos") or []},
+            after={"categoria": after.get("categoria"), "campos": after.get("campos") or []},
+            metadata={"entidade": "campo", "scope": scope},
+        )
         message = f"Ordem atualizada em {result['scope']}."
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote(message)}",
@@ -2775,6 +3014,7 @@ async def campos_reordenar_post(
 
 @app.post("/regras/adicionar")
 async def regras_adicionar_post(
+    request: Request,
     category_key: str = Form(...),
     rule_key: str = Form(""),
     source_type: str = Form("field"),
@@ -2787,6 +3027,7 @@ async def regras_adicionar_post(
     target_option_values: list[str] = Form([]),
 ):
     try:
+        before = _catalog_rule_snapshot(category_key, [rule_key] if excel_bancos.clean_text(rule_key) else [])
         result = excel_bancos.add_conditional_rules(
             category_key,
             source_field_key,
@@ -2814,7 +3055,30 @@ async def regras_adicionar_post(
                         rule["target_field_scope"] = excel_bancos.clean_text(target_field_scope) or "secundaria"
                         excel_bancos.save_catalog(catalog)
                         break
+        result_rule_keys = [
+            excel_bancos.clean_text(rule.get("key"))
+            for rule in result.get("rules") or [result["rule"]]
+            if excel_bancos.clean_text(rule.get("key"))
+        ]
+        after = _catalog_rule_snapshot(category_key, result_rule_keys)
         saved_count = len(result.get("rules") or [result["rule"]])
+        _record_catalog_audit(
+            request,
+            "regra_alteracao" if excel_bancos.clean_text(rule_key) else "regra_criacao",
+            category_key=category_key,
+            summary=(
+                "Regra condicional alterada."
+                if excel_bancos.clean_text(rule_key)
+                else f"{saved_count} regra(s) condicional(is) criada(s)."
+            ),
+            before=before,
+            after=after,
+            metadata={
+                "entidade": "regra_condicional",
+                "rule_key": excel_bancos.clean_text(rule_key),
+                "rule_keys": result_rule_keys,
+            },
+        )
         message = (
             "Regra condicional salva."
             if saved_count == 1
@@ -2832,9 +3096,24 @@ async def regras_adicionar_post(
 
 
 @app.post("/regras/excluir")
-async def regras_excluir_post(category_key: str = Form(...), rule_key: str = Form(...)):
+async def regras_excluir_post(
+    request: Request,
+    category_key: str = Form(...),
+    rule_key: str = Form(...),
+):
     try:
+        before = _catalog_rule_snapshot(category_key, [rule_key])
         excel_bancos.delete_conditional_rule(category_key, rule_key)
+        after = _catalog_rule_snapshot(category_key, [rule_key])
+        _record_catalog_audit(
+            request,
+            "regra_exclusao",
+            category_key=category_key,
+            summary="Regra condicional excluída.",
+            before=before,
+            after=after,
+            metadata={"entidade": "regra_condicional", "rule_key": rule_key},
+        )
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote('Regra condicional excluída.')}",
             status_code=303,
@@ -2847,9 +3126,21 @@ async def regras_excluir_post(category_key: str = Form(...), rule_key: str = For
 
 
 @app.post("/categorias/adicionar")
-async def categorias_adicionar_post(category_label: str = Form(...)):
+async def categorias_adicionar_post(request: Request, category_label: str = Form(...)):
     try:
+        before = {"categorias": excel_bancos.list_categories()}
         result = excel_bancos.add_category(category_label)
+        after = _catalog_category_snapshot(result["category_key"])
+        _record_catalog_audit(
+            request,
+            "categoria_criacao",
+            category_key=result["category_key"],
+            category_label=result["category"],
+            summary=f"Categoria {result['category']} criada.",
+            before=before,
+            after=after,
+            metadata={"entidade": "categoria"},
+        )
         message = f"Categoria criada: {result['category']}."
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(result['category_key'])}&sucesso={quote(message)}",
@@ -2860,9 +3151,25 @@ async def categorias_adicionar_post(category_label: str = Form(...)):
 
 
 @app.post("/categorias/editar")
-async def categorias_editar_post(category_key: str = Form(...), category_label: str = Form(...)):
+async def categorias_editar_post(
+    request: Request,
+    category_key: str = Form(...),
+    category_label: str = Form(...),
+):
     try:
+        before = _catalog_category_snapshot(category_key)
         result = excel_bancos.update_category(category_key, category_label)
+        after = _catalog_category_snapshot(result["category_key"])
+        _record_catalog_audit(
+            request,
+            "categoria_alteracao",
+            category_key=result["category_key"],
+            category_label=result["category"],
+            summary=f"Categoria {result['category']} alterada.",
+            before=before,
+            after=after,
+            metadata={"entidade": "categoria"},
+        )
         message = f"Categoria atualizada: {result['category']}."
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(result['category_key'])}&sucesso={quote(message)}",
@@ -2876,9 +3183,21 @@ async def categorias_editar_post(category_key: str = Form(...), category_label: 
 
 
 @app.post("/categorias/excluir")
-async def categorias_excluir_post(category_key: str = Form(...)):
+async def categorias_excluir_post(request: Request, category_key: str = Form(...)):
     try:
+        before = _catalog_category_snapshot(category_key)
         result = excel_bancos.delete_category(category_key)
+        after = _catalog_category_snapshot(category_key)
+        _record_catalog_audit(
+            request,
+            "categoria_exclusao",
+            category_key=category_key,
+            category_label=(before.get("categoria") or {}).get("nome", ""),
+            summary=f"Categoria {result['category']} excluída.",
+            before=before,
+            after=after,
+            metadata={"entidade": "categoria"},
+        )
         message = f"Categoria excluída: {result['category']}."
         active_category = excel_bancos.selected_category("")
         return RedirectResponse(
@@ -2894,13 +3213,25 @@ async def categorias_excluir_post(category_key: str = Form(...)):
 
 @app.post("/grupos/adicionar")
 async def grupos_adicionar_post(
+    request: Request,
     category_key: str = Form(""),
     group_code: str = Form(...),
     group_label: str = Form(...),
     group_prefixes: str = Form(""),
 ):
     try:
+        before = _catalog_group_snapshot()
         result = excel_bancos.add_pn_group(group_code, group_label, group_prefixes)
+        after = _catalog_group_snapshot(result["code"])
+        _record_catalog_audit(
+            request,
+            "grupo_criacao",
+            category_key=category_key,
+            summary=f"Grupo {result['code']} - {result['label']} criado.",
+            before=before,
+            after=after,
+            metadata={"entidade": "grupo_sku", "group_code": result["code"]},
+        )
         message = f"Grupo criado: {result['code']} - {result['label']}."
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote(message)}",
@@ -2915,13 +3246,25 @@ async def grupos_adicionar_post(
 
 @app.post("/grupos/editar")
 async def grupos_editar_post(
+    request: Request,
     category_key: str = Form(""),
     group_code: str = Form(...),
     group_label: str = Form(...),
     group_prefixes: str = Form(""),
 ):
     try:
+        before = _catalog_group_snapshot(group_code)
         result = excel_bancos.update_pn_group(group_code, group_label, group_prefixes)
+        after = _catalog_group_snapshot(result["code"])
+        _record_catalog_audit(
+            request,
+            "grupo_alteracao",
+            category_key=category_key,
+            summary=f"Grupo {result['code']} - {result['label']} alterado.",
+            before=before,
+            after=after,
+            metadata={"entidade": "grupo_sku", "group_code": result["code"]},
+        )
         message = f"Grupo atualizado: {result['code']} - {result['label']}."
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote(message)}",
@@ -2936,6 +3279,7 @@ async def grupos_editar_post(
 
 @app.post("/campos/adicionar")
 async def campos_adicionar_post(
+    request: Request,
     category_key: str = Form(...),
     field_label: str = Form(...),
     field_scope: str = Form(...),
@@ -2943,12 +3287,23 @@ async def campos_adicionar_post(
     field_required: str = Form("sim"),
 ):
     try:
+        before = _catalog_category_snapshot(category_key)
         result = excel_bancos.add_field(
             category_key,
             field_label,
             field_scope,
             field_selection_mode,
             field_required,
+        )
+        after = _catalog_category_snapshot(category_key)
+        _record_catalog_audit(
+            request,
+            "campo_criacao",
+            category_key=category_key,
+            summary=f"Campo técnico {result['field']} criado.",
+            before={"categoria": before.get("categoria"), "campos": before.get("campos") or []},
+            after={"categoria": after.get("categoria"), "campos": after.get("campos") or []},
+            metadata={"entidade": "campo", "field_label": result["field"]},
         )
         message = f"Campo criado: {result['field']}."
         return RedirectResponse(
@@ -2973,6 +3328,7 @@ async def campos_editar_post(
     field_required: str = Form("sim"),
 ):
     try:
+        before = _catalog_field_snapshot(category_key, field_key)
         result = excel_bancos.update_field(
             category_key,
             field_key,
@@ -2980,6 +3336,16 @@ async def campos_editar_post(
             field_scope,
             field_selection_mode,
             field_required,
+        )
+        after = _catalog_field_snapshot(category_key, field_key)
+        _record_catalog_audit(
+            request,
+            "campo_alteracao",
+            category_key=category_key,
+            summary=f"Campo técnico {result['field']} alterado.",
+            before=before,
+            after=after,
+            metadata={"entidade": "campo", "field_key": field_key},
         )
         message = f"Campo atualizado: {result['field']}."
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
@@ -2998,9 +3364,24 @@ async def campos_editar_post(
 
 
 @app.post("/campos/excluir")
-async def campos_excluir_post(category_key: str = Form(...), field_key: str = Form(...)):
+async def campos_excluir_post(
+    request: Request,
+    category_key: str = Form(...),
+    field_key: str = Form(...),
+):
     try:
+        before = _catalog_field_snapshot(category_key, field_key)
         result = excel_bancos.delete_field(category_key, field_key)
+        after = _catalog_field_snapshot(category_key, field_key)
+        _record_catalog_audit(
+            request,
+            "campo_exclusao",
+            category_key=category_key,
+            summary=f"Campo técnico {result['field']} excluído.",
+            before=before,
+            after=after,
+            metadata={"entidade": "campo", "field_key": field_key},
+        )
         message = f"Campo excluído: {result['field']}."
         return RedirectResponse(
             url=f"/opcoes?categoria={quote(category_key)}&sucesso={quote(message)}",

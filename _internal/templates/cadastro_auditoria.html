@@ -92,6 +92,7 @@
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Data/hora</th>
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Usuário</th>
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Ação</th>
+                            <th class="min-w-[180px] border border-slate-300 px-2 py-2">Contexto</th>
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">SKU</th>
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">SKU anterior</th>
                             <th class="min-w-[420px] border border-slate-300 px-2 py-2">Resumo / campos alterados</th>
@@ -106,6 +107,7 @@
                             <td class="whitespace-nowrap border border-slate-200 px-2 py-2 font-mono" data-audit-time="{{ event.created_at or '' }}">{{ event.created_at or '-' }}</td>
                             <td class="whitespace-nowrap border border-slate-200 px-2 py-2 font-bold">{{ actor_label or '-' }}</td>
                             <td class="whitespace-nowrap border border-slate-200 px-2 py-2 font-black">{{ audit_actions.get(event.action, event.action) }}</td>
+                            <td class="border border-slate-200 px-2 py-2 font-semibold">{{ event.category_label or event.category_key or '-' }}</td>
                             <td class="whitespace-nowrap border border-slate-200 px-2 py-2 font-mono font-bold">{{ event.sku or '-' }}</td>
                             <td class="whitespace-nowrap border border-slate-200 px-2 py-2 font-mono">{{ event.previous_sku or '-' }}</td>
                             <td class="border border-slate-200 px-2 py-2">
@@ -154,7 +156,7 @@
                         {% endfor %}
                         {% if events|length == 0 %}
                         <tr>
-                            <td colspan="7" class="border border-slate-200 p-10 text-center text-sm font-bold text-slate-500">Nenhum evento encontrado para os filtros informados.</td>
+                            <td colspan="8" class="border border-slate-200 p-10 text-center text-sm font-bold text-slate-500">Nenhum evento encontrado para os filtros informados.</td>
                         </tr>
                         {% endif %}
                     </tbody>

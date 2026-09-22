@@ -56,8 +56,28 @@ AUDIT_ACTION_LABELS = {
     "parametro_exclusao": "Exclusão de parâmetros",
     "equivalencia_grupo_criacao": "Criação de grupo de alternativos",
     "equivalencia_grupo_alteracao": "Alteração de grupo de alternativos",
+    "equivalencia_grupo_inativacao": "Inativação de grupo de alternativos",
+    "equivalencia_grupo_reativacao": "Reativação de grupo de alternativos",
     "equivalencia_membro_criacao": "Inclusão de código alternativo",
     "equivalencia_membro_alteracao": "Alteração de código alternativo",
+    "equivalencia_membro_inativacao": "Inativação de código alternativo",
+    "equivalencia_membro_reativacao": "Reativação de código alternativo",
+    "opcao_criacao": "Criação de opção",
+    "opcao_alteracao": "Alteração de opção",
+    "opcao_exclusao": "Exclusão de opção",
+    "regra_criacao": "Criação de regra condicional",
+    "regra_alteracao": "Alteração de regra condicional",
+    "regra_exclusao": "Exclusão de regra condicional",
+    "campo_criacao": "Criação de campo técnico",
+    "campo_alteracao": "Alteração de campo técnico",
+    "campo_exclusao": "Exclusão de campo técnico",
+    "campo_reordenacao": "Reordenação de campo técnico",
+    "categoria_criacao": "Criação de categoria",
+    "categoria_alteracao": "Alteração de categoria",
+    "categoria_exclusao": "Exclusão de categoria",
+    "grupo_criacao": "Criação de grupo de SKU",
+    "grupo_alteracao": "Alteração de grupo de SKU",
+    "catalogo_importacao": "Importação de catálogo de opções e regras",
 }
 
 
@@ -1958,7 +1978,11 @@ def delete_draft(draft_id: str) -> dict[str, Any]:
     return existing
 
 
-def delete_registration(registration_id: int | str, actor: str = "") -> dict[str, Any]:
+def delete_registration(
+    registration_id: int | str,
+    actor: str = "",
+    actor_user_id: int | str | None = None,
+) -> dict[str, Any]:
     """Request an atomic, integrity-checked catalog deletion from PostgreSQL.
 
     The RPC intentionally returns blockers instead of attempting to remove
@@ -1984,6 +2008,7 @@ def delete_registration(registration_id: int | str, actor: str = "") -> dict[str
         _record_audit_event(
             "exclusao",
             actor=actor,
+            actor_user_id=actor_user_id,
             registration_id=normalized_id,
             sku=result.get("sku"),
             category_key=result.get("category_key"),
@@ -2569,7 +2594,12 @@ def _restore_bom_references(snapshots: dict[str, Any]) -> None:
         )
 
 
-def update_registration(registration_id: int | str, form_data: Any, actor: str = "") -> dict[str, Any]:
+def update_registration(
+    registration_id: int | str,
+    form_data: Any,
+    actor: str = "",
+    actor_user_id: int | str | None = None,
+) -> dict[str, Any]:
     current = get_registration(registration_id)
     if not current:
         raise SupabaseStoreError("Cadastro não encontrado.")
@@ -2640,6 +2670,7 @@ def update_registration(registration_id: int | str, form_data: Any, actor: str =
             _record_audit_event(
                 action,
                 actor=actor,
+                actor_user_id=actor_user_id,
                 registration_id=updated_record.get("id") or registration_id,
                 sku=updated_record.get("sku") or new_sku,
                 category_key=updated_record.get("category_key") or target_category["key"],
@@ -2758,6 +2789,7 @@ def update_registration(registration_id: int | str, form_data: Any, actor: str =
         _record_audit_event(
             "inativacao",
             actor=actor,
+            actor_user_id=actor_user_id,
             registration_id=registration_id,
             sku=old_sku,
             category_key=current.get("category_key") or target_category["key"],
@@ -2770,6 +2802,7 @@ def update_registration(registration_id: int | str, form_data: Any, actor: str =
         _record_audit_event(
             "migracao_sku",
             actor=actor,
+            actor_user_id=actor_user_id,
             registration_id=new_record.get("id"),
             sku=new_sku,
             previous_sku=old_sku,
@@ -3539,6 +3572,7 @@ def save_equivalence_group(
         ) or []
         if not rows:
             raise SupabaseStoreError("Grupo de alternativos não encontrado para alteração.")
+        was_active = bool(before.get("ativo", True))
         action = "equivalencia_grupo_alteracao"
     else:
         payload.update(
@@ -3553,6 +3587,12 @@ def save_equivalence_group(
         ) or []
         action = "equivalencia_grupo_criacao"
     group = rows[0] if rows else payload
+    if group_id:
+        is_active = bool(group.get("ativo", True))
+        if was_active and not is_active:
+            action = "equivalencia_grupo_inativacao"
+        elif not was_active and is_active:
+            action = "equivalencia_grupo_reativacao"
     if clean_text(actor):
         _record_audit_event(
             action,
@@ -3624,6 +3664,13 @@ def save_equivalence_member(
         ) or []
         action = "equivalencia_membro_criacao"
     member = rows[0] if rows else payload
+    if member_id:
+        was_active = bool(before.get("ativo", True))
+        is_active = bool(member.get("ativo", True))
+        if was_active and not is_active:
+            action = "equivalencia_membro_inativacao"
+        elif not was_active and is_active:
+            action = "equivalencia_membro_reativacao"
     if clean_text(actor):
         _record_audit_event(
             action,
