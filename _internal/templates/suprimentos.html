@@ -16,10 +16,14 @@
             </div>
             <nav class="flex flex-wrap gap-2">
                 <a href="/cadastros" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Cadastros</a>
+                {% if not is_comercial %}
                 <a href="/bom" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">B.O.M.</a>
+                {% endif %}
                 <a href="/suprimentos" class="rounded-lg bg-white px-4 py-2 text-sm font-bold text-slate-950">Suprimentos</a>
+                {% if not is_comercial %}
                 <a href="/opcoes" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Opcoes</a>
                 <a href="/layouts" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Gestão de Layout</a>
+                {% endif %}
                 <a href="/logout" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Sair</a>
             </nav>
         </div>
@@ -36,6 +40,7 @@
         <section class="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <div id="cadastro-pessoa" class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2">
                 {% set p = pessoa_edicao or {} %}
+                {% if can_manage_people %}
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h2 class="text-lg font-black">{% if p.id %}Editar Pessoa{% else %}Cadastro Geral de Pessoa{% endif %}</h2>
@@ -185,8 +190,15 @@
                         <a href="/suprimentos/pessoas/template" class="flex h-10 items-center border border-slate-300 bg-white px-5 text-sm font-black text-slate-700 hover:bg-slate-50">Baixar template</a>
                     </div>
                 </form>
+                {% else %}
+                <div>
+                    <h2 class="text-lg font-black">Cadastro Geral de Pessoas</h2>
+                    <p class="mt-1 text-sm text-slate-600">Visualização dos cadastros existentes.</p>
+                </div>
+                {% endif %}
             </div>
 
+            {% if not is_comercial %}
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 class="text-lg font-black">Processos Padrao</h2>
                 <form method="post" action="/suprimentos/processos/upload" enctype="multipart/form-data" class="mt-4">
@@ -213,8 +225,10 @@
                     </table>
                 </div>
             </div>
+            {% endif %}
         </section>
 
+        {% if not is_comercial %}
         <section class="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 class="text-lg font-black">Parametros de Item Relacionado</h2>
@@ -289,37 +303,60 @@
                 </div>
             </div>
         </section>
+        {% endif %}
 
-        <section class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-lg font-black">Pessoas cadastradas</h2>
-                <input id="busca-pessoas" type="search" placeholder="Buscar nome, documento, endereço ou cidade" class="h-10 w-full border border-slate-300 px-3 text-sm md:w-96">
+        <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div class="flex flex-col gap-4 border-b border-slate-200 bg-slate-50 p-5 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <h2 class="text-xl font-black">Pessoas cadastradas</h2>
+                        <span id="contador-pessoas" class="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-800">{{ pessoas|length }} registros</span>
+                    </div>
+                    <p class="mt-1 text-sm text-slate-600">Consulte os dados gerais de clientes, fornecedores e demais pessoas.</p>
+                </div>
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    <input id="busca-pessoas" type="search" placeholder="Buscar nome, documento, endereço ou cidade" class="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 sm:w-80">
+                    <a id="exportar-pessoas" href="/suprimentos/pessoas/exportar" title="Exporta todos os registros ou somente os resultados da busca" class="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-700 px-4 text-sm font-black text-white shadow-sm hover:bg-emerald-600">Exportar Excel</a>
+                </div>
             </div>
-            <div class="mt-4 max-h-96 overflow-auto border border-slate-200">
-                <table class="w-full border-collapse text-left text-xs">
-                    <thead class="bg-slate-50 text-slate-500">
-                        <tr><th class="border p-2">Nome</th><th class="border p-2">Razão Social</th><th class="border p-2">CNPJ/CPF</th><th class="border p-2">Tipos</th><th class="border p-2">Endereço</th><th class="border p-2">Contato</th><th class="border p-2">Ações</th></tr>
+            <div class="max-h-[36rem] overflow-auto">
+                <table class="w-full min-w-[1050px] border-collapse text-left text-sm">
+                    <thead class="sticky top-0 z-10 bg-slate-100 text-xs font-black uppercase tracking-wide text-slate-600 shadow-sm">
+                        <tr>
+                            <th class="border-b border-slate-200 px-4 py-3">Nome / Razão Social</th>
+                            <th class="border-b border-slate-200 px-4 py-3">Documento</th>
+                            <th class="border-b border-slate-200 px-4 py-3">Classificação</th>
+                            <th class="border-b border-slate-200 px-4 py-3">Endereço</th>
+                            <th class="border-b border-slate-200 px-4 py-3">Contato</th>
+                            {% if can_manage_people %}<th class="border-b border-slate-200 px-4 py-3 text-right">Ação</th>{% endif %}
+                        </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="linhas-pessoas" class="divide-y divide-slate-100">
                         {% for pessoa in pessoas %}
-                        <tr data-pessoa-search="{{ ((pessoa.nome_fantasia or '') ~ ' ' ~ (pessoa.razao_social or '') ~ ' ' ~ (pessoa.cnpj_cpf or '') ~ ' ' ~ (pessoa.logradouro or '') ~ ' ' ~ (pessoa.bairro or '') ~ ' ' ~ (pessoa.cidade or '') ~ ' ' ~ (pessoa.uf or '') ~ ' ' ~ (pessoa.cep or ''))|lower }}">
-                            <td class="border p-2 font-bold">{{ pessoa.nome_fantasia }}</td>
-                            <td class="border p-2">{{ pessoa.razao_social }}</td>
-                            <td class="border p-2">{{ pessoa.cnpj_cpf }}</td>
-                            <td class="border p-2">
-                                {% if pessoa.cliente %}Cliente {% endif %}
-                                {% if pessoa.fornecedor %}Fornecedor {% endif %}
-                                {% if pessoa.colaborador %}Colaborador {% endif %}
-                                {% if pessoa.transportadora %}Transportadora{% endif %}
+                        <tr class="odd:bg-white even:bg-slate-50/70 hover:bg-blue-50" data-pessoa-search="{{ ((pessoa.nome_fantasia or '') ~ ' ' ~ (pessoa.razao_social or '') ~ ' ' ~ (pessoa.cnpj_cpf or '') ~ ' ' ~ (pessoa.logradouro or '') ~ ' ' ~ (pessoa.logradouro_numero or '') ~ ' ' ~ (pessoa.complemento or '') ~ ' ' ~ (pessoa.bairro or '') ~ ' ' ~ (pessoa.cidade or '') ~ ' ' ~ (pessoa.uf or '') ~ ' ' ~ (pessoa.cep or '') ~ ' ' ~ (pessoa.telefone or '') ~ ' ' ~ (pessoa.celular or '') ~ ' ' ~ (pessoa.whatsapp or '') ~ ' ' ~ (pessoa.email or ''))|lower }}">
+                            <td class="px-4 py-3">
+                                <div class="font-bold text-slate-900">{{ pessoa.nome_fantasia or '—' }}</div>
+                                <div class="mt-0.5 text-xs text-slate-500">{{ pessoa.razao_social or '' }}</div>
                             </td>
-                            <td class="min-w-64 border p-2">
-                                <div>{{ pessoa.logradouro }}{% if pessoa.logradouro_numero %}, {{ pessoa.logradouro_numero }}{% endif %}</div>
-                                <div class="text-slate-500">{{ pessoa.bairro }} · {{ pessoa.cidade }}/{{ pessoa.uf }} · {{ pessoa.cep }}</div>
+                            <td class="whitespace-nowrap px-4 py-3 font-mono text-sm">{{ pessoa.cnpj_cpf or '—' }}</td>
+                            <td class="min-w-48 px-4 py-3">
+                                <div class="flex flex-wrap gap-1">
+                                {% if pessoa.cliente %}<span class="rounded-full bg-sky-100 px-2 py-1 text-[11px] font-bold text-sky-800">Cliente</span>{% endif %}
+                                {% if pessoa.fornecedor %}<span class="rounded-full bg-violet-100 px-2 py-1 text-[11px] font-bold text-violet-800">Fornecedor</span>{% endif %}
+                                {% if pessoa.colaborador %}<span class="rounded-full bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-800">Colaborador</span>{% endif %}
+                                {% if pessoa.transportadora %}<span class="rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-bold text-emerald-800">Transportadora</span>{% endif %}
+                                {% if not (pessoa.cliente or pessoa.fornecedor or pessoa.colaborador or pessoa.transportadora) %}<span class="text-slate-400">—</span>{% endif %}
+                                </div>
                             </td>
-                            <td class="min-w-48 border p-2"><div>{{ pessoa.telefone or pessoa.celular or pessoa.whatsapp }}</div><div class="text-slate-500">{{ pessoa.email }}</div></td>
-                            <td class="border p-2"><a href="/suprimentos?editar_pessoa={{ pessoa.id }}#cadastro-pessoa" class="font-black text-blue-700 hover:underline">Editar</a></td>
+                            <td class="min-w-64 px-4 py-3">
+                                <div>{{ pessoa.logradouro or '—' }}{% if pessoa.logradouro_numero %}, {{ pessoa.logradouro_numero }}{% endif %}{% if pessoa.complemento %} · {{ pessoa.complemento }}{% endif %}</div>
+                                <div class="mt-0.5 text-xs text-slate-500">{{ pessoa.bairro or '' }}{% if pessoa.cidade %} · {{ pessoa.cidade }}{% endif %}{% if pessoa.uf %}/{{ pessoa.uf }}{% endif %}{% if pessoa.cep %} · CEP {{ pessoa.cep }}{% endif %}</div>
+                            </td>
+                            <td class="min-w-56 px-4 py-3"><div>{{ pessoa.telefone or pessoa.celular or pessoa.whatsapp or '—' }}</div><div class="mt-0.5 text-xs text-slate-500">{{ pessoa.email or '' }}</div></td>
+                            {% if can_manage_people %}<td class="px-4 py-3 text-right"><a href="/suprimentos?editar_pessoa={{ pessoa.id }}#cadastro-pessoa" class="inline-flex rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-black text-blue-800 hover:bg-blue-100">Editar</a></td>{% endif %}
                         </tr>
                         {% endfor %}
+                        {% if not pessoas %}<tr><td colspan="{{ 6 if can_manage_people else 5 }}" class="px-4 py-10 text-center text-sm text-slate-500">Nenhuma pessoa cadastrada.</td></tr>{% endif %}
                     </tbody>
                 </table>
             </div>
@@ -330,9 +367,16 @@
         if (buscaPessoas) {
             buscaPessoas.addEventListener("input", () => {
                 const termo = buscaPessoas.value.trim().toLocaleLowerCase("pt-BR");
-                document.querySelectorAll("[data-pessoa-search]").forEach((linha) => {
-                    linha.hidden = termo && !linha.dataset.pessoaSearch.toLocaleLowerCase("pt-BR").includes(termo);
+                const exportar = document.getElementById("exportar-pessoas");
+                if (exportar) exportar.href = `/suprimentos/pessoas/exportar?q=${encodeURIComponent(buscaPessoas.value.trim())}`;
+                const linhas = [...document.querySelectorAll("[data-pessoa-search]")];
+                let visiveis = 0;
+                linhas.forEach((linha) => {
+                    linha.hidden = Boolean(termo) && !linha.dataset.pessoaSearch.toLocaleLowerCase("pt-BR").includes(termo);
+                    if (!linha.hidden) visiveis += 1;
                 });
+                const contador = document.getElementById("contador-pessoas");
+                if (contador) contador.textContent = `${visiveis} ${visiveis === 1 ? "registro" : "registros"}`;
             });
         }
     </script>

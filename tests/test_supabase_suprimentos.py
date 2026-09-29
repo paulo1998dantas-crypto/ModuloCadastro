@@ -1,8 +1,10 @@
 import unittest
+from io import BytesIO
 from unittest.mock import patch
 
-import supabase_suprimentos
+from openpyxl import load_workbook
 
+import supabase_suprimentos
 
 class PessoaSupabaseTests(unittest.TestCase):
     def test_normalizar_pessoa_preserva_endereco_contato_e_parametros(self):
@@ -51,6 +53,42 @@ class PessoaSupabaseTests(unittest.TestCase):
         self.assertEqual(args[:2], ("PATCH", supabase_suprimentos.PESSOAS_TABLE))
         self.assertIn(("id", "eq.42"), kwargs["query"])
         self.assertEqual(kwargs["payload"]["logradouro"], "Avenida Brasil")
+
+    @patch("supabase_suprimentos._all_rows")
+    def test_exportar_pessoas_gera_planilha_com_registros_e_cabecalho(self, all_rows):
+        all_rows.return_value = [
+            {"id": 8, "nome_fantasia": "Empresa Teste", "fornecedor": True}
+        ]
+
+        workbook = load_workbook(
+            BytesIO(supabase_suprimentos.export_pessoas_xlsx()), data_only=True
+        )
+        sheet = workbook.active
+        headers = [cell.value for cell in sheet[1]]
+        self.assertEqual("id", headers[0])
+        self.assertIn("fornecedor", headers)
+        self.assertEqual("Empresa Teste", sheet.cell(2, headers.index("nome_fantasia") + 1).value)
+        self.assertTrue(sheet.auto_filter.ref)
+        workbook.close()
+
+    @patch("supabase_suprimentos._all_rows")
+    def test_exportar_pessoas_aplica_busca_da_tabela(self, all_rows):
+        all_rows.return_value = [
+            {"id": 8, "nome_fantasia": "Empresa Norte", "cidade": "Manaus"},
+            {"id": 9, "nome_fantasia": "Empresa Sul", "cidade": "Curitiba"},
+        ]
+
+        workbook = load_workbook(
+            BytesIO(supabase_suprimentos.export_pessoas_xlsx("Manaus")),
+            data_only=True,
+        )
+        sheet = workbook.active
+        self.assertEqual(2, sheet.max_row)
+        self.assertEqual(
+            "Empresa Norte",
+            sheet.cell(2, [cell.value for cell in sheet[1]].index("nome_fantasia") + 1).value,
+        )
+        workbook.close()
 
 
 if __name__ == "__main__":

@@ -183,6 +183,64 @@ def _cadastro_access_allowed(access: dict[str, object] | None) -> bool:
     return "ADMIN" in roles or "cadastro.access" in permissions
 
 
+def _cadastro_role_codes(request: Request) -> set[str]:
+    cached_roles = getattr(request.state, "cadastro_role_codes", None)
+    if cached_roles is not None:
+        return set(cached_roles)
+
+    access = getattr(request.state, "erp_access", None)
+    if isinstance(access, dict):
+        roles = {str(value).strip().upper() for value in (access.get("roles") or [])}
+    else:
+        session = _read_session_payload(request)
+        user = _shared_user_lookup(str(session.get("u") or ""))
+        roles = {str(value).strip().upper() for value in ((user or {}).get("roles") or [])}
+        role = str((user or {}).get("role") or "").strip().upper()
+        if role:
+            roles.add("ADMIN" if role == "ADM" else role)
+        try:
+            user_id = int((user or {}).get("id") or 0)
+        except (TypeError, ValueError):
+            user_id = 0
+        # During the staged cutover, the Cadastro RBAC flag can remain off.
+        # Read the shared effective role list so COMERCIAL also works as an
+        # additional profile without changing the primary legacy role.
+        shared_access = _shared_access_lookup(user_id) if user_id else None
+        if shared_access and bool(shared_access.get("active", False)):
+            roles.update(
+                str(value).strip().upper()
+                for value in (shared_access.get("roles") or [])
+                if str(value).strip()
+            )
+
+    roles.discard("")
+    request.state.cadastro_role_codes = roles
+    return roles
+
+
+def _cadastro_is_comercial(request: Request) -> bool:
+    roles = _cadastro_role_codes(request)
+    # If a user has multiple profiles, ADMIN/ENGENHARIA retain their existing
+    # unrestricted maintenance access; COMERCIAL alone stays narrowly scoped.
+    return "COMERCIAL" in roles and not ({"ADMIN", "ENGENHARIA"} & roles)
+
+
+def _commercial_route_allowed(method: str, path: str) -> bool:
+    method = str(method or "").upper()
+    if method in {"GET", "HEAD"}:
+        return path in {
+            "/cadastros",
+            "/cadastros/exportar",
+            "/suprimentos",
+            "/suprimentos/pessoas/template",
+            "/suprimentos/pessoas/exportar",
+        }
+    return method == "POST" and path in {
+        "/suprimentos/pessoas",
+        "/suprimentos/pessoas/upload",
+    }
+
+
 def _cadastro_write_allowed(request: Request) -> bool:
     """Whether the signed-in profile may alter shared master data.
 
@@ -237,7 +295,16 @@ def _legacy_cadastro_access_allowed(user: dict[str, object] | None) -> bool:
     role = str(user.get("role") or "").strip().upper()
     if role == "ADM":
         role = "ADMIN"
-    return role in {"ADMIN", "ENGENHARIA", "PCP"}
+    allowed_roles = {"ADMIN", "ENGENHARIA", "PCP", "COMERCIAL"}
+    if role in allowed_roles:
+        return True
+    try:
+        user_id = int(user.get("id") or 0)
+    except (TypeError, ValueError):
+        user_id = 0
+    access = _shared_access_lookup(user_id) if user_id else None
+    roles = {str(value).strip().upper() for value in ((access or {}).get("roles") or [])}
+    return bool(access and access.get("active") and roles & allowed_roles)
 
 
 def _shared_rbac_schema_status() -> dict[str, object]:
@@ -571,7 +638,24 @@ async def require_login_middleware(request: Request, call_next):
             request.state.erp_access = access
         request.state.cadastro_can_write = _cadastro_write_allowed(request)
         request.state.cadastro_read_only = not request.state.cadastro_can_write
-        if request.state.cadastro_read_only and request.method.upper() == "GET":
+        request.state.cadastro_is_comercial = _cadastro_is_comercial(request)
+        if request.state.cadastro_is_comercial and not _commercial_route_allowed(
+            request.method, request.url.path
+        ):
+            if request.method.upper() in {"GET", "HEAD"}:
+                return RedirectResponse(
+                    url="/cadastros?erro="
+                    + quote("Perfil COMERCIAL possui acesso limitado à consulta de cadastros e à gestão de pessoas."),
+                    status_code=303,
+                )
+            return HTMLResponse(
+                "Perfil COMERCIAL não possui acesso a esta operação.", status_code=403
+            )
+        if (
+            request.state.cadastro_read_only
+            and not request.state.cadastro_is_comercial
+            and request.method.upper() == "GET"
+        ):
             maintenance_paths = (
                 "/cadastro/bancos",
                 "/opcoes",
@@ -594,9 +678,17 @@ async def require_login_middleware(request: Request, call_next):
         if (
             request.method.upper() in {"POST", "PUT", "PATCH", "DELETE"}
             and not request.state.cadastro_can_write
+            and not (
+                request.state.cadastro_is_comercial
+                and _commercial_route_allowed(request.method, request.url.path)
+            )
             and not request.url.path.startswith("/api/ponte/")
         ):
-            message = "Perfil PCP possui acesso somente para consulta no Módulo Cadastro."
+            message = (
+                "Perfil COMERCIAL não possui acesso a esta operação."
+                if request.state.cadastro_is_comercial
+                else "Perfil PCP possui acesso somente para consulta no Módulo Cadastro."
+            )
             if request.url.path.startswith("/api/"):
                 return JSONResponse({"ok": False, "error": message}, status_code=403)
             return HTMLResponse(message, status_code=403)
@@ -1069,15 +1161,19 @@ async def suprimentos_page(
     editar_pessoa: int = 0,
 ):
     pessoa_edicao = {}
+    is_comercial = bool(getattr(request.state, "cadastro_is_comercial", False))
     try:
         pessoas = supabase_suprimentos.listar_pessoas()
         if editar_pessoa:
             pessoa_edicao = supabase_suprimentos.obter_pessoa(editar_pessoa) or {}
             if not pessoa_edicao:
                 erro = erro or "Pessoa nao encontrada para edicao."
-        processos = supabase_suprimentos.listar_processos()
-        regras = supabase_suprimentos.listar_regras()
-        relacoes = supabase_suprimentos.listar_relacoes()
+        if is_comercial:
+            processos, regras, relacoes = {}, [], {}
+        else:
+            processos = supabase_suprimentos.listar_processos()
+            regras = supabase_suprimentos.listar_regras()
+            relacoes = supabase_suprimentos.listar_relacoes()
     except Exception as exc:
         pessoas, processos, regras, relacoes = [], {}, [], {}
         erro = erro or str(exc)
@@ -1094,12 +1190,20 @@ async def suprimentos_page(
             "sucesso": sucesso,
             "erro": erro,
             "active_page": "suprimentos",
+            "is_comercial": is_comercial,
+            "can_manage_people": is_comercial or _cadastro_write_allowed(request),
         },
     )
 
 
+def _cadastro_people_manage_allowed(request: Request) -> bool:
+    return _cadastro_write_allowed(request) or _cadastro_is_comercial(request)
+
+
 @app.post("/suprimentos/pessoas")
 async def suprimentos_pessoas_post(request: Request):
+    if not _cadastro_people_manage_allowed(request):
+        return HTMLResponse("Sem permissão para manter cadastros de pessoas.", status_code=403)
     try:
         form = await request.form()
         campos = (
@@ -1128,7 +1232,9 @@ async def suprimentos_pessoas_post(request: Request):
 
 
 @app.post("/suprimentos/pessoas/upload")
-async def suprimentos_pessoas_upload(arquivo_pessoas: UploadFile = File(...)):
+async def suprimentos_pessoas_upload(request: Request, arquivo_pessoas: UploadFile = File(...)):
+    if not _cadastro_people_manage_allowed(request):
+        return HTMLResponse("Sem permissão para importar cadastros de pessoas.", status_code=403)
     try:
         count = supabase_suprimentos.importar_pessoas_xlsx(await arquivo_pessoas.read())
         return RedirectResponse(url=f"/suprimentos?sucesso={quote(f'{count} pessoa(s) importada(s).')}", status_code=303)
@@ -1139,6 +1245,13 @@ async def suprimentos_pessoas_upload(arquivo_pessoas: UploadFile = File(...)):
 @app.get("/suprimentos/pessoas/template")
 async def suprimentos_pessoas_template():
     return _xlsx_download(supabase_suprimentos.template_pessoas_xlsx(), "template_pessoas.xlsx")
+
+
+@app.get("/suprimentos/pessoas/exportar")
+async def suprimentos_pessoas_exportar(q: str = ""):
+    return _xlsx_download(
+        supabase_suprimentos.export_pessoas_xlsx(q), "pessoas_cadastradas.xlsx"
+    )
 
 
 @app.post("/suprimentos/processos/upload")
@@ -2071,6 +2184,7 @@ async def cadastros_page(
             "erro": erro,
             "active_page": "cadastros",
             "can_delete_records": _cadastro_delete_allowed(request),
+            "is_comercial": bool(getattr(request.state, "cadastro_is_comercial", False)),
         },
     )
 

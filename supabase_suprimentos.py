@@ -5,7 +5,8 @@ from datetime import datetime
 from io import BytesIO
 from typing import Any
 
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Font, PatternFill
 
 import supabase_store
 from xlsx_templates import build_import_template
@@ -484,6 +485,58 @@ def template_pessoas_xlsx() -> bytes:
             "cnpj_cpf ou identificador. Linhas vazias sao ignoradas."
         ),
     )
+
+
+def export_pessoas_xlsx(query: str = "") -> bytes:
+    """Export registered people (optionally filtered by the table search)."""
+    pessoas = _all_rows(PESSOAS_TABLE, order="nome_fantasia.asc")
+    termo = clean_text(query).casefold()
+    if termo:
+        search_fields = (
+            "nome_fantasia", "razao_social", "cnpj_cpf", "logradouro",
+            "logradouro_numero", "complemento", "bairro", "cidade", "uf", "cep",
+            "telefone", "celular", "whatsapp", "email",
+        )
+        pessoas = [
+            pessoa
+            for pessoa in pessoas
+            if termo
+            in " ".join(clean_text(pessoa.get(field)) for field in search_fields).casefold()
+        ]
+    headers = ["id", *PESSOA_FIELDS]
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Pessoas cadastradas"
+    sheet.append(headers)
+    for header_cell in sheet[1]:
+        header_cell.font = Font(bold=True, color="FFFFFF")
+        header_cell.fill = PatternFill("solid", fgColor="17365D")
+
+    for pessoa in pessoas:
+        row = []
+        for field in headers:
+            value = pessoa.get(field, "")
+            row.append(value if value is not None else "")
+        sheet.append(row)
+        # Keep free-text values that begin with '=' as text, not formulas.
+        for cell in sheet[sheet.max_row]:
+            if isinstance(cell.value, str) and cell.value.startswith("="):
+                cell.data_type = "s"
+
+    sheet.freeze_panes = "A2"
+    sheet.auto_filter.ref = sheet.dimensions
+    for column_cells in sheet.columns:
+        column_letter = column_cells[0].column_letter
+        header = str(column_cells[0].value or "")
+        sheet.column_dimensions[column_letter].width = min(
+            max(16, len(header) + 3), 34
+        )
+
+    from io import BytesIO
+
+    output = BytesIO()
+    workbook.save(output)
+    return output.getvalue()
 
 
 def template_processos_xlsx() -> bytes:

@@ -11,15 +11,19 @@ ModuloEstoque:
 - `CADASTRO_SHARED_RBAC_ENABLED=1` ativa o RBAC multi-perfil depois da migration
   compartilhada.
 
-Com o RBAC ativo, somente usuarios com perfil `ADMIN` ou permissao
-`cadastro.access` (concedida ao perfil `ENGENHARIA`) entram no modulo. Alteracao
-de senha, perfis, permissao ou estado ativo incrementa `users.auth_version` e
-revoga a sessao anterior.
+Com o RBAC ativo, usuarios com perfil `ADMIN` ou permissao `cadastro.access`
+entram no modulo. O perfil `COMERCIAL` recebe somente essa permissao e o
+backend limita sua navegação à consulta dos cadastros e à gestão de pessoas em
+Suprimentos; as demais rotas são bloqueadas também no servidor. Alteração de
+senha, perfis, permissão ou estado ativo incrementa `users.auth_version` e
+revoga a sessão anterior.
 
 Durante o corte, mantenha `CADASTRO_SHARED_RBAC_ENABLED=0`; o rollback consiste
 em voltar a flag para `0`, sem apagar tabelas ou usuarios. Com a flag desligada
-o modo de compatibilidade permite apenas os perfis legados `ADMIN` e
-`ENGENHARIA`. Com a flag ligada, a RPC `erp_get_user_access`, `auth_version` e
+o modo de compatibilidade reconhece `ADMIN`, `ENGENHARIA`, `PCP` e `COMERCIAL`.
+O papel COMERCIAL também é reconhecido como perfil adicional quando o schema
+RBAC compartilhado está instalado. Com a flag ligada, a RPC
+`erp_get_user_access`, `auth_version` e
 o schema RBAC são obrigatórios; falhas bloqueiam o acesso e deixam `/healthz`
 em `503`.
 
