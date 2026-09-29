@@ -19,8 +19,8 @@
             </div>
             <nav class="flex flex-wrap gap-2">
                 <a href="/cadastros?categoria={{ selected_category.key }}" class="rounded-lg px-4 py-2 text-sm font-bold bg-white text-slate-950">Cadastros</a>
-                {% if not is_comercial %}
                 <a href="/cadastros/auditoria" class="rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-amber-400">Rastreabilidade</a>
+                {% if not is_comercial %}
                 <a href="/cadastros/equivalencias" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Alternativos</a>
                 {% endif %}
                 {% if request.state.cadastro_can_write %}

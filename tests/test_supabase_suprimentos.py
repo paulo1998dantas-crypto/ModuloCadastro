@@ -35,17 +35,28 @@ class PessoaSupabaseTests(unittest.TestCase):
         self.assertIn("Rua das Flores", pessoa["search_text"])
         self.assertIn("01000-000", pessoa["search_text"])
 
-    @patch("supabase_suprimentos._request")
-    def test_atualizar_pessoa_usa_patch_sem_criar_novo_registro(self, request_mock):
-        count = supabase_suprimentos.atualizar_pessoa(
-            42,
-            {
-                "identificador": "CLIENTE-42",
-                "nome_fantasia": "Cliente Atualizado",
-                "logradouro": "Avenida Brasil",
-                "cliente": True,
-            },
-        )
+    def test_atualizar_pessoa_usa_patch_sem_criar_novo_registro(self):
+        before = {
+            "id": 42,
+            "identificador": "CLIENTE-42",
+            "nome_fantasia": "Cliente original",
+            "payload": {},
+        }
+        after = {**before, "nome_fantasia": "Cliente Atualizado"}
+        with (
+            patch.object(supabase_suprimentos, "obter_pessoa", side_effect=[before, after]),
+            patch.object(supabase_suprimentos, "_request") as request_mock,
+            patch.object(supabase_suprimentos, "_registrar_auditoria_pessoa"),
+        ):
+            count = supabase_suprimentos.atualizar_pessoa(
+                42,
+                {
+                    "identificador": "CLIENTE-42",
+                    "nome_fantasia": "Cliente Atualizado",
+                    "logradouro": "Avenida Brasil",
+                    "cliente": True,
+                },
+            )
 
         self.assertEqual(count, 1)
         request_mock.assert_called_once()

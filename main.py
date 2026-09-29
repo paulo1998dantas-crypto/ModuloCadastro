@@ -230,6 +230,7 @@ def _commercial_route_allowed(method: str, path: str) -> bool:
     if method in {"GET", "HEAD"}:
         return path in {
             "/cadastros",
+            "/cadastros/auditoria",
             "/cadastros/exportar",
             "/suprimentos",
             "/suprimentos/pessoas/template",
@@ -237,6 +238,7 @@ def _commercial_route_allowed(method: str, path: str) -> bool:
         }
     return method == "POST" and path in {
         "/suprimentos/pessoas",
+        "/suprimentos/pessoas/excluir",
         "/suprimentos/pessoas/upload",
     }
 
@@ -1184,6 +1186,12 @@ async def suprimentos_page(
             "request": request,
             "pessoas": pessoas,
             "pessoa_edicao": pessoa_edicao,
+            "pessoa_criador": (
+                supabase_suprimentos.identificador_cadastro(pessoa_edicao)
+                if pessoa_edicao.get("id")
+                else _audit_actor(request)
+            ),
+            "data_registro_atual": supabase_suprimentos.data_registro_atual(),
             "processos": processos,
             "regras": regras,
             "relacoes": relacoes,
@@ -1207,25 +1215,46 @@ async def suprimentos_pessoas_post(request: Request):
     try:
         form = await request.form()
         campos = (
-            "data_registro", "nome_fantasia", "razao_social", "cnpj_cpf",
-            "codigo_identificador_unico", "rg", "ie", "identificador",
+            "nome_fantasia", "razao_social", "cnpj_cpf", "rg", "ie",
             "logradouro", "logradouro_numero", "complemento", "bairro", "cidade",
-            "codigo_municipio", "pais", "codigo_pais", "cep", "uf", "codigo_uf",
-            "telefone", "whatsapp", "celular", "email", "site", "pessoa_grupo",
-            "vendedor_padrao", "categoria", "tabela_preco", "observacoes",
-            "limite_credito", "periodicidade_venda_compra_dias", "validation",
-            "valor_minimo_compra", "data_nascimento_fundacao",
+            "pais", "cep", "uf", "telefone", "whatsapp", "celular", "email",
+            "site", "vendedor_padrao", "tabela_preco", "observacoes",
+            "data_nascimento_fundacao",
         )
         pessoa = {campo: str(form.get(campo, "") or "").strip() for campo in campos}
         for campo in ("pessoa_fisica", "cliente", "fornecedor", "colaborador", "transportadora"):
             pessoa[campo] = bool(form.get(campo))
         pessoa_id = int(str(form.get("pessoa_id", "0") or "0"))
+        actor = _audit_actor(request)
+        actor_user_id = _audit_actor_user_id(request)
         if pessoa_id:
-            count = supabase_suprimentos.atualizar_pessoa(pessoa_id, pessoa)
+            count = supabase_suprimentos.atualizar_pessoa(
+                pessoa_id, pessoa, actor=actor, actor_user_id=actor_user_id
+            )
             mensagem = f"{count} pessoa(s) atualizada(s)."
         else:
-            count = supabase_suprimentos.salvar_pessoas([pessoa])
+            count = supabase_suprimentos.salvar_pessoas(
+                [pessoa], actor=actor, actor_user_id=actor_user_id
+            )
             mensagem = f"{count} pessoa(s) salva(s)."
+        return RedirectResponse(url=f"/suprimentos?sucesso={quote(mensagem)}", status_code=303)
+    except Exception as exc:
+        return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
+
+
+@app.post("/suprimentos/pessoas/excluir")
+async def suprimentos_pessoas_excluir(request: Request):
+    if not _cadastro_people_manage_allowed(request):
+        return HTMLResponse("Sem permissão para excluir cadastros de pessoas.", status_code=403)
+    try:
+        form = await request.form()
+        pessoa_id = int(str(form.get("pessoa_id", "0") or "0"))
+        count = supabase_suprimentos.excluir_pessoa(
+            pessoa_id,
+            actor=_audit_actor(request),
+            actor_user_id=_audit_actor_user_id(request),
+        )
+        mensagem = f"{count} pessoa(s) excluída(s)." if count else "Pessoa não encontrada."
         return RedirectResponse(url=f"/suprimentos?sucesso={quote(mensagem)}", status_code=303)
     except Exception as exc:
         return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
@@ -1236,7 +1265,11 @@ async def suprimentos_pessoas_upload(request: Request, arquivo_pessoas: UploadFi
     if not _cadastro_people_manage_allowed(request):
         return HTMLResponse("Sem permissão para importar cadastros de pessoas.", status_code=403)
     try:
-        count = supabase_suprimentos.importar_pessoas_xlsx(await arquivo_pessoas.read())
+        count = supabase_suprimentos.importar_pessoas_xlsx(
+            await arquivo_pessoas.read(),
+            actor=_audit_actor(request),
+            actor_user_id=_audit_actor_user_id(request),
+        )
         return RedirectResponse(url=f"/suprimentos?sucesso={quote(f'{count} pessoa(s) importada(s).')}", status_code=303)
     except Exception as exc:
         return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
@@ -1645,8 +1678,22 @@ def _search_bridge_products(query: str, limit: int = 25):
 _AUDIT_MISSING = object()
 _AUDIT_FIELD_LABELS = {
     "ativo": "Status do cadastro",
+    "bairro": "Bairro",
     "category_key": "Categoria",
     "category_label": "Categoria",
+    "cep": "CEP",
+    "categoria": "Categoria da pessoa",
+    "cidade": "Cidade",
+    "cnpj_cpf": "CNPJ/CPF",
+    "codigo_identificador_unico": "Código identificador único",
+    "codigo_municipio": "Código do município",
+    "codigo_pais": "Código do país",
+    "codigo_uf": "Código da UF",
+    "colaborador": "Colaborador",
+    "complemento": "Complemento",
+    "cliente": "Cliente",
+    "data_nascimento_fundacao": "Nascimento/fundação",
+    "data_registro": "Data de registro",
     "descricao_primaria": "Descrição primária",
     "descricao_secundaria": "Descrição secundária",
     "sufixo": "Sufixo técnico",
@@ -1658,6 +1705,32 @@ _AUDIT_FIELD_LABELS = {
     "form_values": "Campos do formulário",
     "field_values": "Valores dos campos",
     "field_codes": "Códigos dos campos",
+    "email": "E-mail",
+    "fornecedor": "Fornecedor",
+    "identificador_cadastro": "Usuário criador do cadastro",
+    "ie": "Inscrição estadual",
+    "limite_credito": "Limite de crédito",
+    "logradouro": "Logradouro",
+    "logradouro_numero": "Número",
+    "nome_fantasia": "Nome fantasia",
+    "observacoes": "Observações",
+    "pais": "País",
+    "periodicidade_venda_compra_dias": "Periodicidade compra/venda (dias)",
+    "pessoa_fisica": "Pessoa física",
+    "pessoa_grupo": "Grupo",
+    "razao_social": "Razão social",
+    "rg": "RG",
+    "site": "Site",
+    "tabela_preco": "Tabela de preço",
+    "telefone": "Telefone",
+    "transportadora": "Transportadora",
+    "uf": "UF",
+    "validation": "Validação",
+    "valor_minimo_compra": "Valor mínimo de compra",
+    "vendedor_padrao": "Vendedor padrão",
+    "whatsapp": "WhatsApp",
+    "celular": "Celular",
+    "payload": "Dados adicionais/importados",
     "possui_bom": "Estrutura B.O.M.",
     "component_sku": "Componente",
     "component_descricao": "Descrição do componente",
@@ -2071,6 +2144,7 @@ async def cadastros_auditoria_page(
             "erro": load_error,
             "active_page": "auditoria",
             "can_write": bool(getattr(request.state, "cadastro_can_write", False)),
+            "is_comercial": bool(getattr(request.state, "cadastro_is_comercial", False)),
         },
     )
 

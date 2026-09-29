@@ -42,6 +42,9 @@ SKU_MIGRATION_FORM_KEY = "_sku_migration"
 PREVIOUS_SKU_FORM_KEY = "_sku_anterior"
 CANONICAL_SKU_GROUPS = {"10", "20", "30"}
 AUDIT_ACTION_LABELS = {
+    "pessoa_criacao": "Criação de pessoa (Suprimentos)",
+    "pessoa_alteracao": "Alteração de pessoa (Suprimentos)",
+    "pessoa_exclusao": "Exclusão de pessoa (Suprimentos)",
     "criacao": "Criação de cadastro",
     "alteracao": "Alteração de cadastro",
     "inativacao": "Inativação de cadastro",
@@ -2216,6 +2219,14 @@ def list_audit_events(
             for row in rows
             if normalized_sku in clean_text(row.get("sku")).casefold()
             or normalized_sku in clean_text(row.get("previous_sku")).casefold()
+            or (
+                clean_text(row.get("category_key")) == "suprimentos_pessoas"
+                and (
+                    normalized_sku in clean_text(row.get("summary")).casefold()
+                    or normalized_sku
+                    in json.dumps(row.get("details") or {}, ensure_ascii=False, default=str).casefold()
+                )
+            )
         ]
     rows.sort(key=lambda row: (clean_text(row.get("created_at")), clean_text(row.get("id"))), reverse=True)
     return rows[: max(1, min(int(limit), 5000))]

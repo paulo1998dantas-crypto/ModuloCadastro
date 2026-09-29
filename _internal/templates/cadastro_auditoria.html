@@ -20,11 +20,13 @@
             <nav class="flex flex-wrap gap-2">
                 <a href="/cadastros" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Cadastros</a>
                 <a href="/cadastros/auditoria" class="rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-slate-950">Rastreabilidade</a>
+                {% if not is_comercial %}
                 <a href="/cadastros/equivalencias" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Alternativos</a>
                 {% if request.state.cadastro_can_write %}
                 <a href="/cadastro/bancos" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Cadastrar</a>
                 {% endif %}
                 <a href="/bom" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">B.O.M.</a>
+                {% endif %}
                 <a href="/suprimentos" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Suprimentos</a>
                 <a href="/logout" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Sair</a>
             </nav>
@@ -42,8 +44,8 @@
         <section class="mb-4 border border-slate-300 bg-white p-3 shadow-sm">
             <form method="get" action="/cadastros/auditoria" class="grid grid-cols-1 gap-3 lg:grid-cols-[220px_240px_220px_170px_170px_auto_auto] lg:items-end">
                 <label class="space-y-1">
-                    <span class="block text-[11px] font-black uppercase text-slate-500">SKU</span>
-                    <input name="sku" value="{{ sku }}" class="h-10 w-full border border-slate-300 bg-white px-3 font-mono text-sm outline-none focus:ring-2 focus:ring-amber-500" placeholder="SKU atual ou anterior">
+                    <span class="block text-[11px] font-black uppercase text-slate-500">SKU / Pessoa</span>
+                    <input name="sku" value="{{ sku }}" class="h-10 w-full border border-slate-300 bg-white px-3 font-mono text-sm outline-none focus:ring-2 focus:ring-amber-500" placeholder="SKU, nome ou documento">
                 </label>
                 <label class="space-y-1">
                     <span class="block text-[11px] font-black uppercase text-slate-500">Ação</span>
@@ -93,7 +95,7 @@
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Usuário</th>
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">Ação</th>
                             <th class="min-w-[180px] border border-slate-300 px-2 py-2">Contexto</th>
-                            <th class="whitespace-nowrap border border-slate-300 px-2 py-2">SKU</th>
+                            <th class="whitespace-nowrap border border-slate-300 px-2 py-2">SKU / pessoa</th>
                             <th class="whitespace-nowrap border border-slate-300 px-2 py-2">SKU anterior</th>
                             <th class="min-w-[420px] border border-slate-300 px-2 py-2">Resumo / campos alterados</th>
                             <th class="border border-slate-300 px-2 py-2">Detalhes</th>

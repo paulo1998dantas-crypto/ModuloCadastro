@@ -13,15 +13,16 @@ class ComercialAccessTests(unittest.TestCase):
     def test_comercial_allowlist_only_exposes_catalog_and_people_management(self):
         allowed = [
             ("GET", "/cadastros"),
+            ("GET", "/cadastros/auditoria"),
             ("GET", "/cadastros/exportar"),
             ("GET", "/suprimentos"),
             ("GET", "/suprimentos/pessoas/template"),
             ("GET", "/suprimentos/pessoas/exportar"),
             ("POST", "/suprimentos/pessoas"),
+            ("POST", "/suprimentos/pessoas/excluir"),
             ("POST", "/suprimentos/pessoas/upload"),
         ]
         denied = [
-            ("GET", "/cadastros/auditoria"),
             ("GET", "/cadastros/42/editar"),
             ("GET", "/cadastro/bancos"),
             ("GET", "/bom"),
@@ -31,7 +32,7 @@ class ComercialAccessTests(unittest.TestCase):
             ("POST", "/suprimentos/regras"),
             ("POST", "/suprimentos/relacoes"),
             ("PUT", "/suprimentos/pessoas"),
-            ("DELETE", "/suprimentos/pessoas"),
+            ("DELETE", "/suprimentos/pessoas/excluir"),
         ]
 
         for method, path in allowed:
@@ -78,6 +79,16 @@ class ComercialAccessTests(unittest.TestCase):
         self.assertIn("Cadastro Geral de Pessoa", html)
         self.assertIn("Pessoas cadastradas", html)
         self.assertIn("Exportar Excel", html)
+        self.assertIn('href="/cadastros/auditoria"', html)
+        self.assertIn("Excluir", html)
+        self.assertNotIn("Código identificador único", html)
+        self.assertNotIn("Código do município", html)
+        self.assertNotIn("Código da UF", html)
+        self.assertNotIn("Código do país", html)
+        self.assertNotIn("Limite de crédito", html)
+        self.assertNotIn("Periodicidade compra/venda (dias)", html)
+        self.assertNotIn("Valor mínimo de compra", html)
+        self.assertNotIn(">Validação", html)
         self.assertNotIn("Processos Padrao", html)
         self.assertNotIn("Parametros de Item Relacionado", html)
         self.assertNotIn("Relacao Processo x Item", html)

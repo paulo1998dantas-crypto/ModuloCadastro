@@ -20,6 +20,7 @@
                 <a href="/bom" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">B.O.M.</a>
                 {% endif %}
                 <a href="/suprimentos" class="rounded-lg bg-white px-4 py-2 text-sm font-bold text-slate-950">Suprimentos</a>
+                <a href="/cadastros/auditoria" class="rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-amber-400">Rastreabilidade</a>
                 {% if not is_comercial %}
                 <a href="/opcoes" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Opcoes</a>
                 <a href="/layouts" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-700">Gestão de Layout</a>
@@ -63,10 +64,7 @@
                             <input name="cnpj_cpf" value="{{ p.cnpj_cpf or '' }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
                         </label>
                         <label class="text-xs font-black uppercase text-slate-500">Identificador do cadastro
-                            <input name="identificador" value="{{ p.identificador or '' }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
-                        </label>
-                        <label class="text-xs font-black uppercase text-slate-500">Código identificador único
-                            <input name="codigo_identificador_unico" value="{{ p.codigo_identificador_unico or '' }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
+                            <input value="{{ pessoa_criador or 'Não identificado (registro legado)' }}" readonly class="mt-1 h-10 w-full cursor-not-allowed border border-slate-300 bg-slate-100 px-3 text-sm text-slate-600">
                         </label>
                         <label class="text-xs font-black uppercase text-slate-500">RG
                             <input name="rg" value="{{ p.rg or '' }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
@@ -96,23 +94,14 @@
                         <label class="text-xs font-black uppercase text-slate-500">Cidade
                             <input name="cidade" value="{{ p.cidade or '' }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
                         </label>
-                        <label class="text-xs font-black uppercase text-slate-500">Código do município
-                            <input name="codigo_municipio" value="{{ p.codigo_municipio or '' }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
-                        </label>
                         <label class="text-xs font-black uppercase text-slate-500">CEP
                             <input name="cep" value="{{ p.cep or '' }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
                         </label>
                         <label class="text-xs font-black uppercase text-slate-500">UF
                             <input name="uf" maxlength="2" value="{{ p.uf or '' }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm uppercase">
                         </label>
-                        <label class="text-xs font-black uppercase text-slate-500">Código da UF
-                            <input name="codigo_uf" value="{{ p.codigo_uf or '' }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
-                        </label>
                         <label class="text-xs font-black uppercase text-slate-500">País
                             <input name="pais" value="{{ p.pais or 'Brasil' }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
-                        </label>
-                        <label class="text-xs font-black uppercase text-slate-500">Código do país
-                            <input name="codigo_pais" value="{{ p.codigo_pais or '' }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
                         </label>
                     </fieldset>
 
@@ -136,33 +125,16 @@
                     </fieldset>
 
                     <fieldset class="contents">
-                        <legend class="col-span-full mt-2 w-full border-b border-slate-200 pb-2 text-xs font-black uppercase text-slate-600">Classificação e parâmetros comerciais</legend>
-                        <label class="text-xs font-black uppercase text-slate-500">Grupo
-                            <input name="pessoa_grupo" value="{{ p.pessoa_grupo or '' }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
-                        </label>
-                        <label class="text-xs font-black uppercase text-slate-500">Categoria
-                            <input name="categoria" value="{{ p.categoria or '' }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
-                        </label>
+                        <legend class="col-span-full mt-2 w-full border-b border-slate-200 pb-2 text-xs font-black uppercase text-slate-600">Informações comerciais</legend>
                         <label class="text-xs font-black uppercase text-slate-500">Vendedor padrão
                             <input name="vendedor_padrao" value="{{ p.vendedor_padrao or '' }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
                         </label>
                         <label class="text-xs font-black uppercase text-slate-500">Tabela de preço
                             <input name="tabela_preco" value="{{ p.tabela_preco or '' }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
                         </label>
-                        <label class="text-xs font-black uppercase text-slate-500">Limite de crédito
-                            <input type="number" min="0" step="0.01" name="limite_credito" value="{{ p.limite_credito or 0 }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
-                        </label>
-                        <label class="text-xs font-black uppercase text-slate-500">Periodicidade compra/venda (dias)
-                            <input type="number" min="0" step="1" name="periodicidade_venda_compra_dias" value="{{ p.periodicidade_venda_compra_dias or 0 }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
-                        </label>
-                        <label class="text-xs font-black uppercase text-slate-500">Valor mínimo de compra
-                            <input type="number" min="0" step="0.01" name="valor_minimo_compra" value="{{ p.valor_minimo_compra or 0 }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
-                        </label>
-                        <label class="text-xs font-black uppercase text-slate-500">Validação
-                            <input name="validation" value="{{ p.validation or '' }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
-                        </label>
                         <label class="text-xs font-black uppercase text-slate-500">Data de registro
-                            <input type="date" name="data_registro" value="{{ (p.data_registro or '')[:10] }}" class="mt-1 h-10 w-full border border-slate-300 px-3 text-sm">
+                            <input type="date" value="{{ (p.data_registro or '')[:10] if p.id else data_registro_atual }}" readonly class="mt-1 h-10 w-full cursor-not-allowed border border-slate-300 bg-slate-100 px-3 text-sm">
+                            {% if p.id and not p.data_registro %}<span class="mt-1 block text-[11px] font-normal normal-case text-slate-500">Não informado (registro legado)</span>{% endif %}
                         </label>
                         <div class="col-span-full flex flex-wrap gap-5 border-y border-slate-200 py-3 text-sm font-bold">
                             <label><input type="checkbox" name="pessoa_fisica" value="1" {% if p.pessoa_fisica %}checked{% endif %}> Pessoa física</label>
@@ -353,7 +325,7 @@
                                 <div class="mt-0.5 text-xs text-slate-500">{{ pessoa.bairro or '' }}{% if pessoa.cidade %} · {{ pessoa.cidade }}{% endif %}{% if pessoa.uf %}/{{ pessoa.uf }}{% endif %}{% if pessoa.cep %} · CEP {{ pessoa.cep }}{% endif %}</div>
                             </td>
                             <td class="min-w-56 px-4 py-3"><div>{{ pessoa.telefone or pessoa.celular or pessoa.whatsapp or '—' }}</div><div class="mt-0.5 text-xs text-slate-500">{{ pessoa.email or '' }}</div></td>
-                            {% if can_manage_people %}<td class="px-4 py-3 text-right"><a href="/suprimentos?editar_pessoa={{ pessoa.id }}#cadastro-pessoa" class="inline-flex rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-black text-blue-800 hover:bg-blue-100">Editar</a></td>{% endif %}
+                            {% if can_manage_people %}<td class="px-4 py-3 text-right"><div class="flex justify-end gap-2"><a href="/suprimentos?editar_pessoa={{ pessoa.id }}#cadastro-pessoa" class="inline-flex rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-black text-blue-800 hover:bg-blue-100">Editar</a><form method="post" action="/suprimentos/pessoas/excluir" onsubmit="return confirm('Excluir este cadastro de pessoa? A exclusão ficará registrada na rastreabilidade.');"><input type="hidden" name="pessoa_id" value="{{ pessoa.id }}"><button type="submit" class="inline-flex rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-black text-rose-800 hover:bg-rose-100">Excluir</button></form></div></td>{% endif %}
                         </tr>
                         {% endfor %}
                         {% if not pessoas %}<tr><td colspan="{{ 6 if can_manage_people else 5 }}" class="px-4 py-10 text-center text-sm text-slate-500">Nenhuma pessoa cadastrada.</td></tr>{% endif %}

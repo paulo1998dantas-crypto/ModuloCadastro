@@ -4,6 +4,7 @@ import unicodedata
 from datetime import datetime
 from io import BytesIO
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill
@@ -17,6 +18,7 @@ PROCESSOS_TABLE = "suprimentos_processos"
 REGRAS_TABLE = "suprimentos_regras_popup_item"
 RELACOES_TABLE = "suprimentos_relacoes_processo_item"
 PAGE_SIZE = 1000
+PESSOA_CREATOR_FIELD = "identificador_cadastro"
 
 
 def clean_text(value: Any) -> str:
@@ -75,6 +77,55 @@ def _date_or_none(value: Any) -> str | None:
     return text or None
 
 
+def data_registro_atual() -> str:
+    """Return the current calendar date in the ERP's Brazil timezone."""
+    return datetime.now(ZoneInfo("America/Sao_Paulo")).date().isoformat()
+
+
+def identificador_cadastro(pessoa: dict[str, Any] | None) -> str:
+    row = pessoa if isinstance(pessoa, dict) else {}
+    payload = row.get("payload") if isinstance(row.get("payload"), dict) else {}
+    return clean_text(payload.get(PESSOA_CREATOR_FIELD))
+
+
+def _audit_snapshot_pessoa(pessoa: dict[str, Any] | None) -> dict[str, Any]:
+    row = dict(pessoa or {})
+    row.pop("search_text", None)
+    row[PESSOA_CREATOR_FIELD] = identificador_cadastro(row) or None
+    return row
+
+
+def _registrar_auditoria_pessoa(
+    action: str,
+    *,
+    actor: str,
+    actor_user_id: int | str | None,
+    before: dict[str, Any] | None,
+    after: dict[str, Any] | None,
+) -> None:
+    pessoa = after or before or {}
+    pessoa_id = pessoa.get("id")
+    nome = clean_text(pessoa.get("nome_fantasia") or pessoa.get("razao_social")) or "Pessoa sem nome"
+    action_label = {
+        "pessoa_criacao": "criada",
+        "pessoa_alteracao": "alterada",
+        "pessoa_exclusao": "excluída",
+    }.get(action, "alterada")
+    supabase_store._record_audit_event(
+        action,
+        actor=actor or "sistema:cadastro",
+        actor_user_id=actor_user_id,
+        registration_id=pessoa_id,
+        sku=f"PESSOA-{pessoa_id}" if pessoa_id else clean_text(pessoa.get("identificador")),
+        category_key="suprimentos_pessoas",
+        category_label="Pessoas (Suprimentos)",
+        summary=f"Pessoa {action_label}: {nome}.",
+        before=_audit_snapshot_pessoa(before) if before else {},
+        after=_audit_snapshot_pessoa(after) if after else {},
+        metadata={"origem": "suprimentos_pessoas", "pessoa_id": pessoa_id},
+    )
+
+
 def _search_text(*parts: Any) -> str:
     return " ".join(clean_text(part) for part in parts if clean_text(part))
 
@@ -126,17 +177,78 @@ def normalizar_pessoa(pessoa: dict[str, Any]) -> dict[str, Any]:
     return row
 
 
-def salvar_pessoas(pessoas: list[dict[str, Any]]) -> int:
+def salvar_pessoas(
+    pessoas: list[dict[str, Any]],
+    *,
+    actor: str = "",
+    actor_user_id: int | str | None = None,
+) -> int:
     rows = [normalizar_pessoa(pessoa) for pessoa in pessoas if _key_from_pessoa(pessoa)]
     if not rows:
         return 0
-    _request(
+
+    existing_rows = _all_rows(PESSOAS_TABLE)
+    existing_by_key = {
+        clean_text(row.get("identificador")): row
+        for row in existing_rows
+        if clean_text(row.get("identificador"))
+    }
+    before_by_key: dict[str, dict[str, Any] | None] = {}
+    for row in rows:
+        key = clean_text(row.get("identificador"))
+        before = existing_by_key.get(key)
+        before_by_key[key] = before
+        incoming_payload = row.get("payload") if isinstance(row.get("payload"), dict) else {}
+        merged_payload = dict(before.get("payload") or {}) if before and isinstance(before.get("payload"), dict) else {}
+        merged_payload.update(incoming_payload)
+        if before:
+            # Creation metadata and original registration date are immutable on
+            # edits/imports; the logged-in editor is recorded in the audit row.
+            old_payload = before.get("payload") if isinstance(before.get("payload"), dict) else {}
+            for field in (PESSOA_CREATOR_FIELD, "identificador_cadastro_user_id"):
+                if field in old_payload:
+                    merged_payload[field] = old_payload[field]
+                else:
+                    merged_payload.pop(field, None)
+            row["data_registro"] = before.get("data_registro")
+        else:
+            row["data_registro"] = data_registro_atual()
+            merged_payload[PESSOA_CREATOR_FIELD] = clean_text(actor) or "sistema:cadastro"
+            if actor_user_id not in (None, ""):
+                try:
+                    merged_payload["identificador_cadastro_user_id"] = int(actor_user_id)
+                except (TypeError, ValueError):
+                    pass
+        row["payload"] = merged_payload
+        for technical_field in ("id", "created_at", "updated_at"):
+            row.pop(technical_field, None)
+
+    saved_rows = _request(
         "POST",
         PESSOAS_TABLE,
         query=[("on_conflict", "identificador")],
         payload=rows,
-        prefer="resolution=merge-duplicates,return=minimal",
+        prefer="resolution=merge-duplicates,return=representation",
     )
+    after_rows = saved_rows if isinstance(saved_rows, list) and saved_rows else []
+    if len(after_rows) < len(rows):
+        after_rows = _all_rows(PESSOAS_TABLE)
+    after_by_key = {
+        clean_text(row.get("identificador")): row
+        for row in after_rows
+        if clean_text(row.get("identificador"))
+    }
+    for row in rows:
+        key = clean_text(row.get("identificador"))
+        before = before_by_key.get(key)
+        after = after_by_key.get(key) or row
+        _registrar_auditoria_pessoa(
+            "pessoa_alteracao" if before else "pessoa_criacao",
+            actor=actor,
+            actor_user_id=actor_user_id,
+            before=before,
+            after=after,
+        )
     return len(rows)
 
 
@@ -153,16 +265,82 @@ def obter_pessoa(pessoa_id: int) -> dict[str, Any] | None:
     return rows[0] if rows else None
 
 
-def atualizar_pessoa(pessoa_id: int, pessoa: dict[str, Any]) -> int:
-    row = normalizar_pessoa(pessoa)
+def atualizar_pessoa(
+    pessoa_id: int,
+    pessoa: dict[str, Any],
+    *,
+    actor: str = "",
+    actor_user_id: int | str | None = None,
+) -> int:
+    before = obter_pessoa(pessoa_id)
+    if not before:
+        return 0
+    merged = dict(before)
+    merged.update(pessoa or {})
+    old_payload = before.get("payload") if isinstance(before.get("payload"), dict) else {}
+    incoming_payload = pessoa.get("payload") if isinstance(pessoa, dict) and isinstance(pessoa.get("payload"), dict) else {}
+    merged_payload = {**old_payload, **incoming_payload}
+    for field in (PESSOA_CREATOR_FIELD, "identificador_cadastro_user_id"):
+        if field in old_payload:
+            merged_payload[field] = old_payload[field]
+        else:
+            merged_payload.pop(field, None)
+    merged["payload"] = merged_payload
+    merged["data_registro"] = before.get("data_registro")
+    row = normalizar_pessoa(merged)
     if not _key_from_pessoa(row):
         return 0
+    for technical_field in ("id", "created_at", "updated_at"):
+        row.pop(technical_field, None)
     _request(
         "PATCH",
         PESSOAS_TABLE,
         query=[("id", f"eq.{int(pessoa_id)}")],
         payload=row,
         prefer="return=minimal",
+    )
+    after = obter_pessoa(pessoa_id) or {**merged, **row, "id": pessoa_id}
+    _registrar_auditoria_pessoa(
+        "pessoa_alteracao",
+        actor=actor,
+        actor_user_id=actor_user_id,
+        before=before,
+        after=after,
+    )
+    return 1
+
+
+def excluir_pessoa(
+    pessoa_id: int,
+    *,
+    actor: str = "",
+    actor_user_id: int | str | None = None,
+) -> int:
+    try:
+        normalized_id = int(pessoa_id)
+    except (TypeError, ValueError) as exc:
+        raise supabase_store.SupabaseStoreError("Identificador de pessoa inválido.") from exc
+    if normalized_id <= 0:
+        raise supabase_store.SupabaseStoreError("Identificador de pessoa inválido.")
+    before = obter_pessoa(normalized_id)
+    if not before:
+        return 0
+    deleted = _request(
+        "DELETE",
+        PESSOAS_TABLE,
+        query=[("id", f"eq.{normalized_id}")],
+        prefer="return=representation",
+    )
+    if isinstance(deleted, list) and not deleted:
+        return 0
+    if deleted is False:
+        return 0
+    _registrar_auditoria_pessoa(
+        "pessoa_exclusao",
+        actor=actor,
+        actor_user_id=actor_user_id,
+        before=before,
+        after=None,
     )
     return 1
 
@@ -344,7 +522,12 @@ def _valor(row: list[Any], mapa: dict[str, int], aliases: tuple[str, ...]) -> An
     return ""
 
 
-def importar_pessoas_xlsx(content: bytes) -> int:
+def importar_pessoas_xlsx(
+    content: bytes,
+    *,
+    actor: str = "",
+    actor_user_id: int | str | None = None,
+) -> int:
     headers, rows = _linhas_xlsx(content)
     mapa = {name: idx for idx, name in enumerate(headers) if name}
     pessoas = []
@@ -357,7 +540,7 @@ def importar_pessoas_xlsx(content: bytes) -> int:
                 if idx < len(headers) and headers[idx] and clean_text(value)
             }
             pessoas.append(pessoa)
-    return salvar_pessoas(pessoas)
+    return salvar_pessoas(pessoas, actor=actor, actor_user_id=actor_user_id)
 
 
 def importar_processos_xlsx(content: bytes, filename: str = "") -> int:
