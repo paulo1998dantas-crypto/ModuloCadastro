@@ -60,6 +60,26 @@ class ItemParameterValidationTests(unittest.TestCase):
             payload={"p_sku": "10200001", "p_limite": 100},
         )
 
+    def test_price_only_preserves_existing_origin_and_times(self):
+        current = {"origem_fabricacao": "INTERNA", "setup_dias": "2", "preco_compra": "10"}
+        with patch.object(supabase_store, "get_item_parameter", return_value=current), patch.object(supabase_store, "_request", return_value=[]) as request:
+            supabase_store.save_item_parameter({"id": 81, "sku": "30200049"}, {"preco_compra": "12,50"}, "PAULO")
+        self.assertEqual("PATCH", request.call_args.args[0])
+        self.assertEqual({"preco_compra": "12.5000", "updated_by": "PAULO"}, request.call_args.kwargs["payload"])
+
+    def test_new_price_only_does_not_infer_manufacturing_origin(self):
+        with patch.object(supabase_store, "get_item_parameter", return_value=None), patch.object(supabase_store, "_request", return_value=[]) as request:
+            supabase_store.save_item_parameter({"id": 81, "sku": "30200049"}, {"preco_compra": "12,50"}, "PAULO")
+        payload=request.call_args.kwargs["payload"]
+        self.assertIsNone(payload["origem_fabricacao"])
+        self.assertEqual("12.5000",payload["preco_compra"])
+        self.assertNotIn("producao_dias",payload)
+
+    def test_internal_standard_price_is_retained(self):
+        with patch.object(supabase_store, "_request", return_value=[]) as request:
+            supabase_store.save_item_parameter({"id": 81, "sku": "20200001"}, {"origem_fabricacao":"INTERNA","preco_compra": "12,50"}, "PAULO")
+        self.assertEqual("12.5000",request.call_args.kwargs["payload"]["preco_compra"])
+
     def test_reassign_is_backward_compatible_before_migration(self):
         error = supabase_store.SupabaseStoreError(
             'Erro Supabase 404: {"code":"PGRST205","message":"cadastro_item_parametros"}'

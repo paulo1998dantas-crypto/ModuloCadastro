@@ -5,7 +5,7 @@ create table if not exists public.cadastro_item_parametros (
     registration_id bigint primary key
         references public.cadastro_registros(id) on delete cascade,
     sku text not null,
-    origem_fabricacao text not null
+    origem_fabricacao text null
         check (origem_fabricacao in ('INTERNA', 'EXTERNA')),
     unidade_tempo text not null default 'DIA_UTIL'
         check (unidade_tempo = 'DIA_UTIL'),

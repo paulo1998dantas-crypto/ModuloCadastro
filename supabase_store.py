@@ -58,6 +58,7 @@ AUDIT_ACTION_LABELS = {
     "parametro_criacao": "Criação de parâmetros",
     "parametro_alteracao": "Alteração de parâmetros",
     "parametro_exclusao": "Exclusão de parâmetros",
+    "parametros_custo": "Carga de preço standard",
     "equivalencia_grupo_criacao": "Criação de grupo de alternativos",
     "equivalencia_grupo_alteracao": "Alteração de grupo de alternativos",
     "equivalencia_grupo_inativacao": "Inativação de grupo de alternativos",
@@ -604,6 +605,25 @@ def save_item_parameter(
     source_hash: str = "",
 ) -> dict[str, Any]:
     origin = clean_text(values.get("origem_fabricacao")).upper()
+    if not origin and clean_text(values.get("preco_compra")):
+        # Price-only entries must not invent manufacturing origin or lead time,
+        # nor clear existing times when the caller changes just the cost.
+        current = get_item_parameter(registration["id"])
+        payload = {
+            "preco_compra": _nonnegative_decimal(values.get("preco_compra"), "Preço standard", nullable=True, places="0.0001"),
+            "updated_by": clean_text(actor) or "sistema:cadastro",
+        }
+        if current:
+            rows = _request("PATCH", ITEM_PARAMETERS_TABLE,
+                            [("registration_id", f"eq.{int(registration['id'])}")],
+                            payload=payload, prefer="return=representation") or []
+        else:
+            payload.update(registration_id=int(registration["id"]), sku=clean_text(registration.get("sku")),
+                           origem_fabricacao=None, source_type=clean_text(source_type).upper() or "MANUAL",
+                           source_file=clean_text(source_file), source_sheet=clean_text(source_sheet),
+                           source_row=int(source_row) if source_row else None, source_hash=clean_text(source_hash))
+            rows = _request("POST", ITEM_PARAMETERS_TABLE, payload=payload, prefer="return=representation") or []
+        return rows[0] if rows else payload
     if origin not in {"INTERNA", "EXTERNA"}:
         raise SupabaseStoreError("Selecione fabricação INTERNA ou EXTERNA.")
 
@@ -644,8 +664,6 @@ def save_item_parameter(
             nullable=True,
             places="0.0001",
         )
-        if origin == "EXTERNA"
-        else None
     )
 
     rows = _request(
