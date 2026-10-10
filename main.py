@@ -24,6 +24,7 @@ import excel_bancos
 import supabase_store
 import supabase_suprimentos
 import portal_sso
+import cadastro_requests
 
 
 HOST = os.environ.get("HOST", "127.0.0.1")
@@ -31,6 +32,74 @@ PORT = int(os.environ.get("PORT", "8001"))
 app = FastAPI(title="Módulo de Cadastro")
 SESSION_COOKIE = "cadastro_session"
 SESSION_MAX_AGE_SECONDS = 12 * 60 * 60
+
+
+def _request_workflow_csrf(request: Request) -> str:
+    cookie = request.cookies.get(SESSION_COOKIE, "")
+    return hmac.new(_session_secret(), ("cadastro-workflow|" + cookie).encode(), hashlib.sha256).hexdigest()
+
+
+@app.get("/cadastros/solicitacoes", response_class=HTMLResponse)
+async def registration_requests_page(request: Request):
+    if not _read_session_payload(request):
+        return RedirectResponse("/login?next=/cadastros/solicitacoes", status_code=303)
+    return templates.TemplateResponse(request=request, name="cadastro_solicitacoes.html", context={
+        "request": request, "can_write": _cadastro_write_allowed(request),
+        "workflow_csrf": _request_workflow_csrf(request),
+    })
+
+
+@app.get("/api/cadastro/solicitacoes")
+async def registration_requests_list(request: Request, q: str = "", status: str = "", page: int = 1):
+    if not _read_session_payload(request):
+        return JSONResponse({"error": "Sessão encerrada. Entre novamente."}, status_code=401)
+    try:
+        return cadastro_requests.listing(q, status, page)
+    except cadastro_requests.WorkflowError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=exc.status)
+
+
+@app.get("/api/cadastro/solicitacoes/notificacoes")
+async def registration_requests_notifications(request: Request):
+    if not _read_session_payload(request):
+        return JSONResponse({"error": "Sessão encerrada. Entre novamente."}, status_code=401)
+    try:
+        return cadastro_requests.pending_count()
+    except cadastro_requests.WorkflowError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=exc.status)
+
+
+@app.get("/api/cadastro/solicitacoes/{request_id}")
+async def registration_request_details(request: Request, request_id: str):
+    if not _read_session_payload(request):
+        return JSONResponse({"error": "Sessão encerrada. Entre novamente."}, status_code=401)
+    try:
+        return cadastro_requests.detail(request_id)
+    except cadastro_requests.WorkflowError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=exc.status)
+
+
+@app.post("/api/cadastro/solicitacoes/{request_id}/responder")
+async def registration_request_response(request: Request, request_id: str):
+    if not _cadastro_write_allowed(request):
+        return JSONResponse({"error": "Somente ADMIN e ENGENHARIA podem atender solicitações."}, status_code=403)
+    token = request.headers.get("X-Cadastro-CSRF", "")
+    origin = request.headers.get("origin", "")
+    if not _read_session_payload(request) or not token or not hmac.compare_digest(token, _request_workflow_csrf(request)):
+        return JSONResponse({"error": "Formulário expirou. Entre novamente e atualize a tela."}, status_code=403)
+    if origin and urllib.parse.urlsplit(origin).netloc != request.url.netloc:
+        return JSONResponse({"error": "Origem não autorizada."}, status_code=403)
+    try:
+        data = await request.json()
+        if not isinstance(data, dict):
+            raise cadastro_requests.WorkflowError("Resposta inválida.")
+        return cadastro_requests.respond(request_id, data, _audit_actor(request), _audit_actor_user_id(request))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JSONResponse({"error": "Resposta inválida."}, status_code=400)
+    except cadastro_requests.WorkflowError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=exc.status)
+
+
 def _app_dir() -> Path:
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve().parent
@@ -228,9 +297,12 @@ def _cadastro_is_comercial(request: Request) -> bool:
 def _commercial_route_allowed(method: str, path: str) -> bool:
     method = str(method or "").upper()
     if method in {"GET", "HEAD"}:
+        if path.startswith("/api/cadastro/solicitacoes"):
+            return True
         return path in {
             "/cadastros",
             "/cadastros/auditoria",
+            "/cadastros/solicitacoes",
             "/cadastros/exportar",
             "/suprimentos",
             "/suprimentos/pessoas/template",

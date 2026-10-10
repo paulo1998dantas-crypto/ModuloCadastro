@@ -6,3 +6,10 @@
   @media print{.ji-portal-back{display:none!important}}
 </style>
 <a class="ji-portal-back" href="https://ji-portal-operacional.onrender.com/" aria-label="Voltar ao Portal JI" title="Voltar ao Portal JI"><span class="ji-portal-back__arrow" aria-hidden="true">←</span><span class="ji-portal-back__label">Portal JI</span></a>
+{% if request is defined and request.state is defined and (request.state.cadastro_can_write or request.state.cadastro_is_comercial) %}
+<style>.ji-cadastro-requests{position:fixed;right:16px;bottom:16px;z-index:90;background:#0f766e;color:white;padding:12px 16px;border-radius:9px;font:700 13px Arial;text-decoration:none;box-shadow:0 3px 12px #0003}@media print{.ji-cadastro-requests{display:none!important}}</style>
+<a class="ji-cadastro-requests" href="/cadastros/solicitacoes">Solicitações de cadastro <span id="ji-cadastro-request-count"></span></a>
+<script>
+(function(){async function update(){if(document.visibilityState!=='visible')return;try{const r=await fetch('/api/cadastro/solicitacoes/notificacoes');if(!r.ok)return;const data=await r.json();document.getElementById('ji-cadastro-request-count').textContent=data.pending?'('+data.pending+(data.capped?'+':'')+')':'';}catch{}}update();setInterval(update,30000);})();
+</script>
+{% endif %}

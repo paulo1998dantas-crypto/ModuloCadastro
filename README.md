@@ -56,3 +56,20 @@ python leadtime_import.py "C:\caminho\leadtime.xlsx" --report outputs\leadtime_d
 Depois da conferência do relatório e da aplicação da migration, a gravação é
 habilitada explicitamente com `--apply`. Parâmetros existentes são preservados;
 `--overwrite-existing` deve ser usado somente após revisão e autorização.
+
+## Solicitações de cadastro do Comercial
+
+A fila compartilhada está em `/cadastros/solicitacoes`, com notificação de pendências
+nas telas autenticadas. O Comercial solicita cadastro novo por texto técnico livre,
+ou revisão/preço com um SKU ativo. A solicitação original permanece auditável.
+
+Somente ADMIN e ENGENHARIA podem assumir ou responder. Assumir marca EM ANÁLISE;
+concluir exige um SKU ativo válido ou uma devolutiva. A resposta não cria/edita
+cadastros automaticamente: faça o ajuste normal, depois registre o código/retorno.
+Comercial pode consultar a fila e a rastreabilidade, mas não atender solicitações.
+
+Publicação: primeiro Comercial (migração `202610100008`, saúde confirmada), depois
+Cadastro. Usa as tabelas compartilhadas `cadastro_solicitacoes` /
+`cadastro_solicitacao_eventos` e a RPC privada `cadastro_responder_solicitacao`.
+Não expõe chave Supabase ao navegador. Respostas exigem sessão, permissão,
+CSRF e versão atual. Histórico e solicitações concluídas são imutáveis.
