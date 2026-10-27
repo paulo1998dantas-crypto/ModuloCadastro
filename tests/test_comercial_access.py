@@ -65,7 +65,7 @@ class ComercialAccessTests(unittest.TestCase):
 
     def test_comercial_suprimentos_view_hides_other_maintenance_tables(self):
         html = main.templates.env.get_template("suprimentos.html").render(
-            pessoas=[],
+            pessoas=[{"id": 1, "nome_fantasia": "Fornecedor de teste", "fornecedor": True}],
             pessoa_edicao={},
             processos={},
             regras=[],

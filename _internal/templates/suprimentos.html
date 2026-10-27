@@ -204,12 +204,17 @@
         <section class="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 class="text-lg font-black">Parametros de Item Relacionado</h2>
-                <form method="post" action="/suprimentos/regras" class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <input name="gatilho" placeholder="Item gatilho" required class="h-10 border border-slate-300 px-3 text-sm">
-                    <input name="opcoes" placeholder="Opcoes separadas por ;" required class="h-10 border border-slate-300 px-3 text-sm">
-                    <input name="quantidade" type="number" step="0.01" value="1" class="h-10 border border-slate-300 px-3 text-sm">
-                    <label class="flex items-center gap-2 text-sm font-bold"><input name="quantidade_editavel" value="1" type="checkbox"> Quantidade editavel</label>
-                    <button class="h-10 bg-blue-700 px-5 text-sm font-black text-white hover:bg-blue-600">Salvar Regra</button>
+                {% set r = regra_edicao or {} %}
+                <form method="post" action="{{ '/suprimentos/regras/editar' if r.id else '/suprimentos/regras' }}" class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    {% if r.id %}<input type="hidden" name="rule_id" value="{{ r.id }}">{% endif %}
+                    <input name="gatilho" value="{{ r.gatilho or '' }}" placeholder="Item gatilho" required class="h-10 border border-slate-300 px-3 text-sm">
+                    <input name="opcoes" value="{{ r.opcoes|join('; ') if r.opcoes else '' }}" placeholder="Opcoes separadas por ;" required class="h-10 border border-slate-300 px-3 text-sm">
+                    <input name="quantidade" type="number" min="0.01" step="0.01" value="{{ r.quantidade or 1 }}" required class="h-10 border border-slate-300 px-3 text-sm">
+                    <label class="flex items-center gap-2 text-sm font-bold"><input name="quantidade_editavel" value="1" type="checkbox" {% if r.quantidade_editavel %}checked{% endif %}> Quantidade editavel</label>
+                    <div class="flex flex-wrap gap-2">
+                        <button class="h-10 bg-blue-700 px-5 text-sm font-black text-white hover:bg-blue-600">{{ 'Atualizar Regra' if r.id else 'Salvar Regra' }}</button>
+                        {% if r.id %}<a href="/suprimentos#parametros-item-relacionado" class="flex h-10 items-center border border-slate-300 px-4 text-sm font-bold text-slate-700">Cancelar edição</a>{% endif %}
+                    </div>
                 </form>
                 <form method="post" action="/suprimentos/regras/upload" enctype="multipart/form-data" class="mt-4 border-t border-slate-200 pt-4">
                     <input type="file" name="arquivo_regras" accept=".xlsx,.xlsm" required class="w-full border border-slate-300 p-2 text-sm">
@@ -218,20 +223,25 @@
                         <a href="/suprimentos/regras/template" class="flex h-10 items-center border border-slate-300 bg-white px-5 text-sm font-black text-slate-700 hover:bg-slate-50">Baixar template</a>
                     </div>
                 </form>
-                <div class="mt-4 max-h-72 overflow-auto border border-slate-200">
+                <div id="parametros-item-relacionado" class="mt-4 max-h-72 overflow-auto border border-slate-200">
                     <table class="w-full border-collapse text-left text-xs">
-                        <thead class="bg-slate-50 text-slate-500"><tr><th class="border p-2">ID</th><th class="border p-2">Gatilho</th><th class="border p-2">Opcoes</th><th class="border p-2"></th></tr></thead>
+                        <thead class="bg-slate-50 text-slate-500"><tr><th class="border p-2">ID</th><th class="border p-2">Gatilho</th><th class="border p-2">Opcoes</th><th class="border p-2">Quantidade</th><th class="border p-2">Qtd. editavel</th><th class="border p-2">Ações</th></tr></thead>
                         <tbody>
                             {% for regra in regras %}
                             <tr>
                                 <td class="border p-2">{{ regra.id }}</td>
                                 <td class="border p-2">{{ regra.gatilho }}</td>
                                 <td class="border p-2">{{ regra.opcoes|join('; ') }}</td>
+                                <td class="border p-2">{{ regra.quantidade }}</td>
+                                <td class="border p-2">{{ 'Sim' if regra.quantidade_editavel else 'Não' }}</td>
                                 <td class="border p-2">
-                                    <form method="post" action="/suprimentos/regras/excluir" onsubmit="return confirm('Excluir regra?')">
-                                        <input type="hidden" name="rule_id" value="{{ regra.id }}">
-                                        <button class="text-rose-700 font-black">Excluir</button>
-                                    </form>
+                                    <div class="flex items-center gap-3">
+                                        <a href="/suprimentos?editar_regra={{ regra.id|urlencode }}#parametros-item-relacionado" class="font-black text-blue-700 hover:underline">Editar</a>
+                                        <form method="post" action="/suprimentos/regras/excluir" onsubmit="return confirm('Excluir regra?')">
+                                            <input type="hidden" name="rule_id" value="{{ regra.id }}">
+                                            <button class="text-rose-700 font-black">Excluir</button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -242,10 +252,15 @@
 
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 class="text-lg font-black">Relacao Processo x Item</h2>
-                <form method="post" action="/suprimentos/relacoes" class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <input name="item_codigo" placeholder="Codigo do item" required class="h-10 border border-slate-300 px-3 text-sm">
-                    <input name="processos" placeholder="Processos separados por ;" required class="h-10 border border-slate-300 px-3 text-sm">
-                    <button class="h-10 bg-blue-700 px-5 text-sm font-black text-white hover:bg-blue-600">Salvar Relacao</button>
+                {% set rel = relacao_edicao or {} %}
+                <form method="post" action="{{ '/suprimentos/relacoes/editar' if rel.item_codigo else '/suprimentos/relacoes' }}" class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    {% if rel.item_codigo %}<input type="hidden" name="item_codigo_anterior" value="{{ rel.item_codigo }}">{% endif %}
+                    <input name="item_codigo" value="{{ rel.item_codigo or '' }}" placeholder="Codigo do item" required class="h-10 border border-slate-300 px-3 text-sm">
+                    <input name="processos" value="{{ rel.processos|join('; ') if rel.processos else '' }}" placeholder="Processos separados por ;" required class="h-10 border border-slate-300 px-3 text-sm">
+                    <div class="flex flex-wrap gap-2">
+                        <button class="h-10 bg-blue-700 px-5 text-sm font-black text-white hover:bg-blue-600">{{ 'Atualizar Relação' if rel.item_codigo else 'Salvar Relacao' }}</button>
+                        {% if rel.item_codigo %}<a href="/suprimentos#relacao-processo-item" class="flex h-10 items-center border border-slate-300 px-4 text-sm font-bold text-slate-700">Cancelar edição</a>{% endif %}
+                    </div>
                 </form>
                 <form method="post" action="/suprimentos/relacoes/upload" enctype="multipart/form-data" class="mt-4 border-t border-slate-200 pt-4">
                     <input type="file" name="arquivo_relacoes" accept=".xlsx,.xlsm" required class="w-full border border-slate-300 p-2 text-sm">
@@ -254,7 +269,7 @@
                         <a href="/suprimentos/relacoes/template" class="flex h-10 items-center border border-slate-300 bg-white px-5 text-sm font-black text-slate-700 hover:bg-slate-50">Baixar template</a>
                     </div>
                 </form>
-                <div class="mt-4 max-h-72 overflow-auto border border-slate-200">
+                <div id="relacao-processo-item" class="mt-4 max-h-72 overflow-auto border border-slate-200">
                     <table class="w-full border-collapse text-left text-xs">
                         <thead class="bg-slate-50 text-slate-500"><tr><th class="border p-2">Item</th><th class="border p-2">Processos</th><th class="border p-2"></th></tr></thead>
                         <tbody>
@@ -263,10 +278,13 @@
                                 <td class="border p-2">{{ codigo }}</td>
                                 <td class="border p-2">{{ processos_item|join('; ') }}</td>
                                 <td class="border p-2">
-                                    <form method="post" action="/suprimentos/relacoes/excluir" onsubmit="return confirm('Excluir relacao?')">
-                                        <input type="hidden" name="item_codigo" value="{{ codigo }}">
-                                        <button class="text-rose-700 font-black">Excluir</button>
-                                    </form>
+                                    <div class="flex items-center gap-3">
+                                        <a href="/suprimentos?editar_relacao={{ codigo|urlencode }}#relacao-processo-item" class="font-black text-blue-700 hover:underline">Editar</a>
+                                        <form method="post" action="/suprimentos/relacoes/excluir" onsubmit="return confirm('Excluir relacao?')">
+                                            <input type="hidden" name="item_codigo" value="{{ codigo }}">
+                                            <button class="text-rose-700 font-black">Excluir</button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}

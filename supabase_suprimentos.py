@@ -1,4 +1,5 @@
 import json
+import math
 import re
 import unicodedata
 from datetime import datetime
@@ -405,6 +406,41 @@ def listar_regras() -> list[dict[str, Any]]:
     ]
 
 
+def atualizar_regra(rule_id: str, regra: dict[str, Any]) -> int:
+    rule_id = clean_text(rule_id)
+    gatilho = clean_text(regra.get("gatilho"))
+    opcoes = list(dict.fromkeys(
+        clean_text(opcao) for opcao in (regra.get("opcoes") or []) if clean_text(opcao)
+    ))
+    try:
+        quantidade = float(regra.get("quantidade", 1))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Informe uma quantidade válida.") from exc
+    if not rule_id:
+        raise ValueError("Identificador da regra não informado.")
+    if not gatilho:
+        raise ValueError("Informe o item gatilho.")
+    if not opcoes:
+        raise ValueError("Informe ao menos um item relacionado.")
+    if not math.isfinite(quantidade) or quantidade <= 0:
+        raise ValueError("A quantidade deve ser maior que zero.")
+    rows = _request(
+        "PATCH",
+        REGRAS_TABLE,
+        query=[("rule_id", f"eq.{rule_id}")],
+        payload={
+            "gatilho": gatilho,
+            "opcoes": opcoes,
+            "quantidade": quantidade,
+            "quantidade_editavel": bool(regra.get("quantidade_editavel")),
+        },
+        prefer="return=representation",
+    ) or []
+    if not rows:
+        raise ValueError("Regra não encontrada; nenhuma alteração foi gravada.")
+    return len(rows)
+
+
 def salvar_regras(regras: list[dict[str, Any]]) -> int:
     rows = []
     for regra in regras or []:
@@ -437,6 +473,30 @@ def listar_relacoes() -> dict[str, list[str]]:
         for row in rows
         if clean_text(row.get("item_codigo"))
     }
+
+
+def atualizar_relacao(item_codigo_anterior: str, item_codigo: str, processos: list[str]) -> int:
+    item_codigo_anterior = clean_text(item_codigo_anterior)
+    item_codigo = clean_text(item_codigo)
+    processos = list(dict.fromkeys(
+        clean_text(processo) for processo in (processos or []) if clean_text(processo)
+    ))
+    if not item_codigo_anterior:
+        raise ValueError("Código atual do item não informado.")
+    if not item_codigo:
+        raise ValueError("Informe o código do item.")
+    if not processos:
+        raise ValueError("Informe ao menos um processo.")
+    rows = _request(
+        "PATCH",
+        RELACOES_TABLE,
+        query=[("item_codigo", f"eq.{item_codigo_anterior}")],
+        payload={"item_codigo": item_codigo, "processos": processos},
+        prefer="return=representation",
+    ) or []
+    if not rows:
+        raise ValueError("Relação não encontrada; nenhuma alteração foi gravada.")
+    return len(rows)
 
 
 def salvar_relacoes(relacoes: dict[str, list[str]]) -> int:

@@ -6,6 +6,7 @@ import base64
 import hashlib
 import hmac
 import json
+import math
 import time
 import urllib.error
 import urllib.parse
@@ -1233,8 +1234,12 @@ async def suprimentos_page(
     sucesso: str = "",
     erro: str = "",
     editar_pessoa: int = 0,
+    editar_regra: str = "",
+    editar_relacao: str = "",
 ):
     pessoa_edicao = {}
+    regra_edicao = {}
+    relacao_edicao = {}
     is_comercial = bool(getattr(request.state, "cadastro_is_comercial", False))
     try:
         pessoas = supabase_suprimentos.listar_pessoas()
@@ -1248,6 +1253,18 @@ async def suprimentos_page(
             processos = supabase_suprimentos.listar_processos()
             regras = supabase_suprimentos.listar_regras()
             relacoes = supabase_suprimentos.listar_relacoes()
+            if editar_regra:
+                regra_edicao = next((regra for regra in regras if regra["id"] == editar_regra), {})
+                if not regra_edicao:
+                    erro = erro or "Regra não encontrada para edição."
+            if editar_relacao:
+                relacao_edicao = {
+                    "item_codigo": editar_relacao,
+                    "processos": relacoes.get(editar_relacao, []),
+                }
+                if not relacao_edicao["processos"]:
+                    relacao_edicao = {}
+                    erro = erro or "Relação não encontrada para edição."
     except Exception as exc:
         pessoas, processos, regras, relacoes = [], {}, [], {}
         erro = erro or str(exc)
@@ -1258,6 +1275,8 @@ async def suprimentos_page(
             "request": request,
             "pessoas": pessoas,
             "pessoa_edicao": pessoa_edicao,
+            "regra_edicao": regra_edicao,
+            "relacao_edicao": relacao_edicao,
             "pessoa_criador": (
                 supabase_suprimentos.identificador_cadastro(pessoa_edicao)
                 if pessoa_edicao.get("id")
@@ -1430,6 +1449,33 @@ async def suprimentos_regras_excluir(rule_id: str = Form(...)):
         return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
 
 
+@app.post("/suprimentos/regras/editar")
+async def suprimentos_regras_editar(
+    rule_id: str = Form(...),
+    gatilho: str = Form(...),
+    opcoes: str = Form(...),
+    quantidade: str = Form("1"),
+    quantidade_editavel: str = Form(""),
+):
+    try:
+        quantidade_num = float(str(quantidade or "1").strip().replace(",", "."))
+        if not math.isfinite(quantidade_num) or quantidade_num <= 0:
+            raise ValueError("A quantidade deve ser maior que zero.")
+        regra = {
+            "gatilho": gatilho.strip(),
+            "opcoes": [parte.strip() for parte in opcoes.replace("\n", ";").split(";") if parte.strip()],
+            "quantidade": quantidade_num,
+            "quantidade_editavel": bool(quantidade_editavel),
+        }
+        count = supabase_suprimentos.atualizar_regra(rule_id, regra)
+        return RedirectResponse(
+            url=f"/suprimentos?sucesso={quote(f'{count} regra(s) atualizada(s).')}",
+            status_code=303,
+        )
+    except Exception as exc:
+        return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
+
+
 @app.post("/suprimentos/relacoes")
 async def suprimentos_relacoes_post(item_codigo: str = Form(...), processos: str = Form(...)):
     try:
@@ -1465,6 +1511,25 @@ async def suprimentos_relacoes_excluir(item_codigo: str = Form(...)):
         relacoes.pop(item_codigo, None)
         supabase_suprimentos.salvar_relacoes(relacoes)
         return RedirectResponse(url=f"/suprimentos?sucesso={quote('Relação excluída.')}", status_code=303)
+    except Exception as exc:
+        return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
+
+
+@app.post("/suprimentos/relacoes/editar")
+async def suprimentos_relacoes_editar(
+    item_codigo_anterior: str = Form(...),
+    item_codigo: str = Form(...),
+    processos: str = Form(...),
+):
+    try:
+        lista_processos = [parte.strip() for parte in processos.replace("\n", ";").split(";") if parte.strip()]
+        count = supabase_suprimentos.atualizar_relacao(
+            item_codigo_anterior, item_codigo, lista_processos
+        )
+        return RedirectResponse(
+            url=f"/suprimentos?sucesso={quote(f'{count} relação(ões) atualizada(s).')}",
+            status_code=303,
+        )
     except Exception as exc:
         return RedirectResponse(url=f"/suprimentos?erro={quote(str(exc))}", status_code=303)
 
