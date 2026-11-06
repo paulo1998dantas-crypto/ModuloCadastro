@@ -786,22 +786,35 @@ def download_layout(layout_id: str) -> tuple[bytes, dict[str, Any]]:
     return content, layout
 
 
-def _request_all(table: str, params: list[tuple[str, str]], limit: int = 10000) -> list[dict[str, Any]]:
+def _request_all(table: str, params: list[tuple[str, str]], limit: int | None = 10000) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     page_size = 1000
-    while len(rows) < limit:
+    while limit is None or len(rows) < limit:
         batch = _request(
             "GET",
             table,
             [
                 *params,
-                ("limit", str(min(page_size, limit - len(rows)))),
+                ("limit", str(page_size if limit is None else min(page_size, limit - len(rows)))),
                 ("offset", str(len(rows))),
             ],
         ) or []
         rows.extend(batch)
         if len(batch) < page_size:
             break
+    return rows
+
+
+def _request_all_in(
+    table: str, params: list[tuple[str, str]], column: str, values: list[Any],
+) -> list[dict[str, Any]]:
+    """Keep PostgREST URLs small and paginate every batch without losing rows."""
+    codes = list(dict.fromkeys(clean_text(value) for value in values if clean_text(value)))
+    rows: list[dict[str, Any]] = []
+    for start in range(0, len(codes), 100):
+        rows.extend(_request_all(
+            table, [*params, (column, _in_filter(codes[start:start + 100]))], limit=None,
+        ))
     return rows
 
 
@@ -967,14 +980,13 @@ def _catalog_data_by_sku(skus: list[Any]) -> dict[str, dict[str, Any]]:
     codes = list(dict.fromkeys(clean_text(sku) for sku in skus if clean_text(sku)))
     if not codes:
         return {}
-    rows = _request_all(
+    rows = _request_all_in(
         REGISTRATIONS_TABLE,
         [
             ("select", "sku,descricao_primaria,unidade,ativo"),
-            ("sku", _in_filter(codes)),
             ("order", "sku.asc"),
         ],
-        limit=max(len(codes), 1),
+        "sku", codes,
     )
     catalog_data: dict[str, dict[str, Any]] = {}
     for row in rows:
@@ -3485,14 +3497,14 @@ def list_boms(
     bom_ids_filter: list[str] = []
     component_term = _search_text(component_query)
     if component_term:
-        component_matches = _request(
-            "GET",
+        component_matches = _request_all(
             BOM_COMPONENTS_TABLE,
             [
                 ("select", "bom_id"),
                 ("search_text", f"ilike.*{component_term}*"),
-                ("limit", "5000"),
+                ("order", "id.asc"),
             ],
+            limit=None,
         ) or []
         bom_ids_filter = list(dict.fromkeys(clean_text(row.get("bom_id")) for row in component_matches if row.get("bom_id")))
         if not bom_ids_filter:
@@ -3508,19 +3520,21 @@ def list_boms(
     if parent_term:
         params.append(("search_text", f"ilike.*{parent_term}*"))
     if bom_ids_filter:
-        params.append(("id", _in_filter(bom_ids_filter)))
-    headers = _request_all(BOM_HEADERS_TABLE, params, limit=max(1, min(limit, 5000)))
+        headers = _request_all_in(BOM_HEADERS_TABLE, params, "id", bom_ids_filter)
+        headers.sort(key=lambda row: clean_text(row.get("parent_sku")))
+        headers = headers[:max(1, min(limit, 5000))]
+    else:
+        headers = _request_all(BOM_HEADERS_TABLE, params, limit=max(1, min(limit, 5000)))
     bom_ids = [clean_text(row.get("id")) for row in headers if row.get("id")]
     components_by_bom: dict[str, list[dict[str, Any]]] = {bom_id: [] for bom_id in bom_ids}
     if bom_ids:
         component_params: list[tuple[str, str]] = [
             ("select", "*"),
-            ("bom_id", _in_filter(bom_ids)),
             ("order", "parent_sku.asc,ordem.asc,component_sku.asc"),
         ]
         if component_term:
             component_params.append(("search_text", f"ilike.*{component_term}*"))
-        components = _request_all(BOM_COMPONENTS_TABLE, component_params, limit=10000)
+        components = _request_all_in(BOM_COMPONENTS_TABLE, component_params, "bom_id", bom_ids)
         for component in components:
             components_by_bom.setdefault(clean_text(component.get("bom_id")), []).append(component)
     description_codes: list[Any] = []
@@ -4381,3 +4395,4 @@ def export_registrations(
     wb.save(output)
     wb.close()
     return output
+
